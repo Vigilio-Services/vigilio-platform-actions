@@ -5,14 +5,14 @@ import { validateActions } from '../src/action-policy.js';
 import { validateWorkflows } from '../src/workflow-policy.js';
 
 const requiredWorkflows = [
-  'backend-node-nest-ci.yml',
-  'backend-node-nest-deploy-cdk.yml',
-  'web-mfe-preact-ci.yml',
-  'web-mfe-deploy-s3-cloudfront.yml',
-  'mobile-expo-ci.yml',
-  'mobile-expo-eas-build.yml',
-  'desktop-tauri-ci.yml',
-  'desktop-tauri-build.yml',
+  'shared-backend-node-nest-ci.yml',
+  'shared-backend-node-nest-deploy-cdk.yml',
+  'shared-web-mfe-preact-ci.yml',
+  'shared-web-mfe-deploy-s3-cloudfront.yml',
+  'shared-mobile-expo-ci.yml',
+  'shared-mobile-expo-eas-build.yml',
+  'shared-desktop-tauri-ci.yml',
+  'shared-desktop-tauri-build.yml',
 ];
 
 const requiredActions = [
@@ -77,7 +77,7 @@ describe('workflow and action policies', () => {
   it('detects missing required reusable workflows', () => {
     const directory = join(process.cwd(), 'coverage', `wf-${Date.now()}`);
     mkdirSync(directory, { recursive: true });
-    createWorkflow(directory, 'backend-node-nest-ci.yml');
+    createWorkflow(directory, 'shared-backend-node-nest-ci.yml');
 
     expect(validateWorkflows(directory).some((error) => error.includes('required reusable'))).toBe(
       true,
@@ -87,7 +87,7 @@ describe('workflow and action policies', () => {
   it('detects floating workflow refs', () => {
     const directory = join(process.cwd(), 'coverage', `wf-floating-${Date.now()}`);
     mkdirSync(directory, { recursive: true });
-    createWorkflow(directory, 'backend-node-nest-ci.yml', '      - uses: actions/setup-node@main');
+    createWorkflow(directory, 'shared-backend-node-nest-ci.yml', '      - uses: actions/setup-node@main');
 
     expect(validateWorkflows(directory).some((error) => error.includes('@main'))).toBe(true);
   });
@@ -122,7 +122,7 @@ describe('workflow and action policies', () => {
     mkdirSync(directory, { recursive: true });
     createValidWorkflows(directory);
     writeFileSync(
-      join(directory, 'backend-node-nest-ci.yml'),
+      join(directory, 'shared-backend-node-nest-ci.yml'),
       [
         'name: invalid-token',
         'on:',
