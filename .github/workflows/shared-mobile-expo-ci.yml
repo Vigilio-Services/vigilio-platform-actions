@@ -54,7 +54,7 @@ jobs:
       - run: pnpm test:coverage
       - run: pnpm expo:check
       - run: pnpm expo:doctor
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mobile-coverage
@@ -87,12 +87,12 @@ jobs:
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mobile-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mobile-sbom
           path: ${{ inputs.working-directory }}/reports/sbom.cdx.json

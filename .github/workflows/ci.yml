@@ -30,7 +30,7 @@ jobs:
           persist-credentials: false
       - name: Actionlint
         uses: reviewdog/action-actionlint@v1
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -42,7 +42,7 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm governance
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: devsecops-governance-dist
           path: packages/devsecops-governance/dist/
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -81,7 +81,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
 
   deep-security:
     name: Deep Security
