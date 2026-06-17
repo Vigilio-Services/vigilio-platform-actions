@@ -130,8 +130,10 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-fs.sarif
+          category: trivy-fs
       - name: Upload Trivy config SARIF
         uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-config.sarif
+          category: trivy-config
