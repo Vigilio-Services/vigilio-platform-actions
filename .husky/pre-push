@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+corepack pnpm@11.5.2 lint
+corepack pnpm@11.5.2 typecheck
+corepack pnpm@11.5.2 test
+corepack pnpm@11.5.2 governance:workflows
+corepack pnpm@11.5.2 governance:actions

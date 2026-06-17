@@ -1,0 +1,115 @@
+name: desktop-tauri-build
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        type: string
+        required: true
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      allow-release-for-staging:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      VITE_API_BASE_URL:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+  attestations: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    environment: ${{ inputs.stage }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/validate-stage-source@v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ github.ref_name }}
+          allow-release-for-staging: ${{ inputs.allow-release-for-staging && 'true' || 'false' }}
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ inputs.working-directory }}/src-tauri -> target
+      - name: Install Linux Tauri dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:env
+      - run: pnpm governance:contracts
+      - run: pnpm governance:tauri
+      - run: pnpm governance:testing
+      - run: pnpm governance:release
+        env:
+          RELEASE_STAGE: ${{ inputs.stage }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm rust:fmt
+      - run: pnpm rust:clippy
+      - run: pnpm rust:test
+      - run: pnpm build
+        env:
+          VITE_STAGE: ${{ inputs.stage }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - run: pnpm bundle:budget
+        env:
+          VITE_STAGE: ${{ inputs.stage }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - run: pnpm sbom:generate
+        env:
+          VITE_STAGE: ${{ inputs.stage }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - run: pnpm tauri:build
+        env:
+          VITE_STAGE: ${{ inputs.stage }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tauri-${{ matrix.os }}-${{ inputs.stage }}
+          path: |
+            ${{ inputs.working-directory }}/src-tauri/target/release/bundle/**
+            ${{ inputs.working-directory }}/reports/sbom.cdx.json
+          retention-days: 30
+      - uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ inputs.working-directory }}/src-tauri/target/release/bundle/**
+            ${{ inputs.working-directory }}/reports/sbom.cdx.json

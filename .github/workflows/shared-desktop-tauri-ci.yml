@@ -1,0 +1,113 @@
+name: desktop-tauri-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      rust-required:
+        type: boolean
+        required: false
+        default: true
+      run-e2e:
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  frontend:
+    name: Frontend Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:repository
+      - run: pnpm governance:github-actions
+      - run: pnpm governance:env
+      - run: pnpm governance:contracts
+      - run: pnpm governance:tauri
+      - run: pnpm governance:testing
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - run: pnpm bundle:budget
+
+  rust:
+    name: Rust Checks
+    needs: frontend
+    if: inputs.rust-required
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ inputs.working-directory }}/src-tauri -> target
+      - name: Install Linux Tauri dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - run: pnpm rust:fmt
+      - run: pnpm rust:clippy
+      - run: pnpm rust:test
+
+  e2e:
+    name: Playwright Smoke
+    needs: frontend
+    if: inputs.run-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - uses: vigilio/vigilio-platform-actions/actions/install-playwright-chromium@v1
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tauri-playwright-report
+          path: ${{ inputs.working-directory }}/playwright-report/
+          retention-days: 14

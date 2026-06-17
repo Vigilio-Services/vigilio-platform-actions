@@ -1,0 +1,16 @@
+name: Install Playwright Chromium
+description: Install only Chromium for fast Playwright browser checks.
+
+runs:
+  using: composite
+  steps:
+    - name: Cache Playwright Chromium
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          playwright-chromium-${{ runner.os }}-
+    - name: Install Chromium
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium

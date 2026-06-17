@@ -1,0 +1,19 @@
+name: Security hardening
+description: Solicitar mejora de seguridad o DevSecOps.
+title: "[SECURITY] "
+labels: ["security", "devsecops"]
+body:
+  - type: textarea
+    id: risk
+    attributes:
+      label: Riesgo
+      description: Describe el riesgo sin revelar secretos ni PoC explotable.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Control sugerido, workflow afectado o policy nueva.
+    validations:
+      required: true

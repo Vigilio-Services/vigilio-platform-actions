@@ -1,0 +1,82 @@
+name: web-mfe-deploy-s3-cloudfront
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        type: string
+        required: true
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      aws-region:
+        type: string
+        required: false
+        default: us-east-1
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+      WEB_BUCKET:
+        required: true
+      CLOUDFRONT_DISTRIBUTION_ID:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.stage }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.stage }}
+    concurrency:
+      group: web-mfe-${{ inputs.stage }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/validate-stage-source@v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ github.ref_name }}
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:github-actions
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm build
+      - run: pnpm bundle:budget
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws-region }}
+      - name: Deploy static assets
+        shell: bash
+        run: |
+          aws s3 sync dist/ "s3://${WEB_BUCKET}/" --delete --exclude "index.html" --cache-control "public,max-age=31536000,immutable"
+          aws s3 cp dist/index.html "s3://${WEB_BUCKET}/index.html" --cache-control "no-cache,no-store,must-revalidate"
+          aws cloudfront create-invalidation --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" --paths "/index.html" "/manifest.webmanifest"
+        env:
+          WEB_BUCKET: ${{ secrets.WEB_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}

@@ -1,0 +1,42 @@
+{
+  "name": "@vigilio/platform-actions",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": "24.x",
+    "pnpm": "11.5.2"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "check": "biome check --write .",
+    "format": "biome format --write .",
+    "lint": "biome ci .",
+    "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test:coverage",
+    "typecheck": "pnpm -r typecheck",
+    "governance:workflows": "pnpm --filter @vigilio/devsecops-governance validate:workflows",
+    "governance:actions": "pnpm --filter @vigilio/devsecops-governance validate:actions",
+    "governance": "pnpm governance:workflows && pnpm governance:actions && pnpm typecheck && pnpm test && pnpm build",
+    "prepare": "husky",
+    "commitlint": "commitlint",
+    "lint-staged": "lint-staged"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@changesets/cli": "^2.27.1",
+    "@commitlint/cli": "21.0.2",
+    "@commitlint/config-conventional": "21.0.2",
+    "husky": "9.1.7",
+    "lint-staged": "17.0.7"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "biome format --write --no-errors-on-unmatched"
+    ]
+  }
+}

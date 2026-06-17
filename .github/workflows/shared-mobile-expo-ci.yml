@@ -1,0 +1,104 @@
+name: mobile-expo-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      run-export:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      GITHUB_PACKAGES_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:repository
+      - run: pnpm governance:github-actions
+      - run: pnpm governance:env
+      - run: pnpm governance:contracts
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm expo:check
+      - run: pnpm expo:doctor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-coverage
+          path: ${{ inputs.working-directory }}/coverage/
+          retention-days: 14
+
+  export:
+    name: Expo Export
+    needs: quality
+    if: inputs.run-export
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      attestations: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm export
+      - run: pnpm export:budget
+      - run: pnpm sbom:generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-dist
+          path: ${{ inputs.working-directory }}/dist/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-sbom
+          path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
+          retention-days: 30
+      - uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ inputs.working-directory }}/dist/**
+            ${{ inputs.working-directory }}/reports/sbom.cdx.json

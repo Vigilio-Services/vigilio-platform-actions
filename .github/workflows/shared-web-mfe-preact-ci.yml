@@ -1,0 +1,150 @@
+name: web-mfe-preact-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      run-e2e:
+        type: boolean
+        required: false
+        default: true
+      preview-port:
+        type: string
+        required: false
+        default: '4200'
+    secrets:
+      GITHUB_PACKAGES_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:repository
+      - run: pnpm governance:github-actions
+      - run: pnpm governance:env
+      - run: pnpm governance:contracts
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-coverage
+          path: ${{ inputs.working-directory }}/coverage/
+          retention-days: 14
+
+  build:
+    name: Build
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+      attestations: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm build
+      - run: pnpm bundle:budget
+      - run: pnpm sbom:generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: ${{ inputs.working-directory }}/dist/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-sbom
+          path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
+          retention-days: 30
+      - uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ inputs.working-directory }}/dist/**
+            ${{ inputs.working-directory }}/reports/sbom.cdx.json
+
+  e2e:
+    name: Playwright Smoke
+    needs: build
+    if: inputs.run-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - uses: vigilio/vigilio-platform-actions/actions/install-playwright-chromium@v1
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: ${{ inputs.working-directory }}/dist/
+      - name: Start preview
+        shell: bash
+        run: |
+          pnpm exec vite preview --host 127.0.0.1 --port "${{ inputs.preview-port }}" > /tmp/web-preview.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl -fsS "http://127.0.0.1:${{ inputs.preview-port }}" > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/web-preview.log
+          exit 1
+      - run: pnpm test:e2e
+        env:
+          E2E_BASE_URL: http://127.0.0.1:${{ inputs.preview-port }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-playwright-report
+          path: ${{ inputs.working-directory }}/playwright-report/
+          retention-days: 7

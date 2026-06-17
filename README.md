@@ -1,0 +1,109 @@
+# vigilio-platform-actions
+
+Repositorio central de workflows reutilizables, composite actions y governance scripts para proyectos Vigilio.
+
+Objetivo: que `bus-impl`, `web-mfe`, `mobile-mfe`, `tauri-mfe` y futuros repos consuman CI/CD consistente sin duplicar YAML pesado.
+
+## Estructura
+
+```text
+.github/workflows/                 reusable workflows
+actions/                           composite actions
+packages/devsecops-governance/     paquete npm TypeScript
+docs/                              documentacion de plataforma
+```
+
+## Uso rapido
+
+Backend Nest:
+
+```yaml
+jobs:
+  ci:
+    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+    with:
+      node-version: '24.16.0'
+      pnpm-version: '11.5.2'
+      has-postgres: true
+      has-cdk: true
+      has-openapi: true
+    secrets: inherit
+```
+
+Web MFE:
+
+```yaml
+jobs:
+  ci:
+    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
+    with:
+      node-version: '24.16.0'
+      pnpm-version: '11.5.2'
+    secrets: inherit
+```
+
+Mobile Expo:
+
+```yaml
+jobs:
+  ci:
+    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
+    with:
+      node-version: '24.16.0'
+      pnpm-version: '11.5.2'
+    secrets: inherit
+```
+
+Tauri:
+
+```yaml
+jobs:
+  ci:
+    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
+    with:
+      node-version: '24.16.0'
+      pnpm-version: '11.5.2'
+    secrets: inherit
+```
+
+## Reglas
+
+- No consumir desde `@main`, `@master`, `@latest` o branch flotante.
+- Consumir tags semver: `@v1`, `@v1.1.0` o SHA aprobado.
+- Los secrets viven en el repo consumidor, organization secrets o GitHub Environments.
+- Este repo central no guarda credenciales.
+- Los workflows por stack son separados; no hay workflow gigante universal.
+
+## Comandos
+
+```bash
+# Verifica el estilo y busca errores en el código (Biome)
+pnpm lint
+
+# Verifica la integridad de los tipos estáticos de TypeScript
+pnpm typecheck
+
+# Ejecuta las pruebas unitarias (Vitest) en todos los paquetes
+pnpm test
+
+# Compila todos los paquetes del monorepo de forma recursiva y en paralelo
+pnpm build
+
+# Genera los archivos para publicar una nueva versión (Changesets)
+pnpm changeset
+
+# Verifica que todos los Reusable Workflows cumplan las reglas de seguridad
+pnpm governance:workflows
+
+# Verifica que todas las GitHub Custom Actions cumplan el estándar
+pnpm governance:actions
+```
+
+## Documentacion
+
+- [Arquitectura](./docs/01-arquitectura.md)
+- [Versionado](./docs/02-versionado.md)
+- [Seguridad](./docs/03-seguridad.md)
+- [Como consumir workflows](./docs/04-como-consumir.md)
+- [Matriz de workflows](./docs/05-matriz-workflows.md)
+- [Paquete DevSecOps Governance](./docs/06-paquete-devsecops-governance.md)

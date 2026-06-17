@@ -1,0 +1,86 @@
+name: backend-node-nest-deploy-cdk
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        type: string
+        required: true
+      deploy-mode:
+        type: string
+        required: false
+        default: plan
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      aws-region:
+        type: string
+        required: false
+        default: us-east-1
+      run-smoke:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+      GITHUB_PACKAGES_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.stage }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.stage }}
+    concurrency:
+      group: backend-${{ inputs.stage }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/validate-stage-source@v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ github.ref_name }}
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:github-actions
+      - run: pnpm typecheck
+      - run: pnpm drizzle:check
+      - run: pnpm cdk:synth
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws-region }}
+      - name: CDK diff
+        if: inputs.deploy-mode == 'plan'
+        run: pnpm cdk:diff:${{ inputs.stage }}
+      - name: CDK deploy
+        if: inputs.deploy-mode == 'apply'
+        run: pnpm cdk:deploy:${{ inputs.stage }}
+      - name: Smoke
+        if: inputs.deploy-mode == 'apply' && inputs.run-smoke
+        run: pnpm smoke:endpoints

@@ -1,0 +1,43 @@
+{
+  "name": "@vigilio/devsecops-governance",
+  "version": "0.0.1",
+  "description": "DevSecOps governance CLI for Vigilio repositories.",
+  "type": "module",
+  "private": false,
+  "license": "UNLICENSED",
+  "bin": {
+    "vigilio-governance": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "vitest",
+    "lint": "biome ci .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "validate:actions": "tsc -p tsconfig.build.json && node dist/cli.js validate-actions --actions-dir ../../actions",
+    "validate:workflows": "tsc -p tsconfig.build.json && node dist/cli.js validate-workflows --workflows-dir ../../.github/workflows"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@types/node": "24.10.4",
+    "@vitest/coverage-v8": "4.1.9",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
+  }
+}

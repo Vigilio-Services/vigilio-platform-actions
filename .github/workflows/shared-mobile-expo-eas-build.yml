@@ -1,0 +1,92 @@
+name: mobile-expo-eas-build
+
+on:
+  workflow_call:
+    inputs:
+      profile:
+        type: string
+        required: true
+      platform:
+        type: string
+        required: false
+        default: all
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      eas-version:
+        type: string
+        required: false
+        default: '20.1.0'
+    secrets:
+      EXPO_TOKEN:
+        required: true
+      GITHUB_PACKAGES_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+  attestations: write
+  id-token: write
+
+jobs:
+  build:
+    name: EAS ${{ inputs.profile }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: ${{ inputs.profile }}
+    concurrency:
+      group: mobile-eas-${{ inputs.profile }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/validate-stage-source@v1
+        with:
+          stage: ${{ inputs.profile }}
+          ref-name: ${{ github.ref_name }}
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: ${{ inputs.eas-version }}
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:github-actions
+      - run: pnpm governance:env
+      - run: pnpm expo:check
+      - run: pnpm expo:doctor
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - run: pnpm export
+      - run: pnpm export:budget
+      - run: pnpm sbom:generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-${{ inputs.profile }}-dist
+          path: ${{ inputs.working-directory }}/dist/
+          retention-days: 30
+      - uses: actions/attest@v4
+        with:
+          subject-path: |
+            ${{ inputs.working-directory }}/dist/**
+            ${{ inputs.working-directory }}/reports/sbom.cdx.json
+      - name: EAS build
+        run: eas build --profile "${{ inputs.profile }}" --platform "${{ inputs.platform }}" --non-interactive --no-wait

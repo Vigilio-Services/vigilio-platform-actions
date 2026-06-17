@@ -1,0 +1,47 @@
+language: es-ES
+tone_instructions: "Revisa como Staff Engineer DevSecOps. Se directo, prioriza riesgos reales, supply-chain, GitHub Actions, semver, permisos mínimos y compatibilidad hacia atrás."
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_filters:
+    - "!pnpm-lock.yaml"
+    - "!coverage/**"
+    - "!dist/**"
+  path_instructions:
+    - path: "packages/devsecops-governance/src/**/*.ts"
+      instructions: |
+        - PROHIBIDO el uso de `any`. Exige `unknown` y type guards.
+        - PROHIBIDO el uso de `console.log` para errores, exige arrojar excepciones estructuradas o usar un logger.
+        - Valida que la lógica de las políticas (policies) no tenga "bypasses" (rutas de escape condicionales) inseguros.
+        - Exige performance en operaciones de archivos (preferir promesas / async-await sobre operaciones síncronas bloqueantes).
+    - path: "packages/devsecops-governance/tests/**/*.ts"
+      instructions: |
+        - Exige aserciones estrictas (e.g., `toStrictEqual` en lugar de `toEqual`).
+        - Valida que se estén mockeando correctamente las llamadas al sistema (fs, exec, spawn) para evitar side-effects en CI.
+        - Si se detecta un cambio en `src/`, exige que exista un test cubriendo el edge case en esta carpeta.
+    - path: ".github/workflows/**/*.yml"
+      instructions: |
+        - PROHIBIDO usar third-party actions sin fijar el SHA del commit (pinning). `uses: actions/checkout@v4` es aceptable, pero acciones de la comunidad deben usar SHA.
+        - PROHIBIDO el uso de `permissions: write-all`. Exige el Principio de Privilegio Mínimo (PoLP).
+        - Si hay scripts inline (`run: |`), exige `set -euo pipefail`.
+    - path: "package.json"
+      instructions: |
+        - Verifica que las dependencias estén fijadas sin carets (`^`) o tildes (`~`) en dependencias críticas de plataforma.
+        - Valida que los comandos de npm/pnpm sean determinísticos y usen cache.
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+  tools:
+    biome:
+      enabled: true
+    github-checks:
+      enabled: true
+chat:
+  auto_reply: true

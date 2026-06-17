@@ -1,0 +1,24 @@
+name: Configure GitHub Packages
+description: Configure npm auth for GitHub Packages without committing credentials.
+
+inputs:
+  token:
+    description: GitHub Packages token.
+    required: true
+  npmrc-path:
+    description: Target npmrc path.
+    required: false
+    default: ~/.npmrc
+
+runs:
+  using: composite
+  steps:
+    - name: Configure npm auth
+      shell: bash
+      run: |
+        set -euo pipefail
+        npmrc_path="${{ inputs.npmrc-path }}"
+        expanded_path="${npmrc_path/#\~/$HOME}"
+        printf "//npm.pkg.github.com/:_authToken=%s\n" "${GITHUB_PACKAGES_TOKEN}" >> "${expanded_path}"
+      env:
+        GITHUB_PACKAGES_TOKEN: ${{ inputs.token }}

@@ -1,0 +1,283 @@
+name: backend-node-nest-ci
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        required: false
+        default: '24.16.0'
+      pnpm-version:
+        type: string
+        required: false
+        default: '11.5.2'
+      working-directory:
+        type: string
+        required: false
+        default: .
+      has-postgres:
+        type: boolean
+        required: false
+        default: true
+      has-cdk:
+        type: boolean
+        required: false
+        default: false
+      has-openapi:
+        type: boolean
+        required: false
+        default: true
+      run-bdd:
+        type: boolean
+        required: false
+        default: true
+      run-e2e:
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      GITHUB_PACKAGES_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  NODE_VERSION: ${{ inputs.node-version }}
+  PNPM_VERSION: ${{ inputs.pnpm-version }}
+  WORKING_DIRECTORY: ${{ inputs.working-directory }}
+
+jobs:
+  governance:
+    name: Governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          install: 'false'
+      - uses: vigilio/vigilio-platform-actions/actions/configure-github-packages@v1
+        with:
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:repository
+      - run: pnpm governance:github-actions
+
+  quality:
+    name: Quality
+    needs: governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: ${{ inputs.working-directory }}/coverage/
+          retention-days: 14
+
+  integration:
+    name: PostgreSQL Integration
+    needs: quality
+    if: inputs.has-postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm drizzle:check
+      - run: pnpm test:integration
+        env:
+          E2E_AUTO_START_POSTGRES: 'false'
+          E2E_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          E2E_DATABASE_NAME: backend_integration
+          E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/backend_integration
+
+  bdd:
+    name: BDD
+    needs: quality
+    if: inputs.run-bdd
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm test:bdd
+
+  contract:
+    name: OpenAPI Contract
+    needs: quality
+    if: inputs.has-openapi
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm openapi:export
+      - run: pnpm openapi:diff
+        env:
+          OPENAPI_DIFF_REQUIRE_BASE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+
+  e2e:
+    name: API E2E
+    needs: [quality, integration, contract]
+    if: always() && inputs.run-e2e && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm test:e2e
+        env:
+          E2E_AUTO_START_POSTGRES: 'false'
+          E2E_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          E2E_DATABASE_NAME: backend_e2e
+          E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/backend_e2e
+
+  infrastructure:
+    name: CDK
+    needs: quality
+    if: inputs.has-cdk
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm cdk:synth
+
+  build:
+    name: Build
+    needs: [quality, integration, bdd, contract, e2e, infrastructure]
+    if: always() && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+      attestations: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: ${{ inputs.working-directory }}/dist/
+          retention-days: 30
+      - uses: actions/attest@v4
+        with:
+          subject-path: ${{ inputs.working-directory }}/dist/**

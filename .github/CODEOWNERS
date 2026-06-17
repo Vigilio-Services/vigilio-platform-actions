@@ -1,0 +1,20 @@
+# ──────────────────────────────────────────────────────
+# CODEOWNERS — vigilio-platform-actions (2026)
+# ──────────────────────────────────────────────────────
+
+# Core Governance (Librería de DevSecOps) — Platform + Security
+packages/devsecops-governance/src/   @vigilio/platform @vigilio/security
+packages/devsecops-governance/tests/ @vigilio/platform
+
+# Documentación de Seguridad — Security Lead
+SECURITY.md                          @vigilio/security
+
+# CI/CD y automatización de publicación
+.github/workflows/                   @vigilio/devops
+
+# Documentación Core
+README.md                            @vigilio/platform
+CHANGELOG.md                         @vigilio/platform
+
+# Fallback global — Si nadie está asignado, lo aprueba Platform
+*                                    @vigilio/platform

@@ -1,0 +1,55 @@
+name: Validate Stage Source
+description: Validate that a deployment stage runs from the expected branch family.
+
+inputs:
+  stage:
+    description: Target stage.
+    required: true
+  ref-name:
+    description: GitHub ref name.
+    required: true
+  allow-release-for-staging:
+    description: Allow release/x.y.z for staging candidates.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Validate branch to stage
+      shell: bash
+      run: |
+        set -euo pipefail
+        stage="${{ inputs.stage }}"
+        ref_name="${{ inputs.ref-name }}"
+        allow_release_for_staging="${{ inputs.allow-release-for-staging }}"
+
+        case "${stage}" in
+          development)
+            [[ "${ref_name}" == "develop" ]] || { echo "development must run from develop."; exit 1; }
+            ;;
+          test)
+            [[ "${ref_name}" =~ ^release/[0-9]+(\.[0-9]+){1,2}$ ]] || { echo "test must run from release/x.y.z."; exit 1; }
+            ;;
+          staging)
+            if [[ "${ref_name}" == "main" ]]; then
+              exit 0
+            fi
+            if [[ "${allow_release_for_staging}" == "true" && "${ref_name}" =~ ^release/[0-9]+(\.[0-9]+){1,2}$ ]]; then
+              exit 0
+            fi
+            if [[ "${allow_release_for_staging}" == "true" ]]; then
+              echo "staging must run from main or release/x.y.z."
+            else
+              echo "staging must run from main."
+            fi
+            exit 1
+            ;;
+          preproduction|production)
+            [[ "${ref_name}" == "main" ]] || { echo "${stage} must run from main."; exit 1; }
+            ;;
+          *)
+            echo "Unsupported stage: ${stage}"
+            exit 1
+            ;;
+        esac
