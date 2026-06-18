@@ -1,5 +1,5 @@
 {
-  "name": "@vigilio/devsecops-governance",
+  "name": "@vigilioyonatan/devsecops-governance",
   "version": "0.0.1",
   "description": "DevSecOps governance CLI for Vigilio repositories.",
   "type": "module",
