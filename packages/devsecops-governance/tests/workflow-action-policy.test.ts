@@ -87,7 +87,11 @@ describe('workflow and action policies', () => {
   it('detects floating workflow refs', () => {
     const directory = join(process.cwd(), 'coverage', `wf-floating-${Date.now()}`);
     mkdirSync(directory, { recursive: true });
-    createWorkflow(directory, 'shared-backend-node-nest-ci.yml', '      - uses: actions/setup-node@main');
+    createWorkflow(
+      directory,
+      'shared-backend-node-nest-ci.yml',
+      '      - uses: actions/setup-node@main',
+    );
 
     expect(validateWorkflows(directory).some((error) => error.includes('@main'))).toBe(true);
   });
