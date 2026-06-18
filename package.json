@@ -1,5 +1,5 @@
 {
-  "name": "@vigilio/platform-actions",
+  "name": "@vigilioyonatan/platform-actions",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -16,8 +16,8 @@
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test:coverage",
     "typecheck": "pnpm -r typecheck",
-    "governance:workflows": "pnpm --filter @vigilio/devsecops-governance validate:workflows",
-    "governance:actions": "pnpm --filter @vigilio/devsecops-governance validate:actions",
+    "governance:workflows": "pnpm --filter @vigilioyonatan/devsecops-governance validate:workflows",
+    "governance:actions": "pnpm --filter @vigilioyonatan/devsecops-governance validate:actions",
     "governance": "pnpm governance:workflows && pnpm governance:actions && pnpm typecheck && pnpm test && pnpm build",
     "prepare": "husky",
     "commitlint": "commitlint",
