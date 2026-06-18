@@ -101,7 +101,7 @@ jobs:
         env:
           VITE_STAGE: ${{ inputs.stage }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: tauri-${{ matrix.os }}-${{ inputs.stage }}
           path: |

@@ -63,7 +63,7 @@ jobs:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: expo/expo-github-action@v8
+      - uses: expo/expo-github-action@v9
         with:
           eas-version: ${{ inputs.eas-version }}
           token: ${{ secrets.EXPO_TOKEN }}
@@ -78,7 +78,7 @@ jobs:
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: mobile-${{ inputs.profile }}-dist
           path: ${{ inputs.working-directory }}/dist/
