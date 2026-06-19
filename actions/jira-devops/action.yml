@@ -1,0 +1,156 @@
+name: Jira DevOps automation
+description: Registers deployments, transitions issues, creates releases, incidents, and smart-commit updates in Jira Cloud.
+
+inputs:
+  mode:
+    description: deployment, transition, release, incident, smart-commit, or feature-flag.
+    required: true
+  issue-keys:
+    description: Comma, space, title, branch, or commit text containing Jira issue keys.
+    required: false
+    default: ''
+  transition-name:
+    description: Jira transition name to apply to each issue key.
+    required: false
+    default: ''
+  comment:
+    description: Comment to add to each issue key.
+    required: false
+    default: ''
+  project-key:
+    description: Jira project key used by release and incident modes.
+    required: false
+    default: ''
+  version:
+    description: Fix Version name, normally the Git tag.
+    required: false
+    default: ''
+  release-version:
+    description: Mark the Jira version as released after assigning issues.
+    required: false
+    default: 'false'
+  environment:
+    description: Deployment environment name.
+    required: false
+    default: ''
+  state:
+    description: Deployment state, for example successful, failed, in_progress, cancelled.
+    required: false
+    default: successful
+  app-name:
+    description: Application or service name.
+    required: false
+    default: app
+  deployment-id:
+    description: Stable deployment id.
+    required: false
+    default: ''
+  deployment-name:
+    description: Human friendly deployment name.
+    required: false
+    default: ''
+  deployment-url:
+    description: URL of the deployed environment.
+    required: false
+    default: ''
+  pipeline-url:
+    description: GitHub Actions run URL.
+    required: false
+    default: ''
+  commit-sha:
+    description: Commit SHA associated with this automation.
+    required: false
+    default: ''
+  repo:
+    description: Repository full name.
+    required: false
+    default: ''
+  summary:
+    description: Jira issue summary for incident mode.
+    required: false
+    default: ''
+  description:
+    description: Jira issue description for incident mode.
+    required: false
+    default: ''
+  issue-type:
+    description: Jira issue type for incident mode.
+    required: false
+    default: Bug
+  priority:
+    description: Jira priority for incident mode.
+    required: false
+    default: Highest
+  assignee-account-id:
+    description: Optional Jira account id to assign incidents.
+    required: false
+    default: ''
+  message:
+    description: Commit message for smart-commit mode.
+    required: false
+    default: ''
+  feature-flag-key:
+    description: Feature flag key for feature-flag mode.
+    required: false
+    default: ''
+  rollout-percentage:
+    description: Current rollout percentage for feature-flag mode.
+    required: false
+    default: ''
+  done-transition-name:
+    description: Transition used when a feature flag reaches 100 percent.
+    required: false
+    default: ''
+  official-deployments-api:
+    description: Use Jira Software deployments bulk API before the fallback comment.
+    required: false
+    default: 'false'
+  fallback-comment:
+    description: Add comments when official deployment API is disabled or unavailable.
+    required: false
+    default: 'true'
+  required:
+    description: Fail when Jira credentials are missing.
+    required: false
+    default: 'false'
+  dry-run:
+    description: Print actions without mutating Jira.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Run Jira DevOps automation
+      shell: bash
+      run: node "$GITHUB_ACTION_PATH/jira-devops.mjs"
+      env:
+        MODE: ${{ inputs.mode }}
+        ISSUE_KEYS: ${{ inputs.issue-keys }}
+        TRANSITION_NAME: ${{ inputs.transition-name }}
+        COMMENT: ${{ inputs.comment }}
+        PROJECT_KEY: ${{ inputs.project-key }}
+        VERSION: ${{ inputs.version }}
+        RELEASE_VERSION: ${{ inputs.release-version }}
+        ENVIRONMENT_NAME: ${{ inputs.environment }}
+        DEPLOYMENT_STATE: ${{ inputs.state }}
+        APP_NAME: ${{ inputs.app-name }}
+        DEPLOYMENT_ID: ${{ inputs.deployment-id }}
+        DEPLOYMENT_NAME: ${{ inputs.deployment-name }}
+        DEPLOYMENT_URL: ${{ inputs.deployment-url }}
+        PIPELINE_URL: ${{ inputs.pipeline-url }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
+        REPO: ${{ inputs.repo }}
+        INCIDENT_SUMMARY: ${{ inputs.summary }}
+        INCIDENT_DESCRIPTION: ${{ inputs.description }}
+        INCIDENT_ISSUE_TYPE: ${{ inputs.issue-type }}
+        INCIDENT_PRIORITY: ${{ inputs.priority }}
+        INCIDENT_ASSIGNEE_ACCOUNT_ID: ${{ inputs.assignee-account-id }}
+        SMART_COMMIT_MESSAGE: ${{ inputs.message }}
+        FEATURE_FLAG_KEY: ${{ inputs.feature-flag-key }}
+        ROLLOUT_PERCENTAGE: ${{ inputs.rollout-percentage }}
+        DONE_TRANSITION_NAME: ${{ inputs.done-transition-name }}
+        OFFICIAL_DEPLOYMENTS_API: ${{ inputs.official-deployments-api }}
+        FALLBACK_COMMENT: ${{ inputs.fallback-comment }}
+        JIRA_REQUIRED: ${{ inputs.required }}
+        DRY_RUN: ${{ inputs.dry-run }}

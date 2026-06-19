@@ -46,6 +46,25 @@ jobs:
     secrets: inherit
 ```
 
+Jira DevOps automation:
+
+```yaml
+steps:
+  - uses: VigilioYonatan/vigilio-platform-actions/actions/jira-devops@v1
+    with:
+      mode: deployment
+      issue-keys: ABC-123
+      environment: staging
+      app-name: bus-impl
+      pipeline-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    env:
+      JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+      JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+      JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+```
+
+Modos disponibles: `deployment`, `transition`, `release`, `incident`, `smart-commit` y `feature-flag`.
+
 Web MFE:
 
 ```yaml
@@ -90,6 +109,7 @@ jobs:
 - Los secrets viven en el repo consumidor, organization secrets o GitHub Environments.
 - Este repo central no guarda credenciales.
 - Los workflows por stack son separados; no hay workflow gigante universal.
+- Jira se integra como accion reusable opcional; si faltan credenciales y `required=false`, se salta sin romper CI.
 
 ## Comandos
 
