@@ -94,17 +94,8 @@ on:
         type: boolean
         required: false
         default: false
-    secrets:
-      AWS_ROLE_ARN:
-        required: true
-      GITHUB_PACKAGES_TOKEN:
-        required: false
-      JIRA_BASE_URL:
-        required: false
-      JIRA_USER_EMAIL:
-        required: false
-      JIRA_API_TOKEN:
-        required: false
+    # Secrets are dynamically resolved natively via 'environment: ${{ inputs.stage }}'
+    # Do not declare them here to avoid caller-scope validation errors.
 
 permissions:
   contents: read
