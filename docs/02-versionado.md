@@ -5,20 +5,20 @@ Los repos consumidores deben usar tags versionados.
 Correcto:
 
 ```yaml
-uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
 ```
 
 Mejor para releases criticos:
 
 ```yaml
-uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1.2.3
+uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1.2.3
 ```
 
 No permitido:
 
 ```yaml
-uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
-uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@latest
+uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
+uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@latest
 ```
 
 ## Politica de compatibilidad
