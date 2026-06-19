@@ -22,8 +22,8 @@ vigilio-governance validate-stage-source --stage production --ref-name main
 
 ## Reglas
 
-- Ramas protegidas: `main`, `develop`.
+- Rama protegida: `main`.
 - Ramas de trabajo: `feat/ABC-123/descripcion-corta`.
-- Release branch: `release/1.2.0`.
+- Ramas largas `develop` y `release/*`: no validas en trunk-based mode.
 - PR title: `[ABC-123] - feat: Descripcion corta del PR`.
 - Commit: `[ABC-123] - feat: descripcion corta`.

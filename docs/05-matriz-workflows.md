@@ -15,9 +15,9 @@
 
 | Stage | Rama permitida |
 | --- | --- |
-| `development` | `develop` |
-| `test` | `release/x.y.z` |
-| `staging` | `main`, opcionalmente `release/x.y.z` para Tauri candidate |
+| `development` | `main` |
+| `test` | `main` |
+| `staging` | `main` |
 | `preproduction` | `main` |
 | `production` | `main` |
 

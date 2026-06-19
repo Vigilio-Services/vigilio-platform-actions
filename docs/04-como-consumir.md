@@ -7,13 +7,13 @@ name: bus-impl-ci
 
 on:
   pull_request:
-    branches: [develop, main, 'release/**']
+    branches: [main]
   push:
-    branches: [develop, main, 'release/**']
+    branches: [main]
 
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
     with:
       has-postgres: true
       has-cdk: true
@@ -26,7 +26,7 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@v1
     with:
       stage: production
       deploy-mode: plan
@@ -39,7 +39,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
     secrets: inherit
 ```
 
@@ -48,7 +48,7 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@v1
     with:
       stage: staging
     secrets:
@@ -62,7 +62,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
     secrets: inherit
 ```
 
@@ -71,7 +71,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@v1
     with:
       profile: test
       platform: android
@@ -84,7 +84,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
 ```
 
 ## Tauri Build
@@ -92,7 +92,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/desktop-tauri-build.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/desktop-tauri-build.yml@v1
     with:
       stage: production
     secrets:

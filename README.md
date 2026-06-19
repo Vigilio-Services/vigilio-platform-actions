@@ -20,7 +20,7 @@ Backend Nest:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
     with:
       node-version: '24.16.0'
       pnpm-version: '11.5.2'
@@ -30,12 +30,28 @@ jobs:
     secrets: inherit
 ```
 
+Backend Nest + CDK deploy:
+
+```yaml
+jobs:
+  deploy-production:
+    if: github.ref_name == 'main'
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@v1
+    with:
+      app-name: bus-impl
+      stage: production
+      deploy-mode: apply
+      run-smoke: true
+      cdk-deploy-command: pnpm cdk deploy --all --require-approval broadening --outputs-file reports/cdk-outputs-production.json
+    secrets: inherit
+```
+
 Web MFE:
 
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
     with:
       node-version: '24.16.0'
       pnpm-version: '11.5.2'
@@ -47,7 +63,7 @@ Mobile Expo:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
     with:
       node-version: '24.16.0'
       pnpm-version: '11.5.2'
@@ -59,7 +75,7 @@ Tauri:
 ```yaml
 jobs:
   ci:
-    uses: vigilio/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
     with:
       node-version: '24.16.0'
       pnpm-version: '11.5.2'
@@ -70,6 +86,7 @@ jobs:
 
 - No consumir desde `@main`, `@master`, `@latest` o branch flotante.
 - Consumir tags semver: `@v1`, `@v1.1.0` o SHA aprobado.
+- En trunk-based, los deploys compartidos `development`, `test`, `staging`, `preproduction` y `production` salen desde `main`.
 - Los secrets viven en el repo consumidor, organization secrets o GitHub Environments.
 - Este repo central no guarda credenciales.
 - Los workflows por stack son separados; no hay workflow gigante universal.

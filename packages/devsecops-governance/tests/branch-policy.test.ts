@@ -4,11 +4,11 @@ import { extractIssueKey, validateBranchName } from '../src/branch-policy.js';
 describe('branch policy', () => {
   it('allows protected branches', () => {
     expect(validateBranchName('main')).toEqual([]);
-    expect(validateBranchName('develop')).toEqual([]);
   });
 
-  it('allows release branches', () => {
-    expect(validateBranchName('release/1.2.0')).toEqual([]);
+  it('rejects Git Flow branches in trunk-based mode', () => {
+    expect(validateBranchName('develop')).toHaveLength(2);
+    expect(validateBranchName('release/1.2.0')).toHaveLength(2);
   });
 
   it('allows work branches with Jira issue key', () => {

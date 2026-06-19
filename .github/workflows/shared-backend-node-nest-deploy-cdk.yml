@@ -3,6 +3,10 @@ name: backend-node-nest-deploy-cdk
 on:
   workflow_call:
     inputs:
+      app-name:
+        type: string
+        required: false
+        default: backend
       stage:
         type: string
         required: true
@@ -30,6 +34,42 @@ on:
         type: boolean
         required: false
         default: true
+      governance-command:
+        type: string
+        required: false
+        default: pnpm governance:package-manager && pnpm governance:github-actions
+      quality-command:
+        type: string
+        required: false
+        default: pnpm lint && pnpm typecheck && pnpm test:coverage:ci
+      contract-command:
+        type: string
+        required: false
+        default: pnpm openapi:export && pnpm openapi:diff
+      cdk-synth-command:
+        type: string
+        required: false
+        default: pnpm cdk synth
+      cdk-diff-command:
+        type: string
+        required: false
+        default: pnpm cdk diff --all
+      cdk-deploy-command:
+        type: string
+        required: false
+        default: pnpm cdk deploy --all
+      build-command:
+        type: string
+        required: false
+        default: pnpm build
+      evidence-command:
+        type: string
+        required: false
+        default: pnpm evidence:operational
+      smoke-command:
+        type: string
+        required: false
+        default: pnpm smoke:endpoints
     secrets:
       AWS_ROLE_ARN:
         required: true
@@ -41,14 +81,92 @@ permissions:
   packages: read
   id-token: write
 
+env:
+  APP_NAME: ${{ inputs.app-name }}
+  AWS_REGION: ${{ inputs.aws-region }}
+  NODE_VERSION: ${{ inputs.node-version }}
+  PNPM_VERSION: ${{ inputs.pnpm-version }}
+  STAGE: ${{ inputs.stage }}
+
 jobs:
+  preflight:
+    name: Preflight ${{ inputs.stage }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ github.ref_name }}
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          install: 'false'
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@v1
+        with:
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Governance
+        run: ${{ inputs.governance-command }}
+      - name: Quality gates
+        run: ${{ inputs.quality-command }}
+      - name: Contract gates
+        run: ${{ inputs.contract-command }}
+      - name: CDK synth
+        run: ${{ inputs.cdk-synth-command }} --context stage=${{ inputs.stage }}
+      - name: Build
+        run: ${{ inputs.build-command }}
+      - run: mkdir -p reports
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.working-directory }}
+          format: cyclonedx
+          output: ${{ inputs.working-directory }}/reports/sbom-${{ inputs.stage }}.cdx.json
+      - name: Generate artifact digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          find dist docs/openapi cdk.out reports -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > "reports/artifact-digests-${STAGE}.txt"
+      - name: Write preflight operational evidence
+        run: ${{ inputs.evidence-command }}
+        env:
+          EVIDENCE_PHASE: preflight
+          DEPLOY_MODE: ${{ inputs.deploy-mode }}
+          RUN_SMOKE: ${{ inputs.run-smoke }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.app-name }}-${{ inputs.stage }}-preflight-evidence
+          path: |
+            ${{ inputs.working-directory }}/coverage/
+            ${{ inputs.working-directory }}/cdk.out/
+            ${{ inputs.working-directory }}/dist/
+            ${{ inputs.working-directory }}/docs/openapi/openapi.json
+            ${{ inputs.working-directory }}/reports/
+          retention-days: 30
+
   deploy:
     name: Deploy ${{ inputs.stage }}
+    needs: preflight
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: ${{ inputs.stage }}
     concurrency:
-      group: backend-${{ inputs.stage }}
+      group: ${{ inputs.app-name }}-${{ inputs.stage }}
       cancel-in-progress: false
     defaults:
       run:
@@ -56,31 +174,101 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - uses: vigilio/vigilio-platform-actions/actions/validate-stage-source@v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
         with:
-          stage: ${{ inputs.stage }}
-          ref-name: ${{ github.ref_name }}
-      - uses: vigilio/vigilio-platform-actions/actions/setup-node-pnpm@v1
-        with:
-          node-version: ${{ inputs.node-version }}
-          pnpm-version: ${{ inputs.pnpm-version }}
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - run: pnpm governance:package-manager
-      - run: pnpm governance:github-actions
-      - run: pnpm typecheck
-      - run: pnpm drizzle:check
-      - run: pnpm cdk:synth
+          install: 'false'
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@v1
+        with:
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - run: pnpm install --frozen-lockfile --prefer-offline
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ inputs.aws-region }}
-      - name: CDK diff
-        if: inputs.deploy-mode == 'plan'
-        run: pnpm cdk:diff:${{ inputs.stage }}
+          role-session-name: ${{ inputs.app-name }}-${{ inputs.stage }}-${{ github.run_id }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+      - name: CDK diff evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          ${{ inputs.cdk-diff-command }} --context stage=${{ inputs.stage }} 2>&1 | tee "reports/cdk-diff-${STAGE}.txt"
       - name: CDK deploy
         if: inputs.deploy-mode == 'apply'
-        run: pnpm cdk:deploy:${{ inputs.stage }}
-      - name: Smoke
-        if: inputs.deploy-mode == 'apply' && inputs.run-smoke
-        run: pnpm smoke:endpoints
+        run: ${{ inputs.cdk-deploy-command }} --context stage=${{ inputs.stage }}
+      - name: Write rollback target
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          cat > "reports/rollback-target-${STAGE}.json" <<JSON
+          {
+            "stage": "${STAGE}",
+            "current_sha": "${GITHUB_SHA}",
+            "previous_sha": "${ROLLBACK_TARGET_SHA}",
+            "strategy": "redeploy last known good artifact or revert and redeploy from main",
+            "owner": "platform"
+          }
+          JSON
+        env:
+          ROLLBACK_TARGET_SHA: ${{ github.event.before || '' }}
+      - name: Write deploy operational evidence
+        run: ${{ inputs.evidence-command }}
+        env:
+          EVIDENCE_PHASE: deploy
+          DEPLOY_MODE: ${{ inputs.deploy-mode }}
+          RUN_SMOKE: ${{ inputs.run-smoke }}
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.app-name }}-${{ inputs.stage }}-deploy-evidence
+          path: |
+            ${{ inputs.working-directory }}/cdk.out/
+            ${{ inputs.working-directory }}/reports/
+          retention-days: 90
+
+  smoke:
+    name: Smoke ${{ inputs.stage }}
+    needs: deploy
+    if: inputs.deploy-mode == 'apply' && inputs.run-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.stage }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          install: 'false'
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@v1
+        with:
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Smoke endpoints
+        run: ${{ inputs.smoke-command }}
+        env:
+          API_BASE_URL: ${{ vars.APP_BASE_URL }}
+      - name: Write smoke operational evidence
+        run: ${{ inputs.evidence-command }}
+        env:
+          EVIDENCE_PHASE: smoke
+          DEPLOY_MODE: ${{ inputs.deploy-mode }}
+          RUN_SMOKE: ${{ inputs.run-smoke }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ inputs.app-name }}-${{ inputs.stage }}-smoke-evidence
+          path: ${{ inputs.working-directory }}/reports/
+          retention-days: 90
