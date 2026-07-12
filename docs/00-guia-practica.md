@@ -61,7 +61,7 @@ Borra la carpeta `scripts/` (si aún tiene `.mjs` sueltos).
 **Paso 2: Instalar el paquete**
 ```bash
 # Se instala desde GitHub Packages usando el token de npm
-pnpm add -D @vigilio/devsecops-governance
+pnpm add -D @vigilioyonatan/devsecops-governance
 ```
 
 **Paso 3: Actualizar el package.json de tu proyecto**
@@ -89,7 +89,7 @@ on:
 jobs:
   build-and-test:
     # 👈 Llama al workflow reutilizable de este repositorio
-    uses: rimac/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       # 👈 Puedes personalizar las variables (Inputs)
       node-version: '24.16.0'

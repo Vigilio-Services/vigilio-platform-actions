@@ -20,7 +20,10 @@ const requiredActions = [
   'configure-github-packages',
   'validate-stage-source',
   'install-playwright-chromium',
+  'jira-devops',
 ];
+
+const CHECKOUT_SHA = 'df4cb1c069e1874edd31b4311f1884172cec0e10';
 
 function createWorkflow(directory: string, file: string, extra = '') {
   writeFileSync(
@@ -36,7 +39,7 @@ function createWorkflow(directory: string, file: string, extra = '') {
       '    runs-on: ubuntu-latest',
       '    timeout-minutes: 5',
       '    steps:',
-      '      - uses: actions/checkout@v6',
+      `      - uses: actions/checkout@${CHECKOUT_SHA}`,
       '        with:',
       '          persist-credentials: false',
       extra,
@@ -93,7 +96,9 @@ describe('workflow and action policies', () => {
       '      - uses: actions/setup-node@main',
     );
 
-    expect(validateWorkflows(directory).some((error) => error.includes('@main'))).toBe(true);
+    expect(validateWorkflows(directory).some((error) => error.includes('full commit SHA'))).toBe(
+      true,
+    );
   });
 
   it('detects unsafe workflow patterns', () => {
@@ -110,7 +115,7 @@ describe('workflow and action policies', () => {
         '  test:',
         '    runs-on: ubuntu-latest',
         '    steps:',
-        '      - uses: actions/checkout@v6',
+        `      - uses: actions/checkout@${CHECKOUT_SHA}`,
       ].join('\n'),
     );
 
@@ -185,6 +190,56 @@ describe('workflow and action policies', () => {
     const errors = validateActions(directory);
     expect(errors.some((error) => error.includes('action.yml is required'))).toBe(true);
     expect(errors.some((error) => error.includes('only composite'))).toBe(true);
-    expect(errors.some((error) => error.includes('floating action refs'))).toBe(true);
+    expect(errors.some((error) => error.includes('full commit SHA'))).toBe(true);
+  });
+
+  it('rejects version tags and comments used as fake controls', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-comments-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createValidWorkflows(directory);
+    writeFileSync(
+      join(directory, 'unsafe-comments.yml'),
+      [
+        'name: unsafe-comments',
+        'on: push',
+        '# permissions:',
+        '#   contents: read',
+        'jobs:',
+        '  test:',
+        '    runs-on: ubuntu-latest',
+        '    # timeout-minutes: 5',
+        '    steps:',
+        '      - uses: actions/checkout@v6 # mutable tag',
+        '        # with:',
+        '        #   persist-credentials: false',
+      ].join('\n'),
+    );
+
+    const errors = validateWorkflows(directory);
+    expect(errors.some((error) => error.includes('explicit permissions'))).toBe(true);
+    expect(errors.some((error) => error.includes('timeout-minutes'))).toBe(true);
+    expect(errors.some((error) => error.includes('full commit SHA'))).toBe(true);
+    expect(errors.some((error) => error.includes('persist-credentials'))).toBe(true);
+  });
+
+  it('validates every checkout step independently', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-checkouts-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createValidWorkflows(directory);
+    createWorkflow(
+      directory,
+      'extra.yml',
+      [
+        `      - uses: actions/checkout@${CHECKOUT_SHA}`,
+        '        with:',
+        '          fetch-depth: 0',
+      ].join('\n'),
+    );
+
+    expect(
+      validateWorkflows(directory).some(
+        (error) => error.includes('extra.yml') && error.includes('persist-credentials'),
+      ),
+    ).toBe(true);
   });
 });

@@ -4,7 +4,7 @@
 
 - No guardar secrets en este repo.
 - No usar `pull_request_target`.
-- No usar actions con `@main`, `@master`, `@HEAD` o `@latest`.
+- Fijar toda action o reusable workflow remoto a SHA completo; tags y branches son solo referencias humanas.
 - Usar `persist-credentials: false` en checkout.
 - Declarar `permissions` explicitos.
 - Usar `id-token: write` solo para OIDC cloud o attestations.

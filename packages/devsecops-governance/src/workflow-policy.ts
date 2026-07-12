@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { activeYaml, validateCheckoutCredentials, validatePinnedUses } from './yaml-policy.js';
 
-const forbiddenRefs = ['@main', '@master', '@HEAD', '@latest'];
 const requiredReusableWorkflows = new Set([
   'shared-backend-node-nest-ci.yml',
   'shared-backend-node-nest-deploy-cdk.yml',
@@ -30,13 +30,11 @@ export function validateWorkflows(workflowsDir: string): string[] {
   }
 
   for (const file of files) {
-    const content = readFileSync(join(workflowsDir, file), 'utf8');
+    const rawContent = readFileSync(join(workflowsDir, file), 'utf8');
+    const content = activeYaml(rawContent);
 
-    for (const forbiddenRef of forbiddenRefs) {
-      if (content.includes(forbiddenRef)) {
-        errors.push(`${file}: floating ref is not allowed: ${forbiddenRef}`);
-      }
-    }
+    errors.push(...validatePinnedUses(rawContent, file));
+    errors.push(...validateCheckoutCredentials(rawContent, file));
 
     if (content.includes('pull_request_target:')) {
       errors.push(`${file}: pull_request_target is not allowed`);
@@ -48,10 +46,6 @@ export function validateWorkflows(workflowsDir: string): string[] {
 
     if (!content.includes('timeout-minutes:')) {
       errors.push(`${file}: timeout-minutes is required`);
-    }
-
-    if (content.includes('actions/checkout@') && !content.includes('persist-credentials: false')) {
-      errors.push(`${file}: checkout must use persist-credentials: false`);
     }
 
     if (

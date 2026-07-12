@@ -1,11 +1,11 @@
-# @vigilio/devsecops-governance
+# @vigilioyonatan/devsecops-governance
 
 CLI TypeScript para validar reglas DevSecOps compartidas entre repos Vigilio.
 
 ## Instalacion
 
 ```bash
-pnpm add -D @vigilio/devsecops-governance
+pnpm add -D @vigilioyonatan/devsecops-governance
 ```
 
 ## CLI

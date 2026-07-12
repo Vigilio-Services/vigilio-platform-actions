@@ -51,19 +51,19 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           stage: ${{ inputs.profile }}
           ref-name: ${{ github.ref_name }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: expo/expo-github-action@v8
+      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: ${{ inputs.eas-version }}
           token: ${{ secrets.EXPO_TOKEN }}
@@ -72,18 +72,19 @@ jobs:
       - run: pnpm governance:env
       - run: pnpm expo:check
       - run: pnpm expo:doctor
+      - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: mobile-${{ inputs.profile }}-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 30
-      - uses: actions/attest@v4
+      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-path: |
             ${{ inputs.working-directory }}/dist/**

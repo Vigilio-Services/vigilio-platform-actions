@@ -46,23 +46,23 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ github.ref_name }}
           allow-release-for-staging: ${{ inputs.allow-release-for-staging && 'true' || 'false' }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: ${{ inputs.working-directory }}/src-tauri -> target
       - name: Install Linux Tauri dependencies
@@ -79,6 +79,7 @@ jobs:
         env:
           RELEASE_STAGE: ${{ inputs.stage }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+      - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
@@ -101,14 +102,14 @@ jobs:
         env:
           VITE_STAGE: ${{ inputs.stage }}
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tauri-${{ matrix.os }}-${{ inputs.stage }}
           path: |
             ${{ inputs.working-directory }}/src-tauri/target/release/bundle/**
             ${{ inputs.working-directory }}/reports/sbom.cdx.json
           retention-days: 30
-      - uses: actions/attest@v4
+      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
         with:
           subject-path: |
             ${{ inputs.working-directory }}/src-tauri/target/release/bundle/**

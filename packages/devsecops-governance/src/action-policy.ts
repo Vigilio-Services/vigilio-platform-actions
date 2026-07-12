@@ -1,11 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { activeYaml, validatePinnedUses } from './yaml-policy.js';
 
 const requiredActions = new Set([
   'setup-node-pnpm',
   'configure-github-packages',
   'validate-stage-source',
   'install-playwright-chromium',
+  'jira-devops',
 ]);
 
 export function validateActions(actionsDir: string): string[] {
@@ -28,7 +30,10 @@ export function validateActions(actionsDir: string): string[] {
       continue;
     }
 
-    const content = readFileSync(actionFile, 'utf8');
+    const rawContent = readFileSync(actionFile, 'utf8');
+    const content = activeYaml(rawContent);
+
+    errors.push(...validatePinnedUses(rawContent, `${actionDirectory}/action.yml`));
 
     if (!content.includes('runs:')) {
       errors.push(`${actionDirectory}: runs block is required`);
@@ -36,10 +41,6 @@ export function validateActions(actionsDir: string): string[] {
 
     if (!content.includes('using: composite')) {
       errors.push(`${actionDirectory}: only composite actions are allowed here`);
-    }
-
-    if (content.includes('@main') || content.includes('@master') || content.includes('@latest')) {
-      errors.push(`${actionDirectory}: floating action refs are not allowed`);
     }
   }
 
