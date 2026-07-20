@@ -118,7 +118,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -168,7 +168,7 @@ jobs:
           EVIDENCE_PHASE: preflight
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
           RUN_SMOKE: ${{ inputs.run-smoke }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ inputs.app-name }}-${{ inputs.stage }}-preflight-evidence
@@ -193,7 +193,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -313,7 +313,7 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ inputs.app-name }}-${{ inputs.stage }}-deploy-evidence
@@ -333,7 +333,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1
@@ -356,7 +356,7 @@ jobs:
           EVIDENCE_PHASE: smoke
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
           RUN_SMOKE: ${{ inputs.run-smoke }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ${{ inputs.app-name }}-${{ inputs.stage }}-smoke-evidence

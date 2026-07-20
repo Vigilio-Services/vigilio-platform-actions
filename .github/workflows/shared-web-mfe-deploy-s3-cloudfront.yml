@@ -48,7 +48,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1
