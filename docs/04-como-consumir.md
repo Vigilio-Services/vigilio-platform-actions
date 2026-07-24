@@ -13,7 +13,7 @@ on:
 
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       has-postgres: true
       has-cdk: true
@@ -26,20 +26,22 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       stage: production
       deploy-mode: plan
-    secrets:
-      AWS_ROLE_ARN: ${{ secrets.AWS_PROD_ROLE_ARN }}
+      attest-artifact: true
+    secrets: inherit
 ```
+
+Para staging/preproduction puede activarse `run-dast: true`. En `apply`, smoke es obligatorio para staging, preproduction y production.
 
 ## Web MFE
 
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     secrets: inherit
 ```
 
@@ -48,7 +50,7 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       stage: staging
     secrets:
@@ -62,7 +64,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     secrets: inherit
 ```
 
@@ -71,7 +73,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       profile: test
       platform: android
@@ -84,7 +86,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
 ```
 
 ## Tauri Build
@@ -92,7 +94,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/desktop-tauri-build.yml@v1
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-build.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
       stage: production
     secrets:

@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!node_modules", "!dist", "!coverage", "!reports"]
+    "includes": ["**", "!node_modules", "!**/dist", "!coverage", "!reports"]
   },
   "formatter": {
     "enabled": true,
@@ -35,6 +35,9 @@
       "style": {
         "useImportType": "error",
         "noNonNullAssertion": "error"
+      },
+      "complexity": {
+        "useLiteralKeys": "off"
       },
       "correctness": {
         "noUnusedImports": "error",

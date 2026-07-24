@@ -1,0 +1,14 @@
+# Semgrep ignore rules for vigilio-platform-actions
+node_modules/
+dist/
+coverage/
+reports/
+.artifacts/
+.opencode/
+.changeset/
+skills/
+docs/
+scripts/
+tests/
+*.spec.ts
+*.test.ts
