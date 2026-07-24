@@ -85,8 +85,13 @@ export function validatePrRiskBody(body: string): string[] {
 
   for (const section of sections) {
     const content = sectionContent(body, section.heading);
-    const meaningful = content
-      .replace(/<!--[\s\S]*?-->/g, '')
+    let commentClean = content;
+    while (commentClean.includes('<!--')) {
+      const next = commentClean.replace(/<!--[\s\S]*?-->/g, '');
+      if (next === commentClean) break;
+      commentClean = next;
+    }
+    const meaningful = commentClean
       .replace(/^\s*-\s*\[[ x]\].*$/gim, '')
       .replace(/^\s*(describe|indica|explica|agrega)\b.*$/gim, '')
       .replace(/[^\p{L}\p{N}]+/gu, ' ')

@@ -50,9 +50,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - run: pnpm devsecops:dora -- --window-days ${{ inputs.window-days }}
+      - run: pnpm devsecops:dora -- --window-days "$WINDOW_DAYS"
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          WINDOW_DAYS: ${{ inputs.window-days }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dora-metrics-${{ github.run_id }}

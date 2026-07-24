@@ -203,12 +203,14 @@ jobs:
             | sort -z \
             | xargs -0 sha256sum > "reports/artifact-digests-${STAGE}.txt"
       - name: Generate SLSA provenance
-        run: ${{ inputs.provenance-command }}
+        run: eval "$PROVENANCE_CMD"
         env:
+          PROVENANCE_CMD: ${{ inputs.provenance-command }}
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
       - name: Write preflight operational evidence
-        run: ${{ inputs.evidence-command }}
+        run: eval "$EVIDENCE_CMD"
         env:
+          EVIDENCE_CMD: ${{ inputs.evidence-command }}
           EVIDENCE_PHASE: preflight
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
           RUN_SMOKE: ${{ inputs.run-smoke }}
@@ -349,13 +351,17 @@ jobs:
           unset-current-credentials: true
       - name: CDK diff evidence
         shell: bash
+        env:
+          CDK_DIFF_CMD: ${{ inputs.cdk-diff-command }}
         run: |
           set -euo pipefail
           mkdir -p reports
-          ${{ inputs.cdk-diff-command }} --app cdk.out 2>&1 | tee "reports/cdk-diff-${STAGE}.txt"
+          eval "$CDK_DIFF_CMD --app cdk.out" 2>&1 | tee "reports/cdk-diff-${STAGE}.txt"
       - name: CDK deploy
         if: inputs.deploy-mode == 'apply'
-        run: ${{ inputs.cdk-deploy-command }} --app cdk.out
+        env:
+          CDK_DEPLOY_CMD: ${{ inputs.cdk-deploy-command }}
+        run: eval "$CDK_DEPLOY_CMD --app cdk.out"
       - name: Write rollback target
         shell: bash
         run: |

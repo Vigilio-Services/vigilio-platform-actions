@@ -74,7 +74,7 @@ export function validatePackageManagerPolicy(root = process.cwd()): string[] {
   if (npmSettings.get('@vigilioyonatan:registry') !== 'https://npm.pkg.github.com') {
     errors.push('.npmrc: @vigilioyonatan registry must use GitHub Packages');
   }
-  if ([...npmSettings.keys()].some((key) => /token|password|_auth$/i.test(key))) {
+  if ([...npmSettings.keys()].some((key) => /(?:token|password|_auth)$/i.test(key))) {
     errors.push('.npmrc: credentials must not be stored in the repository');
   }
 

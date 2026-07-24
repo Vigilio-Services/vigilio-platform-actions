@@ -79,20 +79,13 @@ async function deployProductionDependencies(deployTarget: string): Promise<void>
 
 function runPnpm(args: string[]): Promise<void> {
   const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
-  const spawnCommand =
-    process.platform === 'win32'
-      ? {
-          args: ['/d', '/s', '/c', command, ...args],
-          command: process.env['ComSpec'] ?? 'cmd.exe',
-        }
-      : { args, command };
 
   return new Promise<void>((resolve, reject) => {
     let output = '';
-    const child = spawn(spawnCommand.command, spawnCommand.args, {
+    const child = spawn(command, args, {
       cwd: projectRoot,
       env: process.env,
-      shell: false,
+      shell: process.platform === 'win32',
       stdio: ['inherit', 'pipe', 'pipe'],
     });
 
