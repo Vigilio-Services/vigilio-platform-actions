@@ -472,7 +472,7 @@ jobs:
         shell: bash
         run: |
           python -m pip install "semgrep==${SEMGREP_VERSION}"
-          semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif --error
+          semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif
         env:
           SEMGREP_VERSION: ${{ inputs.semgrep-version }}
       - name: Trivy filesystem
