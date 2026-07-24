@@ -1,25 +1,50 @@
 const ISSUE_KEY_PATTERN = /\b[A-Z][A-Z0-9]+-\d+\b/g;
 
-function read(name, fallback = '') {
+interface JiraCredentials {
+  readonly authorization: string;
+  readonly baseUrl: string;
+}
+
+interface JiraRequestOptions {
+  readonly body?: unknown;
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly method?: string;
+}
+
+interface JiraTransition {
+  readonly id: string;
+  readonly name: string;
+}
+
+interface JiraVersion {
+  readonly id: string;
+  readonly name: string;
+}
+
+interface JiraIssue {
+  readonly key: string;
+}
+
+function read(name: string, fallback = ''): string {
   return process.env[name] ?? fallback;
 }
 
-function enabled(name) {
+function enabled(name: string): boolean {
   return ['1', 'true', 'yes'].includes(read(name).toLowerCase());
 }
 
-function normalizeBaseUrl(url) {
+function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
-function extractIssueKeys(text) {
+function extractIssueKeys(text: string): string[] {
   return [
     ...new Set((text.match(ISSUE_KEY_PATTERN) ?? []).map((issueKey) => issueKey.toUpperCase())),
   ];
 }
 
-function toAdf(text) {
-  const lines = String(text || '').split('\n');
+function toAdf(text: string): Record<string, unknown> {
+  const lines = text.split('\n');
   return {
     type: 'doc',
     version: 1,
@@ -30,7 +55,7 @@ function toAdf(text) {
   };
 }
 
-function getCredentials() {
+function getCredentials(): JiraCredentials | null {
   const baseUrl = read('JIRA_BASE_URL');
   const email = read('JIRA_USER_EMAIL');
   const token = read('JIRA_API_TOKEN');
@@ -52,8 +77,12 @@ function getCredentials() {
   };
 }
 
-async function jiraFetch(credentials, path, options = {}) {
-  const response = await fetch(`${credentials.baseUrl}${path}`, {
+async function jiraFetch<T>(
+  credentials: JiraCredentials,
+  requestPath: string,
+  options: JiraRequestOptions = {},
+): Promise<T> {
+  const response = await fetch(`${credentials.baseUrl}${requestPath}`, {
     method: options.method ?? 'GET',
     headers: {
       Authorization: credentials.authorization,
@@ -61,21 +90,26 @@ async function jiraFetch(credentials, path, options = {}) {
       'Content-Type': 'application/json',
       ...options.headers,
     },
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
   });
 
   const text = await response.text();
-  const body = text ? JSON.parse(text) : null;
+  const body: unknown = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
     const detail = body ? JSON.stringify(body) : text;
     throw new Error(`Jira API ${response.status} ${response.statusText}: ${detail}`);
   }
 
-  return body;
+  return body as T;
 }
 
-async function addComment(credentials, issueKey, comment, dryRun) {
+async function addComment(
+  credentials: JiraCredentials,
+  issueKey: string,
+  comment: string,
+  dryRun: boolean,
+): Promise<void> {
   if (!comment.trim()) {
     return;
   }
@@ -85,14 +119,20 @@ async function addComment(credentials, issueKey, comment, dryRun) {
     return;
   }
 
-  await jiraFetch(credentials, `/rest/api/3/issue/${issueKey}/comment`, {
+  await jiraFetch<void>(credentials, `/rest/api/3/issue/${issueKey}/comment`, {
     method: 'POST',
     body: { body: toAdf(comment) },
   });
   console.log(`Jira comment added to ${issueKey}`);
 }
 
-async function transitionIssue(credentials, issueKey, transitionName, comment, dryRun) {
+async function transitionIssue(
+  credentials: JiraCredentials,
+  issueKey: string,
+  transitionName: string,
+  comment: string,
+  dryRun: boolean,
+): Promise<void> {
   if (!transitionName.trim()) {
     return;
   }
@@ -102,7 +142,10 @@ async function transitionIssue(credentials, issueKey, transitionName, comment, d
     return;
   }
 
-  const transitions = await jiraFetch(credentials, `/rest/api/3/issue/${issueKey}/transitions`);
+  const transitions = await jiraFetch<{ readonly transitions: readonly JiraTransition[] }>(
+    credentials,
+    `/rest/api/3/issue/${issueKey}/transitions`,
+  );
   const transition = transitions.transitions.find(
     (candidate) => candidate.name.toLowerCase() === transitionName.toLowerCase(),
   );
@@ -125,14 +168,16 @@ async function transitionIssue(credentials, issueKey, transitionName, comment, d
       : {}),
   };
 
-  await jiraFetch(credentials, `/rest/api/3/issue/${issueKey}/transitions`, {
+  await jiraFetch<void>(credentials, `/rest/api/3/issue/${issueKey}/transitions`, {
     method: 'POST',
     body,
   });
   console.log(`Jira issue ${issueKey} transitioned to ${transitionName}`);
 }
 
-function deploymentEnvironmentType(environment) {
+function deploymentEnvironmentType(
+  environment: string,
+): 'production' | 'staging' | 'testing' | 'development' {
   const value = environment.toLowerCase();
   if (value.includes('prod')) return 'production';
   if (value.includes('stag') || value.includes('pre')) return 'staging';
@@ -140,7 +185,11 @@ function deploymentEnvironmentType(environment) {
   return 'development';
 }
 
-async function registerOfficialDeployment(credentials, issueKeys, dryRun) {
+async function registerOfficialDeployment(
+  credentials: JiraCredentials,
+  issueKeys: readonly string[],
+  dryRun: boolean,
+): Promise<void> {
   const environment = read('ENVIRONMENT_NAME');
   const appName = read('APP_NAME', 'app');
   const pipelineUrl = read('PIPELINE_URL');
@@ -199,14 +248,18 @@ async function registerOfficialDeployment(credentials, issueKeys, dryRun) {
     return;
   }
 
-  await jiraFetch(credentials, '/rest/deployments/0.1/bulk', {
+  await jiraFetch<void>(credentials, '/rest/deployments/0.1/bulk', {
     method: 'POST',
     body,
   });
   console.log(`Jira deployment registered for ${issueKeys.join(', ')}`);
 }
 
-async function deploymentMode(credentials, issueKeys, dryRun) {
+async function deploymentMode(
+  credentials: JiraCredentials,
+  issueKeys: readonly string[],
+  dryRun: boolean,
+): Promise<void> {
   if (issueKeys.length === 0) {
     console.log('SKIP: no Jira issue keys found for deployment.');
     return;
@@ -221,7 +274,9 @@ async function deploymentMode(credentials, issueKeys, dryRun) {
         throw error;
       }
       console.log(
-        `WARN: official Jira deployments API failed, using comments fallback. ${error.message}`,
+        `WARN: official Jira deployments API failed, using comments fallback. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
@@ -245,7 +300,11 @@ async function deploymentMode(credentials, issueKeys, dryRun) {
   );
 }
 
-async function transitionMode(credentials, issueKeys, dryRun) {
+async function transitionMode(
+  credentials: JiraCredentials,
+  issueKeys: readonly string[],
+  dryRun: boolean,
+): Promise<void> {
   if (issueKeys.length === 0) {
     console.log('SKIP: no Jira issue keys found for transition.');
     return;
@@ -260,7 +319,11 @@ async function transitionMode(credentials, issueKeys, dryRun) {
   );
 }
 
-async function releaseMode(credentials, issueKeys, dryRun) {
+async function releaseMode(
+  credentials: JiraCredentials,
+  issueKeys: readonly string[],
+  dryRun: boolean,
+): Promise<void> {
   const projectKey = read('PROJECT_KEY');
   const version = read('VERSION');
 
@@ -280,11 +343,14 @@ async function releaseMode(credentials, issueKeys, dryRun) {
     return;
   }
 
-  const versions = await jiraFetch(credentials, `/rest/api/3/project/${projectKey}/versions`);
+  const versions = await jiraFetch<readonly JiraVersion[]>(
+    credentials,
+    `/rest/api/3/project/${projectKey}/versions`,
+  );
   let targetVersion = versions.find((candidate) => candidate.name === version);
 
   if (!targetVersion) {
-    targetVersion = await jiraFetch(credentials, '/rest/api/3/version', {
+    targetVersion = await jiraFetch<JiraVersion>(credentials, '/rest/api/3/version', {
       method: 'POST',
       body: {
         name: version,
@@ -297,7 +363,7 @@ async function releaseMode(credentials, issueKeys, dryRun) {
 
   await Promise.all(
     issueKeys.map((issueKey) =>
-      jiraFetch(credentials, `/rest/api/3/issue/${issueKey}`, {
+      jiraFetch<void>(credentials, `/rest/api/3/issue/${issueKey}`, {
         method: 'PUT',
         body: {
           update: {
@@ -310,7 +376,7 @@ async function releaseMode(credentials, issueKeys, dryRun) {
   console.log(`Jira Fix Version ${version} assigned to ${issueKeys.join(', ')}`);
 
   if (enabled('RELEASE_VERSION')) {
-    await jiraFetch(credentials, `/rest/api/3/version/${targetVersion.id}`, {
+    await jiraFetch<void>(credentials, `/rest/api/3/version/${targetVersion.id}`, {
       method: 'PUT',
       body: {
         released: true,
@@ -321,7 +387,7 @@ async function releaseMode(credentials, issueKeys, dryRun) {
   }
 }
 
-async function incidentMode(credentials, dryRun) {
+async function incidentMode(credentials: JiraCredentials, dryRun: boolean): Promise<void> {
   const projectKey = read('PROJECT_KEY');
   if (!projectKey) {
     throw new Error('incident mode requires project-key.');
@@ -347,21 +413,25 @@ async function incidentMode(credentials, dryRun) {
     return;
   }
 
-  const issue = await jiraFetch(credentials, '/rest/api/3/issue', {
+  const issue = await jiraFetch<JiraIssue>(credentials, '/rest/api/3/issue', {
     method: 'POST',
     body: { fields },
   });
   console.log(`Jira incident created: ${issue.key}`);
 }
 
-function parseSmartCommit(message) {
+function parseSmartCommit(message: string): {
+  readonly comment: string;
+  readonly issueKeys: string[];
+  readonly timeSpent: string;
+} {
   const issueKeys = extractIssueKeys(message);
   const comment = message.match(/#comment\s+(.+?)(?=\s+#\w+|$)/i)?.[1]?.trim() ?? '';
   const timeSpent = message.match(/#time\s+(.+?)(?=\s+#\w+|$)/i)?.[1]?.trim() ?? '';
   return { issueKeys, comment, timeSpent };
 }
 
-async function smartCommitMode(credentials, dryRun) {
+async function smartCommitMode(credentials: JiraCredentials, dryRun: boolean): Promise<void> {
   const parsed = parseSmartCommit(read('SMART_COMMIT_MESSAGE'));
   if (parsed.issueKeys.length === 0) {
     console.log('SKIP: smart commit has no Jira issue key.');
@@ -377,7 +447,7 @@ async function smartCommitMode(credentials, dryRun) {
       if (dryRun) {
         console.log(`DRY RUN: add worklog ${issueKey}: ${parsed.timeSpent}`);
       } else {
-        await jiraFetch(credentials, `/rest/api/3/issue/${issueKey}/worklog`, {
+        await jiraFetch<void>(credentials, `/rest/api/3/issue/${issueKey}/worklog`, {
           method: 'POST',
           body: {
             timeSpent: parsed.timeSpent,
@@ -390,7 +460,11 @@ async function smartCommitMode(credentials, dryRun) {
   }
 }
 
-async function featureFlagMode(credentials, issueKeys, dryRun) {
+async function featureFlagMode(
+  credentials: JiraCredentials,
+  issueKeys: readonly string[],
+  dryRun: boolean,
+): Promise<void> {
   if (issueKeys.length === 0) {
     console.log('SKIP: no Jira issue keys found for feature flag update.');
     return;
@@ -412,7 +486,7 @@ async function featureFlagMode(credentials, issueKeys, dryRun) {
   }
 }
 
-async function main() {
+async function main(): Promise<void> {
   const mode = read('MODE');
   const dryRun = enabled('DRY_RUN');
   const credentials = getCredentials();
@@ -463,7 +537,7 @@ async function main() {
   throw new Error(`Unsupported Jira DevOps mode: ${mode}`);
 }
 
-main().catch((error) => {
-  console.error(error.message);
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });

@@ -1,38 +1,47 @@
 # Guía Práctica: Cómo usar `vigilio-platform-actions` (2026)
 
-Este repositorio no es una aplicación final. Es una **herramienta de plataforma** (un CLI) que los demás repositorios (`bus-impl`, `web-mfe`, etc.) usan para gobernar su calidad y seguridad.
+Este repositorio no es una aplicación final. Es el hub de plataforma que distribuye paquetes npm,
+GitHub Actions, reusable workflows y skills para `bus-impl`, `web-mfe`, mobile y desktop.
 
 ## 1. Estructura del Proyecto
 
-* **`/packages/devsecops-governance/`**: Aquí vive el código real. Es un paquete de Node escrito en TypeScript.
-* **`/packages/devsecops-governance/src/`**: Aquí están las políticas (reglas).
-* **`/packages/devsecops-governance/tests/`**: Pruebas unitarias en Vitest (obligatorio >95%).
-* **`/actions/`**: *(Futuro)* Si creas GitHub Custom Actions.
+- **`packages/devsecops-governance/`**: políticas ejecutables de repositorio, PR, workflows,
+  package manager, baseline y GitHub.
+- **`packages/devsecops-evidence/`**: DORA, evidencia operacional y procedencia SLSA.
+- **`packages/node-nest-tooling/`**: tooling reutilizable exclusivo de Node/Nest.
+- **`packages/vigilio-skills/`**: distribución y sincronización explícita de skills.
+- **`actions/`**: acciones compuestas y la acción TypeScript de Jira.
+- **`.github/workflows/shared-*.yml`**: reusable workflows por stack.
+- **`skills/`**: fuente canónica de skills; el consumidor recibe solo los perfiles seleccionados.
 
 ---
 
 ## 2. Cómo agregar un nuevo Script o Regla
 
-Si quieres agregar una nueva validación (ej. validar que todos los commits tengan JIRA ID):
+Si quieres agregar una validación:
 
-1. **Crea la lógica**: Agrega un archivo `src/jira-policy.ts`.
-2. **Escribe el Test**: Crea `tests/jira-policy.test.ts`. Corre `pnpm test` en la raíz para verificar que pase.
-3. **Inyéctalo en el CLI**: Abre `src/cli.ts` y agrega el nuevo comando (ej. `validate-jira`).
-4. **Prueba localmente**: 
+1. Ubícala en el paquete propietario; no mezcles evidencia, governance y tooling Node/Nest.
+2. Agrega tests unitarios y de CLI.
+3. Expón el comando en el CLI del paquete.
+4. Valida desde la raíz:
    ```bash
+   pnpm lint
+   pnpm typecheck
+   pnpm test
    pnpm build
-   node packages/devsecops-governance/dist/cli.js validate-jira
+   pnpm test:packages
    ```
-5. **Comitea usando el estándar**:
+5. Agrega un Changeset y usa Conventional Commits:
    ```bash
-   git commit -m "feat: agrega validador de tickets jira"
+   pnpm changeset
+   git commit -m "feat(governance): agrega politica"
    ```
 
 ---
 
 ## 3. Cómo publicar nuevas versiones (Changesets)
 
-Hemos migrado de Semantic Release a **Changesets** porque este repositorio ahora soporta múltiples paquetes independientes (`ui-components`, `logger`, `governance`, etc).
+Changesets coordina las versiones de los cuatro paquetes del workspace.
 
 ¡No cambies el `package.json` a mano! Sigue este flujo:
 
@@ -47,37 +56,41 @@ Hemos migrado de Semantic Release a **Changesets** porque este repositorio ahora
    - Escribe un resumen de tu cambio.
 4. Esto generará un archivo markdown en la carpeta `.changeset/`. Agrégalo a tu commit (`git add .changeset/`).
 5. Abre tu Pull Request y haz merge a `main`.
-6. **Magia automatizada:** El bot de GitHub Actions creará automáticamente un nuevo PR llamado "Version Packages". Cuando lo apruebes, publicará la nueva versión de cada paquete independientemente en GitHub Packages y borrará los archivos de `.changeset/`.
+6. El push a `main` ejecuta `release-package.yml`. Changesets abre o actualiza el Release PR.
+7. Al fusionar el Release PR, el workflow publica en GitHub Packages y genera tarballs, SBOM y
+   attestations.
+8. Verifica la versión publicada antes de modificar consumidores. No publiques desde una laptop.
 
 ---
 
-## 4. Cómo consumir este paquete en tus otros proyectos
+## 4. Cómo consumir los paquetes
 
-Ve a `bus-impl`, `web-mfe` o `mobile-mfe` y haz esto:
+Configura el scope `@vigilioyonatan` en el `.npmrc` versionado y la credencial en `~/.npmrc` o CI.
+Instala solo paquetes compatibles con el stack y fija versiones exactas:
 
-**Paso 1: Eliminar scripts viejos**
-Borra la carpeta `scripts/` (si aún tiene `.mjs` sueltos).
-
-**Paso 2: Instalar el paquete**
 ```bash
-# Se instala desde GitHub Packages usando el token de npm
-pnpm add -D @vigilio/devsecops-governance
+pnpm add -D --save-exact \
+  @vigilioyonatan/devsecops-governance@0.1.0 \
+  @vigilioyonatan/devsecops-evidence@0.1.0 \
+  @vigilioyonatan/vigilio-skills@0.1.0
 ```
 
-**Paso 3: Actualizar el package.json de tu proyecto**
-Reemplaza tus viejos scripts con comandos del CLI:
-```json
-"scripts": {
-  "governance:commit": "vigilio-governance validate-pr",
-  "governance:actions": "vigilio-governance validate-actions"
-}
+Agrega `@vigilioyonatan/node-nest-tooling` únicamente en backends Node/Nest. Migra comandos
+reutilizables uno por uno. Conserva scripts de dominio, fixtures, seeders, smoke tests y lógica
+específica del proyecto. Nunca borres `scripts/` completa por una migración de plataforma.
+
+Las skills no se copian en `postinstall`:
+
+```bash
+pnpm skills:sync
+pnpm skills:check
 ```
 
 ---
 
 ## 5. Cómo usar los Reusable Workflows (CI/CD Centralizado)
 
-Este repositorio también centraliza los pipelines de GitHub Actions. Si tienes un microservicio backend, no escribas el pipeline de cero. Llama al flujo central.
+Los proyectos pueden llamar workflows centrales cuando existe paridad con sus gates locales.
 
 **Ejemplo en `bus-impl/.github/workflows/ci.yml`:**
 ```yaml
@@ -88,20 +101,17 @@ on:
 
 jobs:
   build-and-test:
-    # 👈 Llama al workflow reutilizable de este repositorio
-    uses: rimac/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
     with:
-      # 👈 Puedes personalizar las variables (Inputs)
       node-version: '24.16.0'
-      pnpm-version: '11.5.2'
+      pnpm-version: '11.7.0'
       has-cdk: true
       run-e2e: false
 ```
 
-Existen flujos ya listos para:
-* `shared-backend-node-nest-ci.yml` (APIs Backend)
-* `shared-web-mfe-preact-ci.yml` (Frontend Vite)
-* `shared-mobile-expo-ci.yml` (Apps React Native)
-* `shared-desktop-tauri-ci.yml` (Apps Rust)
+Existen familias para backend Node/Nest, web Preact, mobile Expo y desktop Tauri. Siempre fija el
+reusable workflow a un SHA publicado. El consumidor conserva wrappers de stage, comandos de dominio
+y cualquier gate que aún no tenga paridad central demostrada.
 
-¡Eso es todo! Con la librería CLI por un lado y los Workflows por otro, toda tu infraestructura de CI/CD está centralizada al 100%.
+La centralización correcta no significa cero archivos locales: significa una sola fuente para
+controles reutilizables y ownership local para comportamiento propio del producto.

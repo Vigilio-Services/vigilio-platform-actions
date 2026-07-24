@@ -1,6 +1,6 @@
 # Paquete DevSecOps Governance
 
-`@vigilio/devsecops-governance` es el paquete npm privado para compartir validadores entre repos.
+`@vigilioyonatan/devsecops-governance` es el paquete npm privado para compartir validadores entre repos.
 
 ## Por que existe
 
@@ -34,7 +34,7 @@ Requisitos:
 ```json
 {
   "devDependencies": {
-    "@vigilio/devsecops-governance": "1.0.0"
+    "@vigilioyonatan/devsecops-governance": "1.0.0"
   },
   "scripts": {
     "governance:workflows": "vigilio-governance validate-workflows --workflows-dir .github/workflows"

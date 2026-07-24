@@ -9,7 +9,7 @@
 | `shared-mobile-expo-ci.yml` | CI Expo rapido | `mobile-mfe`, futuros mobile |
 | `shared-mobile-expo-eas-build.yml` | Build EAS gobernado | mobile releases |
 | `shared-desktop-tauri-ci.yml` | CI Tauri + Rust | `tauri-mfe`, futuros desktop |
-| `desktop-tauri-build.yml` | Build desktop multi-OS | desktop releases |
+| `shared-desktop-tauri-build.yml` | Build desktop multi-OS | desktop releases |
 
 ## Branch to stage
 
@@ -29,3 +29,4 @@
 | `configure-github-packages` | Auth npm GitHub Packages |
 | `validate-stage-source` | Politica rama/stage |
 | `install-playwright-chromium` | Chromium rapido para browser tests |
+| `jira-devops` | Deployments, transiciones, releases e incidentes Jira |

@@ -1,10 +1,15 @@
 {
   "name": "@vigilioyonatan/devsecops-governance",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "DevSecOps governance CLI for Vigilio repositories.",
   "type": "module",
   "private": false,
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VigilioYonatan/vigilio-platform-actions.git",
+    "directory": "packages/devsecops-governance"
+  },
   "bin": {
     "vigilio-governance": "./dist/cli.js"
   },
@@ -16,17 +21,19 @@
   },
   "files": [
     "dist",
+    "policies",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "vitest",
     "lint": "biome ci .",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "tsc -p tsconfig.build.json && vitest run",
+    "test:coverage": "tsc -p tsconfig.build.json && vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "validate:actions": "tsc -p tsconfig.build.json && node dist/cli.js validate-actions --actions-dir ../../actions",
-    "validate:workflows": "tsc -p tsconfig.build.json && node dist/cli.js validate-workflows --workflows-dir ../../.github/workflows"
+    "validate:ruleset": "tsc -p tsconfig.build.json && node dist/cli.js validate-ruleset --ruleset-file policies/github/main-branch-ruleset.json",
+    "validate:workflows": "tsc -p tsconfig.build.json && node dist/cli.js validate-workflows --workflows-dir ../../.github/workflows --profile platform"
   },
   "dependencies": {},
   "devDependencies": {
