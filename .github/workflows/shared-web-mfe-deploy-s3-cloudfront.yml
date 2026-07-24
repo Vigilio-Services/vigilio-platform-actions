@@ -13,7 +13,7 @@ on:
       pnpm-version:
         type: string
         required: false
-        default: '11.5.2'
+        default: '11.7.0'
       working-directory:
         type: string
         required: false

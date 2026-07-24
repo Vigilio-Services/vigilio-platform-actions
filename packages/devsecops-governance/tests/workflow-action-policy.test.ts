@@ -87,6 +87,14 @@ describe('workflow and action policies', () => {
     );
   });
 
+  it('does not require the platform workflow catalog from consumers', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-consumer-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createWorkflow(directory, 'ci.yml');
+
+    expect(validateWorkflows(directory, { profile: 'consumer' })).toEqual([]);
+  });
+
   it('detects floating workflow refs', () => {
     const directory = join(process.cwd(), 'coverage', `wf-floating-${Date.now()}`);
     mkdirSync(directory, { recursive: true });
@@ -150,6 +158,46 @@ describe('workflow and action policies', () => {
     const errors = validateWorkflows(directory);
     expect(errors.some((error) => error.includes('id-token'))).toBe(true);
     expect(errors.some((error) => error.includes('workflow_call'))).toBe(true);
+  });
+
+  it('allows OIDC and delegated timeout for local reusable deployment callers', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-local-call-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createValidWorkflows(directory);
+    writeFileSync(
+      join(directory, 'secure-deploy.yml'),
+      [
+        'name: secure-deploy',
+        'on:',
+        '  workflow_call:',
+        'permissions:',
+        '  contents: read',
+        'jobs:',
+        '  deploy:',
+        '    runs-on: ubuntu-latest',
+        '    timeout-minutes: 10',
+        '    steps:',
+        '      - uses: aws-actions/configure-aws-credentials@0000000000000000000000000000000000000000',
+      ].join('\n'),
+    );
+    writeFileSync(
+      join(directory, 'deploy-production.yml'),
+      [
+        'name: deploy-production',
+        'on:',
+        '  workflow_dispatch:',
+        'permissions:',
+        '  contents: read',
+        '  id-token: write',
+        'jobs:',
+        '  deploy:',
+        '    uses: ./.github/workflows/secure-deploy.yml',
+      ].join('\n'),
+    );
+
+    expect(
+      validateWorkflows(directory).filter((error) => error.includes('deploy-production')),
+    ).toEqual([]);
   });
 
   it('allows valid composite actions', () => {

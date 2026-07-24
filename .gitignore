@@ -4,5 +4,8 @@ node_modules/
 coverage/
 reports/
 dist/
+!actions/jira-devops/dist/
+!actions/jira-devops/dist/index.js
+packages/vigilio-skills/assets/
 *.log
 .DS_Store

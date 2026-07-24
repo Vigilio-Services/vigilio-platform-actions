@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "profile": "node-backend-2026",
+  "runtime": {
+    "node_version": "24.16.0",
+    "node_engine": ">=24 <25"
+  },
+  "package_manager": {
+    "name": "pnpm",
+    "version": "11.7.0"
+  },
+  "toolchain": {
+    "@biomejs/biome": "2.5.0",
+    "@types/node": "24.10.4",
+    "@vitest/coverage-v8": "4.1.9",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  },
+  "security": {
+    "semgrep_version": "1.165.0"
+  },
+  "deployment_stages": ["development", "staging", "production"]
+}

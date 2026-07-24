@@ -1,0 +1,52 @@
+{
+  "name": "@vigilioyonatan/vigilio-skills",
+  "version": "0.1.0",
+  "description": "Versioned AI skills with explicit, conflict-safe synchronization.",
+  "type": "module",
+  "private": false,
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VigilioYonatan/vigilio-platform-actions.git",
+    "directory": "packages/vigilio-skills"
+  },
+  "bin": {
+    "vigilio-skills": "./dist/bin/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/sync.d.ts",
+      "import": "./dist/sync.js"
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && node scripts/build-assets.ts && tsc -p tsconfig.build.json",
+    "lint": "biome ci .",
+    "prepack": "pnpm build",
+    "test": "pnpm build && vitest run",
+    "test:coverage": "pnpm build && vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "files": [
+    "assets",
+    "dist",
+    "README.md"
+  ],
+  "devDependencies": {
+    "@biomejs/biome": "2.5.0",
+    "@types/node": "24.10.4",
+    "@vitest/coverage-v8": "4.1.9",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "volta": {
+    "node": "24.x"
+  }
+}

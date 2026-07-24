@@ -76,7 +76,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm build
       - run: mkdir -p "${GITHUB_WORKSPACE}/reports"
-      - run: pnpm --filter @vigilioyonatan/devsecops-governance pack --pack-destination "${GITHUB_WORKSPACE}/reports"
+      - run: pnpm test:packages
       - run: node packages/devsecops-governance/dist/cli.js validate-stage-source --stage production --ref-name main
 
   secret-scan:

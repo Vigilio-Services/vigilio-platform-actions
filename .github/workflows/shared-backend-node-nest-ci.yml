@@ -10,7 +10,7 @@ on:
       pnpm-version:
         type: string
         required: false
-        default: '11.5.2'
+        default: '11.7.0'
       working-directory:
         type: string
         required: false
@@ -35,8 +35,42 @@ on:
         type: boolean
         required: false
         default: true
+      run-aws-integration:
+        type: boolean
+        required: false
+        default: false
+      run-browser-e2e:
+        type: boolean
+        required: false
+        default: false
+      run-security-deep:
+        type: boolean
+        required: false
+        default: true
+      attest-artifact:
+        type: boolean
+        required: false
+        default: false
+      semgrep-version:
+        type: string
+        required: false
+        default: '1.165.0'
+      jira-enabled:
+        type: boolean
+        required: false
+        default: false
+      jira-transition-code-review:
+        type: string
+        required: false
+        default: ''
     secrets:
       GITHUB_PACKAGES_TOKEN:
+        required: false
+      JIRA_BASE_URL:
+        required: false
+      JIRA_USER_EMAIL:
+        required: false
+      JIRA_API_TOKEN:
         required: false
 
 permissions:
@@ -65,6 +99,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Actionlint
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -76,9 +112,65 @@ jobs:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm audit --audit-level=high
+      - name: Validate branch name
+        if: github.event_name != 'merge_group'
+        run: pnpm exec vigilio-governance validate-branch-name --branch-name "$BRANCH_NAME"
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        run: pnpm exec vigilio-governance validate-pr-title --title "$PR_TITLE" --branch-name "$BRANCH_NAME"
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+      - name: Validate PR body and risk evidence
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/pr-body.txt"
+          pnpm exec vigilio-governance validate-pr-body --body-file "$RUNNER_TEMP/pr-body.txt"
+          pnpm exec vigilio-governance validate-pr-risk --body-file "$RUNNER_TEMP/pr-body.txt"
+      - name: Validate PR commit messages
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git -c http.extraHeader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w 0)" fetch origin "${BASE_REF}"
+          git log "origin/${BASE_REF}..HEAD" --format="%s" | while IFS= read -r message; do
+            test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}"
+          done
+      - run: pnpm exec vigilio-governance validate-platform-baseline
       - run: pnpm governance:package-manager
       - run: pnpm governance:repository
       - run: pnpm governance:github-actions
+      - run: pnpm devsecops:security-exceptions
+      - name: Move Jira issue to code review
+        if: github.event_name == 'pull_request' && inputs.jira-enabled && inputs.jira-transition-code-review != ''
+        uses: VigilioYonatan/vigilio-platform-actions/actions/jira-devops@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          mode: transition
+          issue-keys: ${{ github.head_ref }} ${{ github.event.pull_request.title }}
+          transition-name: ${{ inputs.jira-transition-code-review }}
+          comment: Pull Request opened or updated ${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+      - name: Synthesize CloudFormation for policy scan
+        if: github.event_name == 'pull_request' && inputs.has-cdk
+        run: pnpm cdk:synth
+      - name: Checkov IaC security
+        if: github.event_name == 'pull_request' && inputs.has-cdk
+        uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7 # v12
+        with:
+          directory: ${{ inputs.working-directory }}/cdk.out
+          framework: cloudformation
+          quiet: true
+          soft_fail: false
 
   quality:
     name: Quality
@@ -146,6 +238,26 @@ jobs:
           E2E_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
           E2E_DATABASE_NAME: backend_integration
           E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/backend_integration
+
+  integration-aws:
+    name: AWS Local Integration
+    needs: quality
+    if: inputs.run-aws-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - run: pnpm test:integration:aws:ci
 
   bdd:
     name: BDD
@@ -230,6 +342,29 @@ jobs:
           E2E_DATABASE_NAME: backend_e2e
           E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/backend_e2e
 
+  e2e-browser:
+    name: Browser E2E
+    needs: quality
+    if: inputs.run-browser-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          working-directory: ${{ inputs.working-directory }}
+      - run: pnpm test:e2e:browser
+
   infrastructure:
     name: CDK
     needs: quality
@@ -252,8 +387,8 @@ jobs:
 
   build:
     name: Build
-    needs: [quality, integration, bdd, contract, e2e, infrastructure]
-    if: always() && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
+    needs: [quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure]
+    if: always() && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.integration-aws.result == 'success' || needs.integration-aws.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.e2e-browser.result == 'success' || needs.e2e-browser.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -280,5 +415,113 @@ jobs:
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 30
       - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        if: inputs.attest-artifact
         with:
           subject-path: ${{ inputs.working-directory }}/dist/**
+
+  secret-scan:
+    name: Secret Scan
+    needs: governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  security-deep:
+    name: Deep Security Gate
+    needs: quality
+    if: inputs.run-security-deep
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: read
+      packages: read
+      security-events: write
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+      - if: inputs.has-cdk
+        run: pnpm cdk:synth
+      - uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - name: Semgrep
+        shell: bash
+        run: |
+          python -m pip install "semgrep==${SEMGREP_VERSION}"
+          semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif --error
+        env:
+          SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+      - name: Trivy filesystem
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: success() || failure()
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.working-directory }}
+          format: sarif
+          output: ${{ inputs.working-directory }}/trivy-fs.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+      - name: Trivy synthesized IaC
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: (success() || failure()) && inputs.has-cdk
+        with:
+          scan-type: config
+          scan-ref: ${{ inputs.working-directory }}/cdk.out
+          format: sarif
+          output: ${{ inputs.working-directory }}/trivy-iac.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && hashFiles(format('{0}/semgrep.sarif', inputs.working-directory)) != '' }}
+        with:
+          sarif_file: ${{ inputs.working-directory }}/semgrep.sarif
+      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && hashFiles(format('{0}/trivy-fs.sarif', inputs.working-directory)) != '' }}
+        with:
+          sarif_file: ${{ inputs.working-directory }}/trivy-fs.sarif
+      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && hashFiles(format('{0}/trivy-iac.sarif', inputs.working-directory)) != '' }}
+        with:
+          sarif_file: ${{ inputs.working-directory }}/trivy-iac.sarif
+
+  ci-gate:
+    name: Required CI Gate
+    needs: [governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure, build, secret-scan, security-deep]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce required jobs
+        shell: bash
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          failures="$(jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key' <<<"${RESULTS}")"
+          test -z "${failures}" || { echo "Required jobs failed: ${failures}"; exit 1; }
+          test "$(jq -r '.quality.result' <<<"${RESULTS}")" = "success"
+          test "$(jq -r '.build.result' <<<"${RESULTS}")" = "success"

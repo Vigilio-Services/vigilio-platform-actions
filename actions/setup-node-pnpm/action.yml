@@ -9,7 +9,7 @@ inputs:
   pnpm-version:
     description: pnpm version.
     required: false
-    default: '11.5.2'
+    default: '11.7.0'
   cache-dependency-path:
     description: Lockfile or workspace file used by setup-node cache.
     required: false

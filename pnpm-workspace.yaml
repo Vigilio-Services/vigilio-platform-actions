@@ -14,3 +14,5 @@ blockExoticSubdeps: true
 minimumReleaseAge: 1440
 trustPolicy: no-downgrade
 trustLockfile: false
+allowBuilds:
+  esbuild: set this to true or false

@@ -1,4 +1,4 @@
-name: release-devsecops-governance
+name: release-platform-packages
 
 on:
   push:
@@ -10,6 +10,7 @@ permissions:
   packages: write
   id-token: write
   attestations: write
+  artifact-metadata: write
 
 env:
   NODE_VERSION: '24.16.0'
@@ -41,14 +42,49 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm test:packages
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
-          publish: pnpm -r publish --access restricted --no-git-checks
+          publish: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+      - name: Pack published packages for provenance
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          mkdir -p reports/packages
+          pnpm --filter @vigilioyonatan/devsecops-evidence pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          pnpm --filter @vigilioyonatan/devsecops-governance pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          pnpm --filter @vigilioyonatan/vigilio-skills pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          pnpm --filter @vigilioyonatan/node-nest-tooling pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+      - name: Generate CycloneDX SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: steps.changesets.outputs.published == 'true'
         with:
-          subject-path: packages/devsecops-governance/dist/**
+          scan-type: fs
+          scan-ref: .
+          format: cyclonedx
+          output: reports/platform-packages.cdx.json
+      - name: Attest package provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        if: steps.changesets.outputs.published == 'true'
+        with:
+          subject-path: reports/packages/*.tgz
+      - name: Attest package SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        if: steps.changesets.outputs.published == 'true'
+        with:
+          subject-path: reports/packages/*.tgz
+          sbom-path: reports/platform-packages.cdx.json
+      - name: Upload release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.changesets.outputs.published == 'true'
+        with:
+          name: published-package-evidence
+          path: |
+            reports/packages/*.tgz
+            reports/platform-packages.cdx.json
+          if-no-files-found: error
+          retention-days: 90

@@ -9,16 +9,20 @@
     "pnpm": "11.7.0"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm build:actions && pnpm -r build",
+    "build:actions": "tsc -p actions/jira-devops/tsconfig.json",
     "check": "biome check --write .",
     "format": "biome format --write .",
     "lint": "biome ci .",
     "test": "pnpm -r test",
+    "test:packages": "node scripts/test-packages.ts",
     "test:coverage": "pnpm -r test:coverage",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p actions/jira-devops/tsconfig.json && pnpm -r typecheck",
     "governance:workflows": "pnpm --filter @vigilioyonatan/devsecops-governance validate:workflows",
     "governance:actions": "pnpm --filter @vigilioyonatan/devsecops-governance validate:actions",
-    "governance": "pnpm governance:workflows && pnpm governance:actions && pnpm typecheck && pnpm test && pnpm build",
+    "governance:ruleset": "pnpm --filter @vigilioyonatan/devsecops-governance validate:ruleset",
+    "governance": "pnpm governance:workflows && pnpm governance:actions && pnpm governance:ruleset && pnpm typecheck && pnpm test && pnpm build && pnpm test:packages",
+    "release": "pnpm -r publish --access restricted --no-git-checks",
     "prepare": "husky",
     "commitlint": "commitlint",
     "lint-staged": "lint-staged"
@@ -28,8 +32,10 @@
     "@changesets/cli": "2.31.0",
     "@commitlint/cli": "21.0.2",
     "@commitlint/config-conventional": "21.0.2",
+    "@types/node": "24.10.4",
     "husky": "9.1.7",
-    "lint-staged": "17.0.7"
+    "lint-staged": "17.0.7",
+    "typescript": "6.0.3"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "core": [
+      "diagnosing-bugs",
+      "grill-me",
+      "improve-codebase-architecture",
+      "token-context-compression"
+    ],
+    "node-nest": [
+      "node-nest-build-feature",
+      "node-nest-persistence",
+      "node-nest-security-aws",
+      "node-nest-testing"
+    ],
+    "openspec": [
+      "openspec-apply-change",
+      "openspec-archive-change",
+      "openspec-explore",
+      "openspec-propose",
+      "openspec-sync-specs",
+      "openspec-update-change"
+    ]
+  }
+}

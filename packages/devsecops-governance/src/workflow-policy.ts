@@ -13,19 +13,31 @@ const requiredReusableWorkflows = new Set([
   'shared-desktop-tauri-build.yml',
 ]);
 
+export type WorkflowProfile = 'consumer' | 'platform';
+
+export interface WorkflowPolicyOptions {
+  readonly profile?: WorkflowProfile;
+}
+
 function workflowFiles(workflowsDir: string): string[] {
   return readdirSync(workflowsDir).filter(
     (file) => file.endsWith('.yml') || file.endsWith('.yaml'),
   );
 }
 
-export function validateWorkflows(workflowsDir: string): string[] {
+export function validateWorkflows(
+  workflowsDir: string,
+  options: WorkflowPolicyOptions = { profile: 'platform' },
+): string[] {
   const errors: string[] = [];
   const files = workflowFiles(workflowsDir);
+  const profile = options.profile ?? 'platform';
 
-  for (const workflow of requiredReusableWorkflows) {
-    if (!files.includes(workflow)) {
-      errors.push(`${workflow}: required reusable workflow is missing`);
+  if (profile === 'platform') {
+    for (const workflow of requiredReusableWorkflows) {
+      if (!files.includes(workflow)) {
+        errors.push(`${workflow}: required reusable workflow is missing`);
+      }
     }
   }
 
@@ -44,22 +56,52 @@ export function validateWorkflows(workflowsDir: string): string[] {
       errors.push(`${file}: explicit permissions are required`);
     }
 
-    if (!content.includes('timeout-minutes:')) {
+    const hasRunnerJob = /^\s{4}runs-on:/m.test(content);
+    if (hasRunnerJob && !content.includes('timeout-minutes:')) {
       errors.push(`${file}: timeout-minutes is required`);
     }
 
-    if (
-      content.match(/id-token:\s*write/) &&
-      !content.includes('actions/attest@') &&
-      !content.includes('configure-aws-credentials@')
-    ) {
+    if (content.match(/id-token:\s*write/) && !usesOidcCapability(content, workflowsDir)) {
       errors.push(`${file}: id-token: write must be used only for cloud OIDC or attestations`);
     }
 
-    if (requiredReusableWorkflows.has(file) && !content.includes('workflow_call:')) {
+    if (
+      profile === 'platform' &&
+      requiredReusableWorkflows.has(file) &&
+      !content.includes('workflow_call:')
+    ) {
       errors.push(`${file}: reusable workflow must expose workflow_call`);
     }
   }
 
   return errors;
+}
+
+function usesOidcCapability(content: string, workflowsDir: string): boolean {
+  if (content.includes('actions/attest@') || content.includes('configure-aws-credentials@')) {
+    return true;
+  }
+
+  for (const match of content.matchAll(/\buses:\s*\.\/\.github\/workflows\/([^\s#]+)/g)) {
+    const referencedFile = match[1];
+    if (!referencedFile) {
+      continue;
+    }
+
+    try {
+      const referencedContent = activeYaml(
+        readFileSync(join(workflowsDir, referencedFile), 'utf8'),
+      );
+      if (
+        referencedContent.includes('actions/attest@') ||
+        referencedContent.includes('configure-aws-credentials@')
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }

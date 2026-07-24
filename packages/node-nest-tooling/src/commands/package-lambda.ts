@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+
+import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { chmod, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { hashDirectory, pruneLambdaDeployment } from './lambda-artifact.js';
+import { projectRoot, readProjectPackage } from './project-context.js';
+
+class PnpmCommandError extends Error {
+  readonly output: string;
+
+  constructor(code: number | null, signal: NodeJS.Signals | null, output: string) {
+    super(`pnpm deploy failed with code=${code} signal=${signal ?? 'none'}`);
+    this.output = output;
+  }
+}
+
+const artifactsRoot = path.join(projectRoot, '.artifacts');
+const target = path.join(artifactsRoot, 'lambda');
+const distSource = path.join(projectRoot, 'dist');
+const distTarget = path.join(target, 'dist');
+
+if (!target.startsWith(`${artifactsRoot}${path.sep}`)) {
+  throw new Error(`Unsafe Lambda artifact target: ${target}`);
+}
+
+const lambdaEntry = process.env['VIGILIO_LAMBDA_ENTRY'] ?? 'dist/src/main.js';
+const entryPath = path.join(projectRoot, lambdaEntry);
+await stat(entryPath);
+await rm(target, { force: true, recursive: true });
+await mkdir(artifactsRoot, { recursive: true });
+await deployProductionDependencies(target);
+
+const extraRuntimeEntries = (process.env['VIGILIO_LAMBDA_INCLUDE'] ?? '')
+  .split(',')
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+await pruneLambdaDeployment(target, extraRuntimeEntries);
+await cp(distSource, distTarget, { recursive: true });
+
+const startupScript = `#!/bin/sh\nexec node ${lambdaEntry.replaceAll('\\', '/')}\n`;
+const startupPath = path.join(target, 'run.sh');
+await writeFile(startupPath, startupScript, { encoding: 'utf8' });
+await chmod(startupPath, 0o755);
+
+const assetHash = createHash('sha256');
+await hashDirectory(distSource, assetHash);
+for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+  assetHash.update(file);
+  assetHash.update(await readFile(path.join(projectRoot, file)));
+}
+assetHash.update(startupScript);
+await writeFile(path.join(artifactsRoot, 'lambda.asset-hash'), assetHash.digest('hex'), 'utf8');
+
+console.log(`Lambda artifact ready: ${target}`);
+
+async function deployProductionDependencies(deployTarget: string): Promise<void> {
+  const deployArgs = ['--filter', readProjectPackage().name, 'deploy', '--prod', deployTarget];
+
+  try {
+    await runPnpm(deployArgs);
+  } catch (error) {
+    if (!(error instanceof PnpmCommandError)) {
+      throw error;
+    }
+    if (!error.output.includes('ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE')) {
+      throw error;
+    }
+
+    console.warn(
+      'Workspace injection is disabled; retrying pnpm deploy with compatibility mode. ' +
+        'Prefer injectWorkspacePackages: true in pnpm-workspace.yaml.',
+    );
+    await rm(deployTarget, { force: true, recursive: true });
+    await runPnpm([...deployArgs.slice(0, 3), '--legacy', ...deployArgs.slice(3)]);
+  }
+}
+
+function runPnpm(args: string[]): Promise<void> {
+  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const spawnCommand =
+    process.platform === 'win32'
+      ? {
+          args: ['/d', '/s', '/c', command, ...args],
+          command: process.env['ComSpec'] ?? 'cmd.exe',
+        }
+      : { args, command };
+
+  return new Promise<void>((resolve, reject) => {
+    let output = '';
+    const child = spawn(spawnCommand.command, spawnCommand.args, {
+      cwd: projectRoot,
+      env: process.env,
+      shell: false,
+      stdio: ['inherit', 'pipe', 'pipe'],
+    });
+
+    child.stdout.on('data', (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      process.stdout.write(text);
+    });
+    child.stderr.on('data', (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      process.stderr.write(text);
+    });
+    child.once('error', reject);
+    child.once('exit', (code, signal) => {
+      if (code === 0 && !signal) {
+        resolve();
+        return;
+      }
+
+      reject(new PnpmCommandError(code, signal, output));
+    });
+  });
+}
