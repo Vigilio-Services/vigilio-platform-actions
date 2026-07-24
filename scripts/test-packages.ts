@@ -165,7 +165,7 @@ async function assertPathMissing(target: string): Promise<void> {
     if (isErrnoException(error) && error.code === 'ENOENT') return;
     throw error;
   }
-  throw new Error(`Unexpected source path in package: ${target}`);
+  throw new Error(`Unexpected source path in packages: ${target}`);
 }
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
