@@ -1,6 +1,6 @@
 {
   "name": "@vigilioyonatan/devsecops-evidence",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cross-stack delivery metrics, SLSA provenance, and operational evidence tooling.",
   "type": "module",
   "private": false,

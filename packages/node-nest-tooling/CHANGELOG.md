@@ -1,5 +1,11 @@
 # @vigilioyonatan/node-nest-tooling
 
+## 0.2.0
+
+### Minor Changes
+
+- 8c0a26a: actualizar configuracion de secretos de entorno en workflows reutilizables
+
 ## 0.1.0
 
 ### Minor Changes
