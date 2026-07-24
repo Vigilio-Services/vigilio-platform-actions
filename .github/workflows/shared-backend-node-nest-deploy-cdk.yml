@@ -157,32 +157,63 @@ jobs:
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ github.ref_name }}
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          pnpm-version: ${{ env.PNPM_VERSION }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          install: 'false'
       - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Validate deploy policy
         shell: bash
+        env:
+          DEPLOY_MODE: ${{ inputs.deploy-mode }}
+          RUN_SMOKE: ${{ inputs.run-smoke }}
         run: |
           set -euo pipefail
-          case "${{ inputs.deploy-mode }}" in
+          case "${DEPLOY_MODE}" in
             plan|apply) ;;
-            *) echo "Unsupported deploy mode: ${{ inputs.deploy-mode }}"; exit 1 ;;
+            *) echo "Unsupported deploy mode: ${DEPLOY_MODE}"; exit 1 ;;
           esac
-          if [[ "${{ inputs.deploy-mode }}" == "apply" && "${STAGE}" =~ ^(staging|preproduction|production)$ && "${{ inputs.run-smoke }}" != "true" ]]; then
+          if [[ "${DEPLOY_MODE}" == "apply" && "${STAGE}" =~ ^(staging|preproduction|production)$ && "${RUN_SMOKE}" != "true" ]]; then
             echo "Smoke checks are mandatory for ${STAGE} apply deployments"
             exit 1
           fi
       - name: Governance
-        run: ${{ inputs.governance-command }}
+        run: eval "$GOVERNANCE_CMD"
+        env:
+          GOVERNANCE_CMD: ${{ inputs.governance-command }}
       - name: Quality gates
-        run: ${{ inputs.quality-command }}
+        run: eval "$QUALITY_CMD"
+        env:
+          QUALITY_CMD: ${{ inputs.quality-command }}
       - name: Contract gates
-        run: ${{ inputs.contract-command }}
+        run: eval "$CONTRACT_CMD"
+        env:
+          CONTRACT_CMD: ${{ inputs.contract-command }}
       - name: CDK synth
-        run: ${{ inputs.cdk-synth-command }} --context stage=${{ inputs.stage }}
+        run: eval "$CDK_SYNTH_CMD --context stage=$STAGE"
+        env:
+          CDK_SYNTH_CMD: ${{ inputs.cdk-synth-command }}
       - name: Build
-        run: ${{ inputs.build-command }}
+        run: eval "$BUILD_CMD"
+        env:
+          BUILD_CMD: ${{ inputs.build-command }}
       - run: mkdir -p reports
       - name: Generate SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -510,12 +541,14 @@ jobs:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
       - name: Smoke endpoints
-        run: ${{ inputs.smoke-command }}
+        run: eval "$SMOKE_CMD"
         env:
+          SMOKE_CMD: ${{ inputs.smoke-command }}
           API_BASE_URL: ${{ vars.APP_BASE_URL }}
       - name: Write smoke operational evidence
-        run: ${{ inputs.evidence-command }}
+        run: eval "$EVIDENCE_CMD"
         env:
+          EVIDENCE_CMD: ${{ inputs.evidence-command }}
           EVIDENCE_PHASE: smoke
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
           RUN_SMOKE: ${{ inputs.run-smoke }}
