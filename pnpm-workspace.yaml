@@ -14,5 +14,10 @@ blockExoticSubdeps: true
 minimumReleaseAge: 1440
 trustPolicy: no-downgrade
 trustLockfile: false
+onlyBuiltDependencies:
+  - "@biomejs/biome"
+  - esbuild
 allowBuilds:
-  esbuild: set this to true or false
+  "@biomejs/biome": true
+  esbuild: true
+
