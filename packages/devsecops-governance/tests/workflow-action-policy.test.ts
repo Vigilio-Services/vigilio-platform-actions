@@ -160,6 +160,38 @@ describe('workflow and action policies', () => {
     expect(errors.some((error) => error.includes('workflow_call'))).toBe(true);
   });
 
+  /**
+   * `actions/deploy-pages` se autentica contra GitHub Pages por OIDC, igual que
+   * `configure-aws-credentials` contra AWS. Sin esta excepcion, todo repo de
+   * documentacion publicado en Pages daria un falso positivo y el equipo
+   * terminaria ignorando el gate.
+   */
+  it('acepta id-token: write cuando el workflow publica en GitHub Pages', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-pages-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(
+      join(directory, 'publish-docs.yml'),
+      [
+        'name: publish-docs',
+        'on:',
+        '  workflow_dispatch:',
+        'permissions:',
+        '  contents: read',
+        '  pages: write',
+        '  id-token: write',
+        'jobs:',
+        '  deploy:',
+        '    runs-on: ubuntu-latest',
+        '    timeout-minutes: 5',
+        '    steps:',
+        `      - uses: actions/deploy-pages@${CHECKOUT_SHA}`,
+      ].join('\n'),
+    );
+
+    const errors = validateWorkflows(directory, { profile: 'consumer' });
+    expect(errors.some((error) => error.includes('id-token'))).toBe(false);
+  });
+
   it('allows OIDC and delegated timeout for local reusable deployment callers', () => {
     const directory = join(process.cwd(), 'coverage', `wf-local-call-${Date.now()}`);
     mkdirSync(directory, { recursive: true });

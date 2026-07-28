@@ -38,6 +38,15 @@ Para staging/preproduction puede activarse `run-dast: true`. En `apply`, smoke e
 
 ## Web MFE
 
+Instalar el tooling web reutilizable con version exacta:
+
+```bash
+pnpm add -D --save-exact @vigilioyonatan/web-mfe-tooling@0.1.0
+```
+
+El consumidor conserva solo valores de dominio y aliases estables; la implementacion se ejecuta
+mediante `vigilio-web` desde `node_modules/.bin`.
+
 ```yaml
 jobs:
   ci:

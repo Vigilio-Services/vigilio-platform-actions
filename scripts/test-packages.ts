@@ -14,6 +14,7 @@ const packages = [
   '@vigilioyonatan/devsecops-governance',
   '@vigilioyonatan/vigilio-skills',
   '@vigilioyonatan/node-nest-tooling',
+  '@vigilioyonatan/web-mfe-tooling',
 ];
 
 try {
@@ -52,6 +53,16 @@ try {
   await writeFile(path.join(consumer, 'dist', 'src', 'main.js'), 'console.log("ready");\n');
   await writeFile(path.join(consumer, 'README.md'), 'development documentation\n');
   await writeFile(path.join(consumer, 'biome.json'), '{}\n');
+  await writeFile(
+    path.join(consumer, '.env.example'),
+    [
+      'VITE_API_BASE_URL=http://localhost:3000',
+      'VITE_FEATURE_AI_CHAT=true',
+      'VITE_FEATURE_UPLOADS=false',
+      'VITE_STAGE=development',
+      '',
+    ].join('\n'),
+  );
   await mkdir(path.join(consumer, '.github'), { recursive: true });
   await writeFile(
     path.join(consumer, '.github', 'evidence-policy.json'),
@@ -75,8 +86,10 @@ try {
   await assertPathExists(path.join(installedScope, 'node-nest-tooling', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'sync.d.ts'));
+  await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'dist', 'bin', 'cli.js'));
   await assertPathMissing(path.join(installedScope, 'node-nest-tooling', 'src'));
   await assertPathMissing(path.join(installedScope, 'vigilio-skills', 'src'));
+  await assertPathMissing(path.join(installedScope, 'web-mfe-tooling', 'src'));
   runPnpm(
     ['exec', 'vigilio-skills', 'sync', '--profile', 'core', '--profile', 'node-nest'],
     consumer,
@@ -99,6 +112,11 @@ try {
   await assertPathExists(path.join(consumer, 'reports', 'operational-evidence-local-local.json'));
   runPnpm(['exec', 'vigilio-node', '--help'], consumer);
   runPnpm(['exec', 'vigilio-node', 'package-lambda'], consumer);
+  runPnpm(['exec', 'vigilio-web', '--help'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'validate-public-env'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'validate-bundle-budget'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'generate-sbom'], consumer);
+  await assertPathExists(path.join(consumer, 'reports', 'sbom.cdx.json'));
   runPnpm(
     [
       'exec',

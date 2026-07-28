@@ -1,5 +1,16 @@
 name: web-mfe-preact-ci
 
+# Cobertura
+#
+# Este workflow tenia solo `quality`, `build` y `e2e`, mientras los consumidores
+# mantenian en local governance, escaneo de secretos, seguridad profunda,
+# deteccion de cambios y gate obligatorio. Por eso nadie lo adoptaba: migrar
+# habria significado quedarse sin la mitad de los controles.
+#
+# Ahora cubre los ocho jobs. `governance`, `quality` y `secret-scan` corren
+# siempre; el resto se gatean por rutas para que un PR de solo documentacion no
+# arrastre build, e2e ni escaneos.
+
 on:
   workflow_call:
     inputs:
@@ -19,12 +30,63 @@ on:
         type: boolean
         required: false
         default: true
+      run-security-deep:
+        type: boolean
+        required: false
+        default: true
+      attest-artifact:
+        type: boolean
+        required: false
+        default: true
       preview-port:
         type: string
         required: false
         default: '4200'
+      semgrep-version:
+        type: string
+        required: false
+        default: '1.165.0'
+      backend-contract-repository:
+        description: |
+          Repositorio del que se hace checkout del OpenAPI para validar el
+          contrato. Vacio desactiva ese paso, para consumidores sin backend
+          propio.
+        type: string
+        required: false
+        default: ''
+      backend-contract-path:
+        description: Ruta del OpenAPI dentro del repositorio de contratos.
+        type: string
+        required: false
+        default: .contract-source/backend/docs/openapi/openapi.json
+      jira-enabled:
+        type: boolean
+        required: false
+        default: false
+      jira-transition-code-review:
+        type: string
+        required: false
+        default: ''
+      change-rules:
+        description: |
+          Reglas de deteccion de cambios, `nombre=glob1,glob2` por linea. Los
+          nombres los consumen las condiciones de los jobs; los globs los ajusta
+          cada consumidor.
+        type: string
+        required: false
+        default: |
+          quality=apps/**,libs/**,tests/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,tsconfig*.json,vite.config.ts,biome.json
+          build=apps/**,libs/**,infra/**,package.json,pnpm-lock.yaml,tsconfig*.json,vite.config.ts,index.html,public/**
+          e2e=apps/**,libs/**,tests/**,playwright.config.ts,package.json,pnpm-lock.yaml
+          security-deep=apps/**,libs/**,infra/**,package.json,pnpm-lock.yaml,.github/workflows/**
     secrets:
       GITHUB_PACKAGES_TOKEN:
+        required: false
+      JIRA_BASE_URL:
+        required: false
+      JIRA_USER_EMAIL:
+        required: false
+      JIRA_API_TOKEN:
         required: false
 
 permissions:
@@ -32,8 +94,108 @@ permissions:
   packages: read
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matched: ${{ steps.detect.outputs.matched }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: detect
+        uses: VigilioYonatan/vigilio-platform-actions/actions/detect-changes@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          rules: ${{ inputs.change-rules }}
+
+  governance:
+    name: Governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Checkout del contrato del backend para validar compatibilidad sin
+      # depender de que ambos repos esten clonados en el mismo disco.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        if: inputs.backend-contract-repository != ''
+        with:
+          repository: ${{ inputs.backend-contract-repository }}
+          path: .contract-source/backend
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - name: Actionlint
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          install: 'false'
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+      - run: pnpm install --frozen-lockfile --prefer-offline
+      - run: pnpm audit --audit-level=high
+      - name: Validate branch name
+        if: github.event_name != 'merge_group'
+        run: pnpm exec vigilio-governance validate-branch-name --branch-name "$BRANCH_NAME"
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        run: pnpm exec vigilio-governance validate-pr-title --title "$PR_TITLE" --branch-name "$BRANCH_NAME"
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+      - name: Validate PR body and risk evidence
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -r '.pull_request.body // ""' "$GITHUB_EVENT_PATH" > "$RUNNER_TEMP/pr-body.txt"
+          pnpm exec vigilio-governance validate-pr-body --body-file "$RUNNER_TEMP/pr-body.txt"
+          pnpm exec vigilio-governance validate-pr-risk --body-file "$RUNNER_TEMP/pr-body.txt"
+      - run: pnpm governance:package-manager
+      - run: pnpm governance:repository
+      - run: pnpm governance:github-actions
+      - run: pnpm governance:env
+      - name: Validate backend contract compatibility
+        if: inputs.backend-contract-repository != ''
+        run: pnpm governance:contracts
+        env:
+          BACKEND_OPENAPI_PATH: ${{ inputs.backend-contract-path }}
+      - run: pnpm skills:check
+      - name: Move Jira issue to code review
+        if: github.event_name == 'pull_request' && inputs.jira-enabled && inputs.jira-transition-code-review != ''
+        uses: VigilioYonatan/vigilio-platform-actions/actions/jira-devops@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          mode: transition
+          issue-keys: ${{ github.head_ref }} ${{ github.event.pull_request.title }}
+          transition-name: ${{ inputs.jira-transition-code-review }}
+          comment: Pull Request opened or updated ${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
   quality:
     name: Quality
+    needs: governance
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -48,12 +210,6 @@ jobs:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - run: pnpm governance:package-manager
-      - run: pnpm governance:repository
-      - run: pnpm governance:github-actions
-      - run: pnpm governance:env
-      - run: pnpm governance:contracts
-      - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
@@ -64,9 +220,28 @@ jobs:
           path: ${{ inputs.working-directory }}/coverage/
           retention-days: 14
 
+  secret-scan:
+    name: Secret Scan
+    needs: governance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Build
-    needs: quality
+    needs: [changes, quality]
+    if: fromJSON(needs.changes.outputs.matched).build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -100,6 +275,7 @@ jobs:
           path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
           retention-days: 30
       - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+        if: inputs.attest-artifact
         with:
           subject-path: |
             ${{ inputs.working-directory }}/dist/**
@@ -107,8 +283,8 @@ jobs:
 
   e2e:
     name: Playwright Smoke
-    needs: build
-    if: inputs.run-e2e
+    needs: [changes, build]
+    if: always() && inputs.run-e2e && fromJSON(needs.changes.outputs.matched).e2e && needs.build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -151,3 +327,112 @@ jobs:
           name: web-playwright-report
           path: ${{ inputs.working-directory }}/playwright-report/
           retention-days: 7
+
+  security-deep:
+    name: Deep Security
+    needs: [changes, quality, secret-scan]
+    if: always() && inputs.run-security-deep && fromJSON(needs.changes.outputs.matched)['security-deep'] && needs.quality.result == 'success' && needs.secret-scan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      # CodeQL requiere GitHub Advanced Security en repos privados. Se activa por
+      # variable para que el workflow no falle donde no esta disponible.
+      - name: CodeQL init
+        if: vars.ENABLE_CODEQL == 'true'
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+      - name: CodeQL analyze
+        if: vars.ENABLE_CODEQL == 'true'
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - name: Install Semgrep
+        run: python -m pip install semgrep==${{ inputs.semgrep-version }}
+      - name: Semgrep security scan
+        run: semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif --error
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: success() || failure()
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.working-directory }}
+          format: sarif
+          output: trivy-fs.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        continue-on-error: true
+        if: ${{ always() && hashFiles('trivy-fs.sarif') != '' }}
+        with:
+          sarif_file: trivy-fs.sarif
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        continue-on-error: true
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        with:
+          sarif_file: semgrep.sarif
+
+  ci-gate:
+    name: Required CI Gate
+    needs: [changes, governance, quality, secret-scan, build, e2e, security-deep]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enforce required jobs
+        shell: bash
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+
+          # Obligatorios: `skipped` no se acepta porque significaria mergear sin
+          # gobernanza, sin calidad o sin revisar secretos.
+          # Condicionales: `skipped` es legitimo, lo decidio detect-changes.
+          required_jobs='["changes","governance","quality","secret-scan"]'
+          conditional_jobs='["build","e2e","security-deep"]'
+
+          failed=0
+
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            if [[ "${result}" != "success" ]]; then
+              echo "::error title=Required job failed::${name} termino con ${result}"
+              failed=1
+            fi
+          done < <(jq -r --argjson required "${required_jobs}" \
+            'to_entries[] | select(.key as $k | $required | index($k)) | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            if [[ "${result}" != "success" && "${result}" != "skipped" ]]; then
+              echo "::error title=Conditional job failed::${name} termino con ${result}"
+              failed=1
+            fi
+          done < <(jq -r --argjson conditional "${conditional_jobs}" \
+            'to_entries[] | select(.key as $k | $conditional | index($k)) | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          # Si alguien anade un job y olvida clasificarlo, su fallo no puede
+          # pasar desapercibido.
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            echo "::error title=Unclassified job failed::${name} termino con ${result}"
+            failed=1
+          done < <(jq -r --argjson required "${required_jobs}" --argjson conditional "${conditional_jobs}" \
+            'to_entries[] | select((.key as $k | ($required + $conditional) | index($k)) | not) | select(.value.result == "failure" or .value.result == "cancelled") | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          exit "${failed}"

@@ -61,6 +61,7 @@ jobs:
           pnpm --filter @vigilioyonatan/devsecops-governance pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
           pnpm --filter @vigilioyonatan/vigilio-skills pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
           pnpm --filter @vigilioyonatan/node-nest-tooling pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          pnpm --filter @vigilioyonatan/web-mfe-tooling pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: steps.changesets.outputs.published == 'true'

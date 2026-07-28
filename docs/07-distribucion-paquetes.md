@@ -7,6 +7,7 @@
 | `devsecops-governance` | Policies y validadores CI/hook | Copiar archivos o desplegar |
 | `devsecops-evidence` | Métricas DORA, SLSA y evidencia operacional | Definir rutas de dominio del consumidor |
 | `node-nest-tooling` | Comandos ejecutables Node/Nest | Contener contratos de dominio |
+| `web-mfe-tooling` | Contratos browser-safe, OpenAPI, bundle, env, headers, runtime config y SBOM | Importar UI, fijar secretos o contener dominio del consumidor |
 | `vigilio-skills` | Skills versionadas | Ejecutar cambios en `postinstall` |
 
 Los contratos OpenAPI de negocio, smoke tests, evidencias y scripts de dominio permanecen en cada
@@ -14,7 +15,7 @@ proyecto. Los workflows reutilizables permanecen en `.github/workflows` y se con
 
 ## Arquitectura De Compilacion
 
-Los cuatro paquetes mantienen TypeScript estricto como unica fuente:
+Los cinco paquetes mantienen TypeScript estricto como unica fuente:
 
 ```text
 src/**/*.ts -> tsc NodeNext -> dist/**/*.js + dist/**/*.d.ts
@@ -46,15 +47,24 @@ pnpm add -D --save-exact \
   @vigilioyonatan/devsecops-evidence@0.1.0 \
   @vigilioyonatan/devsecops-governance@0.1.0 \
   @vigilioyonatan/node-nest-tooling@0.1.0 \
-  @vigilioyonatan/vigilio-skills@0.1.0
+  @vigilioyonatan/web-mfe-tooling@0.1.0 \
+  @vigilioyonatan/vigilio-skills@0.3.1
 
 pnpm exec vigilio-skills sync
 pnpm exec vigilio-skills check
 pnpm install --frozen-lockfile
 ```
 
-Reemplazar scripts copiados por `vigilio-node <command>`. Mantener exportadores OpenAPI, smoke,
-fixtures, seeders y validaciones de dominio dentro del consumidor.
+Seleccionar perfiles por stack; no instalar conocimiento backend en frontend:
+
+```bash
+pnpm exec vigilio-skills sync --profile core --profile web-mfe --profile openspec
+pnpm exec vigilio-skills sync --target .agents/skills --profile core --profile web-mfe --profile openspec
+```
+
+Reemplazar scripts copiados de backend por `vigilio-node <command>` y los scripts web genericos por
+`vigilio-web <command>`. Mantener exportadores OpenAPI, smoke funcional, fixtures, seeders y
+validaciones de dominio dentro del consumidor.
 
 ## Compatibilidad
 

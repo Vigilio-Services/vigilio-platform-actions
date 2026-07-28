@@ -17,7 +17,9 @@ actions/                           composite actions
 packages/devsecops-governance/     governance TypeScript compilado
 packages/devsecops-evidence/       DORA, SLSA y evidencia TypeScript compilado
 packages/node-nest-tooling/        tooling Node/Nest TypeScript compilado
+packages/web-mfe-tooling/          tooling Web MFE TypeScript compilado
 packages/vigilio-skills/           sincronizador de skills TypeScript compilado
+skills/                            fuente canonica por perfiles core, node-nest, web-mfe y openspec
 docs/                              documentacion de plataforma
 ```
 
@@ -124,6 +126,10 @@ jobs:
 - Los paquetes usan TypeScript estricto como fuente y publican JavaScript ESM con declaraciones.
 - Governance y tooling se ejecutan desde `node_modules/.bin`; no se copian scripts.
 - Skills se sincronizan explicitamente con manifest y SHA-256.
+- El perfil `web-mfe` cubre features, contratos Zod, testing, calidad web y seguridad/delivery.
+- Las referencias del perfil `web-mfe` enlazan el baseline canónico de
+  `vigilio-docs/frontend-web-mfe`, siguiendo la misma práctica de progressive disclosure del perfil
+  Node/Nest.
 - Los consumidores fijan versiones exactas y migran solo despues de publicar el paquete.
 
 ## Comandos
@@ -141,7 +147,7 @@ pnpm test
 # Compila todos los paquetes del monorepo de forma recursiva y en paralelo
 pnpm build
 
-# Empaqueta los tres paquetes, los instala sin lifecycle scripts y prueba sus CLIs
+# Empaqueta todos los paquetes, los instala sin lifecycle scripts y prueba sus CLIs
 pnpm test:packages
 
 # Genera los archivos para publicar una nueva versión (Changesets)

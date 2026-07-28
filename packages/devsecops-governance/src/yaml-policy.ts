@@ -82,6 +82,97 @@ export function validatePinnedUses(content: string, source: string): string[] {
   return errors;
 }
 
+/**
+ * Detecta claves repetidas dentro del mismo bloque YAML.
+ *
+ * Un `defaults:` o `steps:` duplicado por copia-pega produce un documento que
+ * GitHub Actions rechaza entero, pero que pasa cualquier validacion basada en
+ * buscar cadenas. Ocurrio de verdad en `shared-backend-node-nest-deploy-cdk.yml`
+ * y nadie lo vio porque ningun gate parseaba la estructura.
+ *
+ * Se implementa por lineas y no con un parser para mantener el paquete sin
+ * dependencias: una libreria de YAML aqui seria superficie de supply chain en
+ * el componente que audita a todos los demas. El alcance es deliberadamente
+ * estrecho: solo claves duplicadas, que es la clase de fallo que se escapa.
+ */
+export function validateNoDuplicateKeys(content: string, source: string): string[] {
+  const errors: string[] = [];
+  const lines = content.split('\n');
+  // Cada nivel guarda su indentacion y las claves ya vistas en ese bloque.
+  const stack: Array<{ indent: number; keys: Map<string, number> }> = [];
+
+  let blockScalarIndent: number | null = null;
+
+  for (const [index, rawLine] of lines.entries()) {
+    const line = rawLine.replace(/\r$/, '');
+    const trimmed = line.trim();
+
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    const indent = line.search(/\S/);
+
+    // Dentro de un escalar de bloque (`run: |`) el contenido es texto libre y
+    // puede incluir `algo:` sin ser una clave YAML.
+    if (blockScalarIndent !== null) {
+      if (indent > blockScalarIndent) {
+        continue;
+      }
+      blockScalarIndent = null;
+    }
+
+    while (stack.length > 0 && indent < (stack.at(-1)?.indent ?? 0)) {
+      stack.pop();
+    }
+
+    // Un elemento de lista abre su propio mapa: `- name:` y `- name:` en dos
+    // pasos distintos no son duplicados.
+    const isListItem = trimmed.startsWith('- ');
+    const keyPart = isListItem ? trimmed.slice(2).trim() : trimmed;
+
+    if (isListItem) {
+      while (stack.length > 0 && indent <= (stack.at(-1)?.indent ?? 0)) {
+        stack.pop();
+      }
+      stack.push({ indent, keys: new Map() });
+    }
+
+    const keyMatch = /^([A-Za-z_][\w.-]*|"[^"]+"|'[^']+'):(\s|$)/.exec(keyPart);
+
+    if (!keyMatch?.[1]) {
+      continue;
+    }
+
+    const key = keyMatch[1].replace(/^["']|["']$/g, '');
+    const effectiveIndent = isListItem ? indent + 2 : indent;
+
+    if (stack.length === 0 || effectiveIndent > (stack.at(-1)?.indent ?? -1)) {
+      stack.push({ indent: effectiveIndent, keys: new Map() });
+    }
+
+    const current = stack.at(-1);
+
+    if (current && current.indent === effectiveIndent) {
+      const previous = current.keys.get(key);
+
+      if (previous !== undefined) {
+        errors.push(
+          `${source}:${index + 1}: duplicate key "${key}" in the same block (first seen at line ${previous})`,
+        );
+      } else {
+        current.keys.set(key, index + 1);
+      }
+    }
+
+    if (/:\s*[|>][+-]?\s*$/.test(keyPart)) {
+      blockScalarIndent = indent;
+    }
+  }
+
+  return errors;
+}
+
 export function validateCheckoutCredentials(content: string, source: string): string[] {
   const lines = activeYaml(content).split('\n');
   const errors: string[] = [];

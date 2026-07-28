@@ -9,9 +9,21 @@
     ],
     "node-nest": [
       "node-nest-build-feature",
+      "node-nest-contracts-release",
+      "node-nest-observability",
       "node-nest-persistence",
       "node-nest-security-aws",
       "node-nest-testing"
+    ],
+    "web-mfe": [
+      "web-mfe-build-feature",
+      "web-mfe-contracts",
+      "web-mfe-design-system",
+      "web-mfe-observability",
+      "web-mfe-quality",
+      "web-mfe-scaffold-app-feature",
+      "web-mfe-security-delivery",
+      "web-mfe-testing"
     ],
     "openspec": [
       "openspec-apply-change",

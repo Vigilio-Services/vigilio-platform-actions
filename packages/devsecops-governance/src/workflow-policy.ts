@@ -1,6 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { activeYaml, validateCheckoutCredentials, validatePinnedUses } from './yaml-policy.js';
+import {
+  activeYaml,
+  validateCheckoutCredentials,
+  validateNoDuplicateKeys,
+  validatePinnedUses,
+} from './yaml-policy.js';
 
 const requiredReusableWorkflows = new Set([
   'shared-backend-node-nest-ci.yml',
@@ -47,6 +52,7 @@ export function validateWorkflows(
 
     errors.push(...validatePinnedUses(rawContent, file));
     errors.push(...validateCheckoutCredentials(rawContent, file));
+    errors.push(...validateNoDuplicateKeys(rawContent, file));
 
     if (content.includes('pull_request_target:')) {
       errors.push(`${file}: pull_request_target is not allowed`);
@@ -77,8 +83,22 @@ export function validateWorkflows(
   return errors;
 }
 
+/**
+ * Acciones que legitiman `id-token: write`.
+ *
+ * `actions/deploy-pages` usa OIDC para autenticarse contra GitHub Pages, igual
+ * que `configure-aws-credentials` contra AWS. Sin esta entrada, cualquier repo
+ * de documentacion publicado en Pages daria un falso positivo y el equipo
+ * terminaria ignorando el gate.
+ */
+const oidcCapableActions = [
+  'actions/attest@',
+  'configure-aws-credentials@',
+  'actions/deploy-pages@',
+];
+
 function usesOidcCapability(content: string, workflowsDir: string): boolean {
-  if (content.includes('actions/attest@') || content.includes('configure-aws-credentials@')) {
+  if (oidcCapableActions.some((action) => content.includes(action))) {
     return true;
   }
 
@@ -92,10 +112,7 @@ function usesOidcCapability(content: string, workflowsDir: string): boolean {
       const referencedContent = activeYaml(
         readFileSync(join(workflowsDir, referencedFile), 'utf8'),
       );
-      if (
-        referencedContent.includes('actions/attest@') ||
-        referencedContent.includes('configure-aws-credentials@')
-      ) {
+      if (oidcCapableActions.some((action) => referencedContent.includes(action))) {
         return true;
       }
     } catch {

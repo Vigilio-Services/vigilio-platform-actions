@@ -5,7 +5,7 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { projectRoot } from './project-context.js';
 
-const distRoot = path.join(projectRoot, 'dist');
+const distRoot = resolveDistRoot(process.argv.slice(2));
 
 await rewriteDirectory(distRoot);
 
@@ -109,4 +109,16 @@ function toImportSpecifier(
 
 function hasRuntimeExtension(specifier: string): boolean {
   return /\.(cjs|mjs|js|json|node)(?:[?#].*)?$/.test(specifier);
+}
+
+function resolveDistRoot(args: string[]): string {
+  const optionIndex = args.indexOf('--dist-root');
+  if (optionIndex === -1) return path.join(projectRoot, 'dist');
+
+  const configuredPath = args[optionIndex + 1];
+  if (!configuredPath || configuredPath.startsWith('--')) {
+    throw new Error('fix-esm-imports requires a path after --dist-root.');
+  }
+
+  return path.resolve(projectRoot, configuredPath);
 }

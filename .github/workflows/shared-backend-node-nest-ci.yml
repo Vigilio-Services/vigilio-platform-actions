@@ -63,6 +63,25 @@ on:
         type: string
         required: false
         default: ''
+      change-rules:
+        description: |
+          Reglas de deteccion de cambios, una por linea, con formato
+          `nombre=glob1,glob2`. Los nombres son fijos porque los consumen las
+          condiciones de los jobs; lo que cada consumidor ajusta son los globs.
+          Un glob con `!` excluye.
+        type: string
+        required: false
+        default: |
+          quality=src/**,tests/**,cdk/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,tsconfig*.json,vitest*.config.ts,biome.json
+          integration=src/**,tests/**,drizzle/**,drizzle.config.ts,package.json,pnpm-lock.yaml
+          aws-integration=src/**,tests/integration/aws/**,vitest.aws.config.ts,package.json,pnpm-lock.yaml
+          bdd=src/**,tests/bdd/**,package.json,pnpm-lock.yaml
+          contract=src/**,packages/contracts/**,docs/openapi/**,scripts/export-openapi.ts,package.json,pnpm-lock.yaml
+          e2e=src/**,tests/e2e/**,drizzle/**,playwright.config.ts,package.json,pnpm-lock.yaml
+          browser-e2e=src/**,tests/e2e/**/*.browser.spec.ts,playwright.config.ts
+          iac=cdk/**,cdk.json,tsconfig.cdk.json,package.json,pnpm-lock.yaml
+          build=src/**,tests/**,cdk/**,package.json,pnpm-lock.yaml,tsconfig*.json
+          security-deep=src/**,cdk/**,package.json,pnpm-lock.yaml,.github/workflows/**
     secrets:
       GITHUB_PACKAGES_TOKEN:
         required: false
@@ -83,6 +102,31 @@ env:
   WORKING_DIRECTORY: ${{ inputs.working-directory }}
 
 jobs:
+  # Clasifica el diff para que un PR que solo toca documentacion no arrastre
+  # integracion, e2e ni escaneos profundos.
+  #
+  # `governance`, `quality` y `secret-scan` quedan deliberadamente fuera de este
+  # gate: son baratos comparados con el resto y apagarlos por heuristica de
+  # rutas abre la puerta a que un cambio entre sin revisar.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matched: ${{ steps.detect.outputs.matched }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: detect
+        uses: VigilioYonatan/vigilio-platform-actions/actions/detect-changes@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          rules: ${{ inputs.change-rules }}
+
   governance:
     name: Governance
     runs-on: ubuntu-latest
@@ -201,8 +245,8 @@ jobs:
 
   integration:
     name: PostgreSQL Integration
-    needs: quality
-    if: inputs.has-postgres
+    needs: [changes, quality]
+    if: inputs.has-postgres && fromJSON(needs.changes.outputs.matched).integration
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -241,8 +285,8 @@ jobs:
 
   integration-aws:
     name: AWS Local Integration
-    needs: quality
-    if: inputs.run-aws-integration
+    needs: [changes, quality]
+    if: inputs.run-aws-integration && fromJSON(needs.changes.outputs.matched)['aws-integration']
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -261,8 +305,8 @@ jobs:
 
   bdd:
     name: BDD
-    needs: quality
-    if: inputs.run-bdd
+    needs: [changes, quality]
+    if: inputs.run-bdd && fromJSON(needs.changes.outputs.matched).bdd
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -281,8 +325,8 @@ jobs:
 
   contract:
     name: OpenAPI Contract
-    needs: quality
-    if: inputs.has-openapi
+    needs: [changes, quality]
+    if: inputs.has-openapi && fromJSON(needs.changes.outputs.matched).contract
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -305,8 +349,8 @@ jobs:
 
   e2e:
     name: API E2E
-    needs: [quality, integration, contract]
-    if: always() && inputs.run-e2e && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped')
+    needs: [changes, quality, integration, contract]
+    if: always() && inputs.run-e2e && fromJSON(needs.changes.outputs.matched).e2e && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -344,8 +388,8 @@ jobs:
 
   e2e-browser:
     name: Browser E2E
-    needs: quality
-    if: inputs.run-browser-e2e
+    needs: [changes, quality]
+    if: inputs.run-browser-e2e && fromJSON(needs.changes.outputs.matched)['browser-e2e']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -367,8 +411,8 @@ jobs:
 
   infrastructure:
     name: CDK
-    needs: quality
-    if: inputs.has-cdk
+    needs: [changes, quality]
+    if: inputs.has-cdk && fromJSON(needs.changes.outputs.matched).iac
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -387,8 +431,8 @@ jobs:
 
   build:
     name: Build
-    needs: [quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure]
-    if: always() && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.integration-aws.result == 'success' || needs.integration-aws.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.e2e-browser.result == 'success' || needs.e2e-browser.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
+    needs: [changes, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure]
+    if: always() && fromJSON(needs.changes.outputs.matched).build && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.integration-aws.result == 'success' || needs.integration-aws.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.e2e-browser.result == 'success' || needs.e2e-browser.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -440,8 +484,8 @@ jobs:
 
   security-deep:
     name: Deep Security Gate
-    needs: quality
-    if: inputs.run-security-deep
+    needs: [changes, quality]
+    if: inputs.run-security-deep && fromJSON(needs.changes.outputs.matched)['security-deep']
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -510,7 +554,7 @@ jobs:
 
   ci-gate:
     name: Required CI Gate
-    needs: [governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure, build, secret-scan, security-deep]
+    needs: [changes, governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure, build, secret-scan, security-deep]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -521,7 +565,50 @@ jobs:
           RESULTS: ${{ toJSON(needs) }}
         run: |
           set -euo pipefail
-          failures="$(jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key' <<<"${RESULTS}")"
-          test -z "${failures}" || { echo "Required jobs failed: ${failures}"; exit 1; }
-          test "$(jq -r '.quality.result' <<<"${RESULTS}")" = "success"
-          test "$(jq -r '.build.result' <<<"${RESULTS}")" = "success"
+
+          # Dos categorias distintas:
+          #
+          # - Obligatorios: deben terminar en `success` siempre. `skipped` aqui
+          #   significaria que se puede mergear sin gobernanza ni secretos
+          #   revisados, asi que no se acepta.
+          # - Condicionales: `skipped` es un resultado legitimo porque el job
+          #   detect-changes determino que el diff no los afecta.
+          #
+          # Sin esta distincion, anadir deteccion de cambios haria que cualquier
+          # PR de solo documentacion fallara el gate por no haber construido.
+          required_jobs='["changes","governance","quality","secret-scan"]'
+          conditional_jobs='["integration","integration-aws","bdd","contract","e2e","e2e-browser","infrastructure","build","security-deep"]'
+
+          failed=0
+
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            if [[ "${result}" != "success" ]]; then
+              echo "::error title=Required job failed::${name} termino con ${result}"
+              failed=1
+            fi
+          done < <(jq -r --argjson required "${required_jobs}" \
+            'to_entries[] | select(.key as $k | $required | index($k)) | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            if [[ "${result}" != "success" && "${result}" != "skipped" ]]; then
+              echo "::error title=Conditional job failed::${name} termino con ${result}"
+              failed=1
+            fi
+          done < <(jq -r --argjson conditional "${conditional_jobs}" \
+            'to_entries[] | select(.key as $k | $conditional | index($k)) | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          # Red de seguridad: si alguien anade un job nuevo y olvida clasificarlo,
+          # un fallo suyo no puede pasar desapercibido.
+          while IFS=$'\t' read -r name result; do
+            [[ -z "${name}" ]] && continue
+            echo "::error title=Unclassified job failed::${name} termino con ${result}"
+            failed=1
+          done < <(jq -r --argjson required "${required_jobs}" --argjson conditional "${conditional_jobs}" \
+            'to_entries[] | select((.key as $k | ($required + $conditional) | index($k)) | not) | select(.value.result == "failure" or .value.result == "cancelled") | [.key, .value.result] | @tsv' \
+            <<<"${RESULTS}")
+
+          exit "${failed}"

@@ -72,7 +72,7 @@ Instala solo paquetes compatibles con el stack y fija versiones exactas:
 pnpm add -D --save-exact \
   @vigilioyonatan/devsecops-governance@0.1.0 \
   @vigilioyonatan/devsecops-evidence@0.1.0 \
-  @vigilioyonatan/vigilio-skills@0.1.0
+  @vigilioyonatan/vigilio-skills@0.3.1
 ```
 
 Agrega `@vigilioyonatan/node-nest-tooling` únicamente en backends Node/Nest. Migra comandos
@@ -85,6 +85,18 @@ Las skills no se copian en `postinstall`:
 pnpm skills:sync
 pnpm skills:check
 ```
+
+Perfiles:
+
+```bash
+# Backend Node/Nest
+vigilio-skills sync --profile core --profile node-nest --profile openspec
+
+# Frontend Preact/React compatible
+vigilio-skills sync --profile core --profile web-mfe --profile openspec
+```
+
+Sincronizar un segundo target (`.agents/skills`) para Codex y conservar `.opencode/skills` como target por defecto de OpenCode.
 
 ---
 
