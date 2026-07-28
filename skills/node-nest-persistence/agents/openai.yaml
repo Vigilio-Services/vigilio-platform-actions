@@ -1,0 +1,4 @@
+interface:
+  display_name: "Persistencia Node Nest"
+  short_description: "Diseña datos, migraciones, caché y eventos"
+  default_prompt: "Use $node-nest-persistence to design or review reliable Node/Nest persistence, migrations, caching, and events."

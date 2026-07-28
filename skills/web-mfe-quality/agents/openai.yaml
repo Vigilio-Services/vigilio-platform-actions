@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Quality"
+  short_description: "Improve accessibility SEO and performance"
+  default_prompt: "Use $web-mfe-quality to review accessibility, SEO, Web Vitals, observability, and bundle performance."

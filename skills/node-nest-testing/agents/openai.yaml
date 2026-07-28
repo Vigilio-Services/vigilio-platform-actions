@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testing Node Nest"
+  short_description: "Diseña pruebas backend según riesgo"
+  default_prompt: "Use $node-nest-testing to design and verify backend tests according to risk and architecture layers."

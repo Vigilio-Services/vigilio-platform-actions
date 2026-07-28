@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observabilidad Node Nest"
+  short_description: "Instrumenta logs, trazas, métricas, SLO y alertas"
+  default_prompt: "Use $node-nest-observability to design or review backend observability and SLOs."

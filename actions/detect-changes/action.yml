@@ -1,0 +1,124 @@
+name: Detect Changes
+description: Classify the changed files of a push or pull request against declarative rules so CI can skip work that the change cannot affect.
+
+# Por que existe
+#
+# Los reusable workflows solo tenian interruptores estaticos por repositorio
+# (`run-e2e: true`), lo que apaga un job para siempre pero no permite saltarlo en
+# un PR que solo toca documentacion. Por eso los consumidores conservaban su
+# propio job de deteccion y no adoptaban los workflows compartidos: migrar
+# habria sido una regresion en tiempo de CI.
+#
+# Esta action extrae esa deteccion a una primitiva parametrizable. Las reglas
+# son declarativas, asi que sirve igual para backend, web, mobile o desktop: lo
+# unico que cambia son los globs.
+#
+# Contrato de salida
+#
+# `matched` es un objeto JSON con una clave booleana por regla. El consumidor lo
+# lee con `fromJSON`, porque una composite action no puede declarar outputs
+# dinamicos:
+#
+#   outputs:
+#     matched: ${{ steps.detect.outputs.matched }}
+#   ...
+#   if: fromJSON(needs.changes.outputs.matched).unit
+
+inputs:
+  rules:
+    description: |
+      Una regla por linea con formato `nombre=glob1,glob2`. Un glob que empieza
+      por `!` excluye. Ejemplo:
+        unit=src/**,tests/**,package.json
+        docs=docs/**,*.md
+    required: true
+  base-ref:
+    description: Rama base para comparar en pull_request. Por defecto github.base_ref.
+    required: false
+    default: ''
+  fallback:
+    description: |
+      Valor asignado a todas las reglas cuando no se puede determinar el diff
+      (merge_group, primer push, historia superficial). `true` es fail-safe:
+      ante la duda se ejecuta todo.
+    required: false
+    default: 'true'
+
+outputs:
+  matched:
+    description: Objeto JSON con un booleano por regla.
+    value: ${{ steps.detect.outputs.matched }}
+  changed-files:
+    description: Lista de archivos cambiados, separada por saltos de linea.
+    value: ${{ steps.detect.outputs.changed_files }}
+  any-changed:
+    description: '"true" si se detecto al menos un archivo cambiado.'
+    value: ${{ steps.detect.outputs.any_changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        RULES: ${{ inputs.rules }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        FALLBACK: ${{ inputs.fallback }}
+        EVENT_NAME: ${{ github.event_name }}
+        DEFAULT_BASE_REF: ${{ github.base_ref }}
+        BEFORE_SHA: ${{ github.event.before }}
+        HEAD_SHA: ${{ github.sha }}
+      run: |
+        set -euo pipefail
+
+        base_ref="${INPUT_BASE_REF:-${DEFAULT_BASE_REF:-}}"
+        empty_sha="0000000000000000000000000000000000000000"
+        changed_files=""
+        resolved=true
+
+        # merge_group ya valida el conjunto completo: no hay diff parcial que
+        # analizar y saltarse trabajo aqui seria inseguro.
+        if [[ "${EVENT_NAME}" == "merge_group" ]]; then
+          resolved=false
+        elif [[ "${EVENT_NAME}" == "pull_request" && -n "${base_ref}" ]]; then
+          if git fetch --no-tags --depth=0 origin "${base_ref}" 2>/dev/null; then
+            changed_files="$(git diff --name-only "origin/${base_ref}...HEAD")"
+          else
+            resolved=false
+          fi
+        elif [[ -n "${BEFORE_SHA:-}" && "${BEFORE_SHA}" != "${empty_sha}" ]]; then
+          if git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            changed_files="$(git diff --name-only "${BEFORE_SHA}" "${HEAD_SHA}")"
+          else
+            resolved=false
+          fi
+        else
+          changed_files="$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "__unresolved__")"
+          [[ "${changed_files}" == "__unresolved__" ]] && resolved=false
+        fi
+
+        if [[ "${resolved}" == "true" && -z "${changed_files}" ]]; then
+          # Diff resuelto y vacio: no hay nada que probar.
+          echo "Diff resuelto sin archivos cambiados."
+        elif [[ "${resolved}" != "true" ]]; then
+          echo "No se pudo resolver el diff; se aplica fallback=${FALLBACK} a todas las reglas."
+        fi
+
+        printf 'Archivos cambiados:\n%s\n' "${changed_files:-<ninguno>}"
+
+        # El matcher vive en Node y no en bash a proposito: comparar globs con
+        # `case` obliga a duplicar logica por patron y falla en silencio con
+        # `**`. Node ya esta disponible en todos los runners de GitHub.
+        matched="$(
+          CHANGED_FILES="${changed_files}" RESOLVED="${resolved}" node "${GITHUB_ACTION_PATH}/match.mjs"
+        )"
+
+        echo "Resultado: ${matched}"
+
+        {
+          echo "matched=${matched}"
+          echo "any_changed=$([[ -n "${changed_files}" ]] && echo true || echo false)"
+          echo "changed_files<<__EOF__"
+          printf '%s\n' "${changed_files}"
+          echo "__EOF__"
+        } >> "${GITHUB_OUTPUT}"

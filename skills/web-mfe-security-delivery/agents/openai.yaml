@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Security Delivery"
+  short_description: "Harden frontend CI CD and AWS delivery"
+  default_prompt: "Use $web-mfe-security-delivery to secure and validate frontend configuration, CI/CD, supply chain, and AWS delivery."

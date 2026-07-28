@@ -1,0 +1,4 @@
+interface:
+  display_name: "Contratos y Release Node Nest"
+  short_description: "Gobierna DTOs, OpenAPI, SemVer y releases"
+  default_prompt: "Use $node-nest-contracts-release to evolve backend contracts and releases safely."

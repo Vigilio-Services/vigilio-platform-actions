@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scaffold Web MFE"
+  short_description: "Genera aplicaciones y features frontend consistentes"
+  default_prompt: "Use $web-mfe-scaffold-app-feature to scaffold a tested web MFE application or feature."

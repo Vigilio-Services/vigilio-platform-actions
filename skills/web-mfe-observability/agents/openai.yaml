@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observabilidad Web MFE"
+  short_description: "Instrumenta RUM, errores, SLO y alertas frontend"
+  default_prompt: "Use $web-mfe-observability to design or review production frontend observability."

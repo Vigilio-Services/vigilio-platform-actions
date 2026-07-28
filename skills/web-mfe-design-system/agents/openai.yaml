@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design System Web MFE"
+  short_description: "Construye UI reusable, accesible y gobernada"
+  default_prompt: "Use $web-mfe-design-system to build or review reusable frontend UI and design tokens."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Construir Features Node Nest"
+  short_description: "Implementa features NestJS por capas"
+  default_prompt: "Use $node-nest-build-feature to implement a complete, tested Node/Nest feature using the repository conventions."

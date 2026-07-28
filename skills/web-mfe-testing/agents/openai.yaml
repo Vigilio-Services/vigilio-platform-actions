@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Testing"
+  short_description: "Test frontend behavior by risk layer"
+  default_prompt: "Use $web-mfe-testing to design and verify frontend unit, integration, accessibility, visual, and E2E coverage."

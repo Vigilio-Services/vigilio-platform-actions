@@ -1,0 +1,4 @@
+interface:
+  display_name: "Seguridad AWS Node Nest"
+  short_description: "Endurece backend, IAM, secretos y despliegues"
+  default_prompt: "Use $node-nest-security-aws to secure a Node/Nest backend and its AWS delivery path."
