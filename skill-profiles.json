@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
+  "docs_tag": "v2026.1.0",
+  "docs_url": "https://github.com/VigilioYonatan/vigilio-docs/tree/v2026.1.0",
   "profiles": {
     "core": [
       "diagnosing-bugs",
