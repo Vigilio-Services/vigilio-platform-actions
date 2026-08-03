@@ -2,6 +2,7 @@
   "schema_version": 1,
   "profiles": {
     "core": [
+      "coderabbit-compliance",
       "diagnosing-bugs",
       "grill-me",
       "improve-codebase-architecture",
