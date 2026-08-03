@@ -2,10 +2,10 @@ import { isTrustedGitOpsBranch } from './gitops-automation-policy.js';
 
 const protectedBranches = new Set(['main']);
 const workBranchRegex =
-  /^(feat|fix|hotfix|refactor|docs|test|ci|build|chore|perf)\/[A-Z][A-Z0-9]+-[0-9]+\/[a-z0-9-]+$/;
+  /^(feat|fix|hotfix|refactor|docs|test|ci|build|chore|perf)\/[A-Z][A-Z0-9]{1,10}-[0-9]{1,8}\/[a-z0-9-]+$/;
 
 export function extractIssueKey(value: string): string | undefined {
-  return value.match(/[A-Z][A-Z0-9]+-[0-9]+/)?.[0];
+  return value.match(/[A-Z][A-Z0-9]{1,10}-[0-9]{1,8}/)?.[0];
 }
 
 export function validateBranchName(

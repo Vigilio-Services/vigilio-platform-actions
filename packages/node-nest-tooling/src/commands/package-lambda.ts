@@ -95,7 +95,7 @@ function runPnpm(args: string[]): Promise<void> {
   const command =
     process.platform === 'win32'
       ? {
-          executable: process.env['ComSpec'] ?? 'cmd.exe',
+          executable: 'cmd.exe',
           args: ['/d', '/s', '/c', 'pnpm.cmd', ...args],
         }
       : { executable: 'pnpm', args };
