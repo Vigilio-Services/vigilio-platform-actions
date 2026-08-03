@@ -31,10 +31,22 @@ on:
         type: boolean
         required: false
         default: true
+      run-unit-tests:
+        type: boolean
+        required: false
+        default: true
+      run-build:
+        type: boolean
+        required: false
+        default: true
       run-e2e:
         type: boolean
         required: false
         default: true
+      e2e-script:
+        type: string
+        required: false
+        default: test:e2e
       run-aws-integration:
         type: boolean
         required: false
@@ -63,6 +75,10 @@ on:
         type: string
         required: false
         default: ''
+      gitops-bot-actor:
+        type: string
+        required: false
+        default: github-actions[bot]
     secrets:
       GITHUB_PACKAGES_TOKEN:
         required: false
@@ -114,15 +130,19 @@ jobs:
       - run: pnpm audit --audit-level=high
       - name: Validate branch name
         if: github.event_name != 'merge_group'
-        run: pnpm exec vigilio-governance validate-branch-name --branch-name "$BRANCH_NAME"
+        run: pnpm exec vigilio-governance validate-branch-name --branch-name "$BRANCH_NAME" --actor "$ACTOR" --trusted-gitops-actor "$TRUSTED_GITOPS_ACTOR"
         env:
+          ACTOR: ${{ github.event.pull_request.user.login || github.actor }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          TRUSTED_GITOPS_ACTOR: ${{ inputs.gitops-bot-actor }}
       - name: Validate PR title
         if: github.event_name == 'pull_request'
-        run: pnpm exec vigilio-governance validate-pr-title --title "$PR_TITLE" --branch-name "$BRANCH_NAME"
+        run: pnpm exec vigilio-governance validate-pr-title --title "$PR_TITLE" --branch-name "$BRANCH_NAME" --actor "$ACTOR" --trusted-gitops-actor "$TRUSTED_GITOPS_ACTOR"
         env:
+          ACTOR: ${{ github.event.pull_request.user.login }}
           BRANCH_NAME: ${{ github.head_ref }}
           PR_TITLE: ${{ github.event.pull_request.title }}
+          TRUSTED_GITOPS_ACTOR: ${{ inputs.gitops-bot-actor }}
       - name: Validate PR body and risk evidence
         if: github.event_name == 'pull_request'
         shell: bash
@@ -135,13 +155,16 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         env:
+          ACTOR: ${{ github.event.pull_request.user.login }}
           BASE_REF: ${{ github.base_ref }}
+          BRANCH_NAME: ${{ github.head_ref }}
           GITHUB_TOKEN: ${{ github.token }}
+          TRUSTED_GITOPS_ACTOR: ${{ inputs.gitops-bot-actor }}
         run: |
           set -euo pipefail
           git -c http.extraHeader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w 0)" fetch origin "${BASE_REF}"
           git log "origin/${BASE_REF}..HEAD" --format="%s" | while IFS= read -r message; do
-            test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}"
+            test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}" --branch-name "${BRANCH_NAME}" --actor "${ACTOR}" --trusted-gitops-actor "${TRUSTED_GITOPS_ACTOR}"
           done
       - run: pnpm exec vigilio-governance validate-platform-baseline
       - run: pnpm governance:package-manager
@@ -174,7 +197,6 @@ jobs:
 
   quality:
     name: Quality
-    needs: governance
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -191,7 +213,8 @@ jobs:
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test:coverage
+      - if: inputs.run-unit-tests
+        run: pnpm test:coverage
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -201,7 +224,7 @@ jobs:
 
   integration:
     name: PostgreSQL Integration
-    needs: quality
+    needs: [governance, quality]
     if: inputs.has-postgres
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -241,7 +264,7 @@ jobs:
 
   integration-aws:
     name: AWS Local Integration
-    needs: quality
+    needs: [governance, quality]
     if: inputs.run-aws-integration
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -261,7 +284,7 @@ jobs:
 
   bdd:
     name: BDD
-    needs: quality
+    needs: [governance, quality]
     if: inputs.run-bdd
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -281,7 +304,7 @@ jobs:
 
   contract:
     name: OpenAPI Contract
-    needs: quality
+    needs: [governance, quality]
     if: inputs.has-openapi
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -335,8 +358,17 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - run: pnpm test:e2e
+      - name: Run selected API E2E profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${E2E_SCRIPT}" in
+            test:e2e|test:e2e:critical|test:e2e:smoke) ;;
+            *) echo "Unsupported E2E script: ${E2E_SCRIPT}"; exit 1 ;;
+          esac
+          pnpm run "${E2E_SCRIPT}"
         env:
+          E2E_SCRIPT: ${{ inputs.e2e-script }}
           E2E_AUTO_START_POSTGRES: 'false'
           E2E_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
           E2E_DATABASE_NAME: backend_e2e
@@ -344,7 +376,7 @@ jobs:
 
   e2e-browser:
     name: Browser E2E
-    needs: quality
+    needs: [governance, quality]
     if: inputs.run-browser-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -367,7 +399,7 @@ jobs:
 
   infrastructure:
     name: CDK
-    needs: quality
+    needs: [governance, quality]
     if: inputs.has-cdk
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -387,8 +419,8 @@ jobs:
 
   build:
     name: Build
-    needs: [quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure]
-    if: always() && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.integration-aws.result == 'success' || needs.integration-aws.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.e2e-browser.result == 'success' || needs.e2e-browser.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
+    needs: [governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure]
+    if: always() && inputs.run-build && needs.governance.result == 'success' && needs.quality.result == 'success' && (needs.integration.result == 'success' || needs.integration.result == 'skipped') && (needs.integration-aws.result == 'success' || needs.integration-aws.result == 'skipped') && (needs.bdd.result == 'success' || needs.bdd.result == 'skipped') && (needs.contract.result == 'success' || needs.contract.result == 'skipped') && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped') && (needs.e2e-browser.result == 'success' || needs.e2e-browser.result == 'skipped') && (needs.infrastructure.result == 'success' || needs.infrastructure.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -421,7 +453,6 @@ jobs:
 
   secret-scan:
     name: Secret Scan
-    needs: governance
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -440,7 +471,6 @@ jobs:
 
   security-deep:
     name: Deep Security Gate
-    needs: quality
     if: inputs.run-security-deep
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -479,6 +509,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: success() || failure()
         with:
+          version: v0.72.0
           scan-type: fs
           scan-ref: ${{ inputs.working-directory }}
           format: sarif
@@ -489,6 +520,7 @@ jobs:
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: (success() || failure()) && inputs.has-cdk
         with:
+          version: v0.72.0
           scan-type: config
           scan-ref: ${{ inputs.working-directory }}/cdk.out
           format: sarif
@@ -518,10 +550,15 @@ jobs:
       - name: Enforce required jobs
         shell: bash
         env:
+          RUN_BUILD: ${{ inputs.run-build }}
           RESULTS: ${{ toJSON(needs) }}
         run: |
           set -euo pipefail
           failures="$(jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key' <<<"${RESULTS}")"
           test -z "${failures}" || { echo "Required jobs failed: ${failures}"; exit 1; }
           test "$(jq -r '.quality.result' <<<"${RESULTS}")" = "success"
-          test "$(jq -r '.build.result' <<<"${RESULTS}")" = "success"
+          if [ "${RUN_BUILD}" = "true" ]; then
+            test "$(jq -r '.build.result' <<<"${RESULTS}")" = "success"
+          else
+            test "$(jq -r '.build.result' <<<"${RESULTS}")" = "skipped"
+          fi

@@ -19,6 +19,10 @@ on:
         type: boolean
         required: false
         default: true
+      app-name:
+        type: string
+        required: false
+        default: mobile-app
     secrets:
       GITHUB_PACKAGES_TOKEN:
         required: false
@@ -44,12 +48,25 @@ jobs:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
+          install: false
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ inputs.working-directory }}/.cache/jest
+            ${{ inputs.working-directory }}/.expo
+            ${{ inputs.working-directory }}/node_modules/.cache
+            ~/.expo
+          key: mobile-${{ runner.os }}-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.working-directory)) }}
       - run: pnpm governance:package-manager
       - run: pnpm governance:repository
       - run: pnpm governance:github-actions
       - run: pnpm governance:env
       - run: pnpm governance:contracts
-      - run: pnpm audit --audit-level=high
+      - run: pnpm run --if-present governance:environments
+      - run: pnpm audit --audit-level=high --prod
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
@@ -58,7 +75,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: mobile-coverage
+          name: ${{ inputs.app-name }}-coverage
           path: ${{ inputs.working-directory }}/coverage/
           retention-days: 14
 
@@ -85,17 +102,28 @@ jobs:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
+          install: false
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ${{ inputs.working-directory }}/.expo
+            ${{ inputs.working-directory }}/node_modules/.cache
+            ~/.expo
+          key: mobile-export-${{ runner.os }}-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.working-directory)) }}
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mobile-dist
+          name: ${{ inputs.app-name }}-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 14
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mobile-sbom
+          name: ${{ inputs.app-name }}-sbom
           path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
           retention-days: 30
       - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4

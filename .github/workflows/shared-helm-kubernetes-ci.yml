@@ -1,0 +1,159 @@
+name: helm-kubernetes-ci
+
+on:
+  workflow_call:
+    inputs:
+      chart-directory:
+        type: string
+        required: true
+      release-name:
+        type: string
+        required: false
+        default: application
+      namespace:
+        type: string
+        required: false
+        default: application
+      minimal-values:
+        type: string
+        required: true
+      production-values:
+        type: string
+        required: true
+      gitops-directory:
+        type: string
+        required: false
+        default: deploy/gitops
+      kubeconform-version:
+        type: string
+        required: false
+        default: 0.8.0
+      kubectl-version:
+        type: string
+        required: false
+        default: v1.36.3
+      crd-schema-catalog-ref:
+        description: Immutable datreeio/CRDs-catalog commit used for CRD validation
+        type: string
+        required: false
+        default: 52b0261318acc7dd0b66e032759b1f218216b980
+      custom-schema-directory:
+        type: string
+        required: false
+        default: deploy/schemas
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Helm and Kubernetes validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v4.2.3
+      - name: Install pinned kubectl with checksum verification
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          base="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64"
+          curl --fail --location --silent --show-error --output kubectl "${base}/kubectl"
+          curl --fail --location --silent --show-error --output kubectl.sha256 "${base}/kubectl.sha256"
+          echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+          sudo install -m 0755 kubectl /usr/local/bin/kubectl
+        env:
+          KUBECTL_VERSION: ${{ inputs.kubectl-version }}
+      - name: Install Kubeconform with checksum verification
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          archive="kubeconform-linux-amd64.tar.gz"
+          base="https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}"
+          curl --fail --location --silent --show-error --output "${archive}" "${base}/${archive}"
+          curl --fail --location --silent --show-error --output checksums.txt "${base}/CHECKSUMS"
+          grep " ${archive}$" checksums.txt | sha256sum --check
+          tar -xzf "${archive}" kubeconform
+          sudo install -m 0755 kubeconform /usr/local/bin/kubeconform
+        env:
+          KUBECONFORM_VERSION: ${{ inputs.kubeconform-version }}
+      - name: Lint minimal release
+        run: helm lint "${CHART}" --strict --values "${MINIMAL_VALUES}"
+        env:
+          CHART: ${{ inputs.chart-directory }}
+          MINIMAL_VALUES: ${{ inputs.minimal-values }}
+      - name: Lint production release
+        run: helm lint "${CHART}" --strict --values "${PRODUCTION_VALUES}"
+        env:
+          CHART: ${{ inputs.chart-directory }}
+          PRODUCTION_VALUES: ${{ inputs.production-values }}
+      - name: Render both release profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p rendered
+          helm template "${RELEASE_NAME}" "${CHART}" --namespace "${NAMESPACE}" --values "${MINIMAL_VALUES}" > rendered/minimal.yaml
+          helm template "${RELEASE_NAME}" "${CHART}" --namespace "${NAMESPACE}" --values "${PRODUCTION_VALUES}" > rendered/production.yaml
+        env:
+          CHART: ${{ inputs.chart-directory }}
+          MINIMAL_VALUES: ${{ inputs.minimal-values }}
+          NAMESPACE: ${{ inputs.namespace }}
+          PRODUCTION_VALUES: ${{ inputs.production-values }}
+          RELEASE_NAME: ${{ inputs.release-name }}
+      - name: Validate rendered Kubernetes resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          custom="${GITHUB_WORKSPACE}/${CUSTOM_SCHEMA_DIRECTORY}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          schema="https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_CATALOG_REF}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          kubeconform -strict -summary -schema-location default -schema-location "${custom}" -schema-location "${schema}" \
+            rendered/minimal.yaml rendered/production.yaml
+        env:
+          CRD_SCHEMA_CATALOG_REF: ${{ inputs.crd-schema-catalog-ref }}
+          CUSTOM_SCHEMA_DIRECTORY: ${{ inputs.custom-schema-directory }}
+      - name: Build GitOps root
+        run: kubectl kustomize "${GITOPS_DIRECTORY}" > rendered/gitops.yaml
+        env:
+          GITOPS_DIRECTORY: ${{ inputs.gitops-directory }}
+      - name: Validate GitOps built-ins
+        shell: bash
+        run: |
+          set -euo pipefail
+          custom="${GITHUB_WORKSPACE}/${CUSTOM_SCHEMA_DIRECTORY}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          schema="https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_CATALOG_REF}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          kubeconform -strict -summary -schema-location default -schema-location "${custom}" -schema-location "${schema}" rendered/gitops.yaml
+        env:
+          CRD_SCHEMA_CATALOG_REF: ${{ inputs.crd-schema-catalog-ref }}
+          CUSTOM_SCHEMA_DIRECTORY: ${{ inputs.custom-schema-directory }}
+      - name: Validate policies and bounded chaos experiments
+        shell: bash
+        run: |
+          set -euo pipefail
+          custom="${GITHUB_WORKSPACE}/${CUSTOM_SCHEMA_DIRECTORY}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          schema="https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_CATALOG_REF}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          mapfile -d '' manifests < <(find deploy/policies deploy/chaos -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | sort -z)
+          test "${#manifests[@]}" -gt 0
+          kubeconform -strict -summary -schema-location default -schema-location "${custom}" -schema-location "${schema}" "${manifests[@]}"
+        env:
+          CRD_SCHEMA_CATALOG_REF: ${{ inputs.crd-schema-catalog-ref }}
+          CUSTOM_SCHEMA_DIRECTORY: ${{ inputs.custom-schema-directory }}
+      - name: Scan deployment configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.72.0
+          scan-type: config
+          scan-ref: deploy
+          severity: HIGH,CRITICAL
+          exit-code: 1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: rendered-kubernetes-${{ github.sha }}
+          path: rendered/
+          retention-days: 14

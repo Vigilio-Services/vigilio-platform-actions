@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile MFE Testing"
+  short_description: "Diseña pruebas Jest, RNTL y Maestro con evidencia honesta."
+  default_prompt: "Usa $mobile-mfe-testing para definir y ejecutar la matriz de pruebas mobile apropiada, sin confundir unit, integración y E2E."

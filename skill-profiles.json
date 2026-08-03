@@ -13,6 +13,20 @@
       "node-nest-security-aws",
       "node-nest-testing"
     ],
+    "mobile-mfe": [
+      "mobile-mfe-build-feature",
+      "mobile-mfe-contracts",
+      "mobile-mfe-quality",
+      "mobile-mfe-security-delivery",
+      "mobile-mfe-testing"
+    ],
+    "web-mfe": [
+      "web-mfe-build-feature",
+      "web-mfe-contracts",
+      "web-mfe-quality",
+      "web-mfe-security-delivery",
+      "web-mfe-testing"
+    ],
     "openspec": [
       "openspec-apply-change",
       "openspec-archive-change",

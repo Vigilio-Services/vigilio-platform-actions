@@ -1,4 +1,5 @@
 import { extractIssueKey } from './branch-policy.js';
+import { isTrustedGitOpsPromotion } from './gitops-automation-policy.js';
 
 const allowedTypes = [
   'feat',
@@ -18,10 +19,17 @@ const typedTitleRegex = new RegExp(
   `^\\[[A-Z][A-Z0-9]+-[0-9]+\\] - (${allowedTypes.join('|')}): .{8,}$`,
 );
 
-export function validatePrTitle(title: string, branchName?: string): string[] {
+export function validatePrTitle(
+  title: string,
+  branchName?: string,
+  actor?: string,
+  trustedGitOpsActor?: string,
+): string[] {
   if (!title) {
     return ['PR title is required.'];
   }
+
+  if (isTrustedGitOpsPromotion(title, branchName, actor, trustedGitOpsActor)) return [];
 
   if (!typedTitleRegex.test(title)) {
     return [
@@ -40,8 +48,15 @@ export function validatePrTitle(title: string, branchName?: string): string[] {
   return [];
 }
 
-export function validateCommitMessage(message: string, branchName?: string): string[] {
+export function validateCommitMessage(
+  message: string,
+  branchName?: string,
+  actor?: string,
+  trustedGitOpsActor?: string,
+): string[] {
   const subject = message.split(/\r?\n/)[0]?.trim() ?? '';
+
+  if (isTrustedGitOpsPromotion(subject, branchName, actor, trustedGitOpsActor)) return [];
 
   if (!typedTitleRegex.test(subject)) {
     return [

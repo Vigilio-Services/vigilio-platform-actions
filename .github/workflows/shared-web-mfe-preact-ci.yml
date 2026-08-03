@@ -134,7 +134,7 @@ jobs:
           PREVIEW_PORT: ${{ inputs.preview-port }}
         run: |
           pnpm exec vite preview --host 127.0.0.1 --port "${PREVIEW_PORT}" > /tmp/web-preview.log 2>&1 &
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl -fsS "http://127.0.0.1:${PREVIEW_PORT}" > /dev/null; then
               exit 0
             fi

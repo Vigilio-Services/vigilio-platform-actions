@@ -47,3 +47,14 @@ Lo comun se reutiliza con composite actions. Lo especifico queda en el workflow 
 - Paquete npm `@vigilioyonatan/devsecops-governance`.
 - Buenas practicas de deploy por stack.
 - Validaciones del propio repo de plataforma.
+
+## Superficie Terraform, OCI y GitOps
+
+Los backends sobre EKS reutilizan el CI de NestJS pero agregan contratos separados:
+
+- Terraform plan/apply con OIDC, estado remoto y políticas.
+- Build OCI con SBOM, provenance, firma por identidad y digest inmutable.
+- Validación Helm/Kubernetes antes de modificar GitOps.
+- Promoción por pull request; Argo CD es el único reconciliador de aplicaciones.
+
+No se amplía el workflow CDK para soportar Terraform: son modelos de despliegue distintos y conservan pipelines separados.

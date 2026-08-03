@@ -157,24 +157,6 @@ jobs:
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-    defaults:
-      run:
-        working-directory: ${{ inputs.working-directory }}
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
-        with:
-          stage: ${{ inputs.stage }}
-          ref-name: ${{ github.ref_name }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          pnpm-version: ${{ env.PNPM_VERSION }}
-          cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-          install: 'false'
       - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
@@ -218,6 +200,7 @@ jobs:
       - name: Generate SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
+          version: v0.72.0
           scan-type: fs
           scan-ref: ${{ inputs.working-directory }}
           format: cyclonedx

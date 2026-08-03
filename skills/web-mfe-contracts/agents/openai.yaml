@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Contracts"
+  short_description: "Use browser-safe Zod API contracts"
+  default_prompt: "Use $web-mfe-contracts to integrate forms, queries, mutations, tables, and components with shared contracts."

@@ -22,6 +22,10 @@ inputs:
     description: Optional token used to authenticate npm.pkg.github.com before install.
     required: false
     default: ''
+  working-directory:
+    description: Directory where pnpm install is executed.
+    required: false
+    default: .
 
 runs:
   using: composite
@@ -45,4 +49,5 @@ runs:
     - name: Install dependencies
       if: inputs.install == 'true'
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: pnpm install --frozen-lockfile --prefer-offline

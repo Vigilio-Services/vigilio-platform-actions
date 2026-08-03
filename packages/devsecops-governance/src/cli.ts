@@ -26,11 +26,11 @@ function help(): string {
     'Commands:',
     '  validate-workflows --workflows-dir .github/workflows [--profile consumer|platform]',
     '  validate-actions --actions-dir actions',
-    '  validate-branch-name --branch-name feat/ABC-123/demo',
-    '  validate-pr-title --title "[ABC-123] - feat: Demo" --branch-name feat/ABC-123/demo',
+    '  validate-branch-name --branch-name feat/ABC-123/demo [--actor app[bot]] [--trusted-gitops-actor app[bot]]',
+    '  validate-pr-title --title "[ABC-123] - feat: Demo" --branch-name feat/ABC-123/demo [--actor app[bot]] [--trusted-gitops-actor app[bot]]',
     '  validate-pr-body --body "descripcion" | --body-file event.txt',
     '  validate-pr-risk --body "descripcion" | --body-file event.txt',
-    '  validate-commit-message --message "..." | --message-file .git/COMMIT_EDITMSG',
+    '  validate-commit-message --message "..." | --message-file .git/COMMIT_EDITMSG [--branch-name ...] [--actor app[bot]] [--trusted-gitops-actor app[bot]]',
     '  validate-package-manager [--root .]',
     '  validate-platform-baseline [--root .] [--baseline-file policy.json]',
     '  validate-repository --policy-file .github/repository-policy.json [--root .]',
@@ -70,7 +70,13 @@ async function run(args: string[]): Promise<void> {
   }
 
   if (command === 'validate-branch-name') {
-    assertNoErrors(validateBranchName(readOption(commandArgs, '--branch-name') ?? ''));
+    assertNoErrors(
+      validateBranchName(
+        readOption(commandArgs, '--branch-name') ?? '',
+        readOption(commandArgs, '--actor'),
+        readOption(commandArgs, '--trusted-gitops-actor'),
+      ),
+    );
     console.log('Branch policy passed.');
     return;
   }
@@ -80,6 +86,8 @@ async function run(args: string[]): Promise<void> {
       validatePrTitle(
         readOption(commandArgs, '--title') ?? '',
         readOption(commandArgs, '--branch-name'),
+        readOption(commandArgs, '--actor'),
+        readOption(commandArgs, '--trusted-gitops-actor'),
       ),
     );
     console.log('PR title policy passed.');
@@ -103,6 +111,8 @@ async function run(args: string[]): Promise<void> {
       validateCommitMessage(
         readTextOption(commandArgs, '--message', '--message-file'),
         readOption(commandArgs, '--branch-name'),
+        readOption(commandArgs, '--actor'),
+        readOption(commandArgs, '--trusted-gitops-actor'),
       ),
     );
     console.log('Commit message policy passed.');

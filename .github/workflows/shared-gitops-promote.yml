@@ -1,0 +1,144 @@
+name: gitops-promote
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        type: string
+        required: true
+      image-digest:
+        type: string
+        required: true
+      values-file:
+        type: string
+        required: true
+      base-branch:
+        type: string
+        required: false
+        default: main
+      gitops-app-client-id:
+        type: string
+        required: true
+    secrets:
+      GITOPS_APP_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote digest to ${{ inputs.stage }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: gitops-promote-${{ inputs.stage }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        id: app-token
+        with:
+          client-id: ${{ inputs.gitops-app-client-id }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ inputs.base-branch }}
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+        with:
+          stage: ${{ inputs.stage }}
+          ref-name: ${{ inputs.base-branch }}
+      - name: Validate immutable digest and target
+        shell: bash
+        env:
+          DIGEST: ${{ inputs.image-digest }}
+          STAGE: ${{ inputs.stage }}
+          VALUES_FILE: ${{ inputs.values-file }}
+        run: |
+          set -euo pipefail
+          [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'Invalid sha256 digest'; exit 1; }
+          [[ "${VALUES_FILE}" =~ ^deploy/gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]] || {
+            echo 'values-file is outside the allowed GitOps paths'
+            exit 1
+          }
+          [[ "${BASH_REMATCH[3]}" == "${STAGE}" ]] || {
+            echo 'values-file stage does not match the requested promotion stage'
+            exit 1
+          }
+          test -f "${VALUES_FILE}"
+      - name: Update only the image digest
+        shell: bash
+        env:
+          DIGEST: ${{ inputs.image-digest }}
+          VALUES_FILE: ${{ inputs.values-file }}
+        run: |
+          set -euo pipefail
+          python - "${VALUES_FILE}" "${DIGEST}" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          digest = sys.argv[2]
+          content = path.read_text(encoding="utf-8")
+          updated, count = re.subn(
+              r"(?m)^(  digest: )sha256:[a-fA-F0-9]{64}$",
+              rf"\g<1>{digest}",
+              content,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Expected exactly one image.digest field")
+          path.write_text(updated, encoding="utf-8", newline="\n")
+          PY
+      - name: Create promotion pull request
+        shell: bash
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          DIGEST: ${{ inputs.image-digest }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITOPS_APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          STAGE: ${{ inputs.stage }}
+          VALUES_FILE: ${{ inputs.values-file }}
+        run: |
+          set -euo pipefail
+          short_digest="${DIGEST#sha256:}"
+          branch="gitops/promote-${STAGE}-${short_digest:0:12}"
+          [[ "${VALUES_FILE}" =~ ^deploy/gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]]
+          workload="${BASH_REMATCH[1]}"
+          subject="chore(gitops): promote ${workload} to ${STAGE}"
+          bot_actor="${GITOPS_APP_SLUG}[bot]"
+          bot_user_id="$(gh api "/users/${bot_actor}" --jq .id)"
+          existing_pr="$(gh pr list --base "${BASE_BRANCH}" --head "${branch}" --state open --json url --jq '.[0].url // empty')"
+          if [[ -n "${existing_pr}" ]]; then
+            echo "Promotion PR already exists: ${existing_pr}"
+            exit 0
+          fi
+          git config user.name "${bot_actor}"
+          git config user.email "${bot_user_id}+${bot_actor}@users.noreply.github.com"
+          gh auth setup-git
+          git switch -c "${branch}"
+          git add -- "${VALUES_FILE}"
+          git diff --cached --quiet && { echo 'Digest is already promoted'; exit 0; }
+          git commit -m "${subject}"
+          git push --set-upstream origin "${branch}"
+          body_file="${RUNNER_TEMP}/gitops-promotion-pr.md"
+          cat > "${body_file}" <<EOF
+          ## Pruebas y evidencia
+          El workflow valido el digest inmutable ${DIGEST} y modifico unicamente ${VALUES_FILE}.
+
+          ## Riesgo y rollback
+          El rollback consiste en revertir este PR y restaurar el digest inmutable anterior.
+
+          ## Seguridad
+          No se registran credenciales ni tags mutables; el despliegue permanece sujeto a las politicas GitOps.
+          EOF
+          gh pr create \
+            --base "${BASE_BRANCH}" \
+            --head "${branch}" \
+            --title "${subject}" \
+            --body-file "${body_file}"

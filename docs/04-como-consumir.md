@@ -36,6 +36,36 @@ jobs:
 
 Para staging/preproduction puede activarse `run-dast: true`. En `apply`, smoke es obligatorio para staging, preproduction y production.
 
+## Backend Nest en EKS con Terraform
+
+El CI de Node existente se consume con `has-cdk: false`. Terraform, contenedores, Helm y promoción GitOps usan workflows independientes para no mezclar ciclos de vida.
+
+```yaml
+jobs:
+  terraform-plan:
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-plan.yml@REPLACE_WITH_RELEASE_SHA
+    with:
+      working-directory: infra/environments/aws/development
+      backend-config: backend.hcl
+      var-file: development.tfvars
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
+```
+
+El workflow de apply vuelve a crear el plan y aplica exactamente ese archivo dentro del mismo job protegido. Los planes binarios y JSON no se publican porque pueden contener datos sensibles.
+
+```yaml
+jobs:
+  kubernetes:
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-helm-kubernetes-ci.yml@REPLACE_WITH_RELEASE_SHA
+    with:
+      chart-directory: deploy/helm/bus-impl-v2
+      minimal-values: deploy/helm/bus-impl-v2/tests/values-minimal.yaml
+      production-values: deploy/helm/bus-impl-v2/tests/values-production.yaml
+```
+
+Después de publicar y firmar la imagen, `shared-gitops-promote.yml` abre un PR que modifica únicamente `image.digest`. Nunca actualiza producción directamente.
+
 ## Web MFE
 
 ```yaml

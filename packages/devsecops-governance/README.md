@@ -37,6 +37,11 @@ reusable workflow catalog with `--profile platform`.
 - Ramas largas `develop` y `release/*`: no validas en trunk-based mode.
 - PR title: `[ABC-123] - feat: Descripcion corta del PR`.
 - Commit: `[ABC-123] - feat: descripcion corta`.
+- Promocion GitOps automatica: `gitops/promote-<stage>-<digest12>` y
+  `chore(gitops): promote <workload> to <stage>`, aceptados unicamente cuando el autor del PR es
+  el bot configurado mediante `--trusted-gitops-actor` y la etapa coincide entre rama y mensaje.
+  El actor confiable debe terminar en `[bot]`; no es una excepcion para commits humanos ni elimina
+  el ticket obligatorio del flujo normal.
 - Riesgo de PR: rollback, observabilidad, seguridad, datos y compatibilidad declarados.
 - Supply chain de pnpm: versiones exactas, integridad y credenciales fuera del repositorio.
 - Baseline `node-backend-2026`: Node, pnpm, TypeScript, Biome, Vitest, Semgrep y workflows sin drift.

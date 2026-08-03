@@ -21,4 +21,23 @@ describe('governance CLI files', () => {
 
     expect(output).toContain('Commit message policy passed.');
   });
+
+  it('passes trusted GitOps actor context through the CLI', () => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        'dist/cli.js',
+        'validate-commit-message',
+        '--message',
+        'chore(gitops): promote bus-impl-v2 to development',
+        '--branch-name',
+        'gitops/promote-development-0123456789ab',
+        '--actor',
+        'github-actions[bot]',
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    );
+
+    expect(output).toContain('Commit message policy passed.');
+  });
 });

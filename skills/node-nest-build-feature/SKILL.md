@@ -28,7 +28,9 @@ Priorizar `src/` y tests ejecutables sobre `docs/`. Usar documentos para decisio
 - Derivar con `pick`, `omit`, `partial` y `extend` dentro del DTO del endpoint.
 - Reservar `optional()` para query/filtros y PATCH. En create, usar `nullable()` cuando el cliente deba enviar `null`.
 - No repetir defaults de PostgreSQL en el request.
-- Retornar `ResponseDto` desde services; usar `ClassDto` solo como adapter Swagger.
+- Mantener `*.request.dto.ts` y `*.response.dto.ts` puros: Zod + tipos inferidos, sin imports NestJS.
+- Colocar `createZodDto` en el archivo hermano `*.request.doc.ts` o `*.response.doc.ts` y nombrar la clase `*DocDto`.
+- Retornar `ResponseDto` desde services; usar `DocDto` solo como adapter NestJS/OpenAPI.
 - Reutilizar `querySchema`, `createPaginatorSchema` y `timestampSchema`.
 - Mantener dinero y decimales regulatorios como string exacto, nunca `number`.
 

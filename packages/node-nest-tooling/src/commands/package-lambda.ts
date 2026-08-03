@@ -57,6 +57,20 @@ console.log(`Lambda artifact ready: ${target}`);
 
 async function deployProductionDependencies(deployTarget: string): Promise<void> {
   const deployArgs = ['--filter', readProjectPackage().name, 'deploy', '--prod', deployTarget];
+  const workspaceFile = path.join(projectRoot, 'pnpm-workspace.yaml');
+  const workspaceConfig = await readFile(workspaceFile, 'utf8');
+  const usesInjectedWorkspacePackages = /^\s*injectWorkspacePackages:\s*true\s*$/m.test(
+    workspaceConfig,
+  );
+
+  if (!usesInjectedWorkspacePackages) {
+    console.warn(
+      'Workspace injection is disabled; using pnpm deploy compatibility mode. ' +
+        'Prefer injectWorkspacePackages: true in pnpm-workspace.yaml.',
+    );
+    await runPnpm([...deployArgs.slice(0, 3), '--legacy', ...deployArgs.slice(3)]);
+    return;
+  }
 
   try {
     await runPnpm(deployArgs);
@@ -78,14 +92,20 @@ async function deployProductionDependencies(deployTarget: string): Promise<void>
 }
 
 function runPnpm(args: string[]): Promise<void> {
-  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const command =
+    process.platform === 'win32'
+      ? {
+          executable: process.env['ComSpec'] ?? 'cmd.exe',
+          args: ['/d', '/s', '/c', 'pnpm.cmd', ...args],
+        }
+      : { executable: 'pnpm', args };
 
   return new Promise<void>((resolve, reject) => {
     let output = '';
-    const child = spawn(command, args, {
+    const child = spawn(command.executable, command.args, {
       cwd: projectRoot,
       env: process.env,
-      shell: process.platform === 'win32',
+      shell: false,
       stdio: ['inherit', 'pipe', 'pipe'],
     });
 
