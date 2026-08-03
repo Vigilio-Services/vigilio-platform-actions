@@ -1,5 +1,12 @@
 # @vigilioyonatan/devsecops-governance
 
+## 0.3.0
+
+### Minor Changes
+
+- 85ba9f4: Add configurable GitHub App actor-bound governance for deterministic GitOps promotion branches,
+  pull request titles and commit messages while preserving mandatory issue keys for human changes.
+
 ## 0.2.0
 
 ### Minor Changes
