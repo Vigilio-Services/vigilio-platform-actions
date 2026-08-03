@@ -3,7 +3,7 @@ import { validateCommitMessage, validatePrBody, validatePrTitle } from '../src/p
 
 describe('PR policy', () => {
   it('allows valid PR title', () => {
-    expect(validatePrTitle('[ABC-123] - feat: Crear endoso', 'feat/ABC-123/crear-endoso')).toEqual(
+    expect(validatePrTitle('[ABC-123] - feat: Crear endoso', 'feat/ABC-123/crear-endoso')).toStrictEqual(
       [],
     );
   });
@@ -22,7 +22,7 @@ describe('PR policy', () => {
   it('allows valid commit message', () => {
     expect(
       validateCommitMessage('[ABC-123] - fix: Corregir endoso', 'fix/ABC-123/corregir-endoso'),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it('rejects malformed and mismatched commit messages', () => {
@@ -36,8 +36,8 @@ describe('PR policy', () => {
     const branch = 'gitops/promote-staging-0123456789ab';
     const subject = 'chore(gitops): promote bus-impl-v2 to staging';
 
-    expect(validatePrTitle(subject, branch, 'github-actions[bot]')).toEqual([]);
-    expect(validateCommitMessage(subject, branch, 'github-actions[bot]')).toEqual([]);
+    expect(validatePrTitle(subject, branch, 'github-actions[bot]')).toStrictEqual([]);
+    expect(validateCommitMessage(subject, branch, 'github-actions[bot]')).toStrictEqual([]);
   });
 
   it('rejects spoofed or inconsistent GitOps promotions', () => {
@@ -59,12 +59,12 @@ describe('PR policy', () => {
     const branch = 'gitops/promote-production-0123456789ab';
     const subject = 'chore(gitops): promote invoice-api to production';
 
-    expect(validatePrTitle(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toEqual(
+    expect(validatePrTitle(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toStrictEqual(
       [],
     );
     expect(
       validateCommitMessage(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]'),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 
   it('rejects empty PR body', () => {
@@ -76,6 +76,6 @@ describe('PR policy', () => {
       validatePrBody(
         'Se agrega validacion reusable para workflows, acciones y convenciones de ramas.',
       ),
-    ).toEqual([]);
+    ).toStrictEqual([]);
   });
 });

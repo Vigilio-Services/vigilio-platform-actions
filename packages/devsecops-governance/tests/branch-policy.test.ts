@@ -3,7 +3,7 @@ import { extractIssueKey, validateBranchName } from '../src/branch-policy.js';
 
 describe('branch policy', () => {
   it('allows protected branches', () => {
-    expect(validateBranchName('main')).toEqual([]);
+    expect(validateBranchName('main')).toStrictEqual([]);
   });
 
   it('rejects Git Flow branches in trunk-based mode', () => {
@@ -12,7 +12,7 @@ describe('branch policy', () => {
   });
 
   it('allows work branches with Jira issue key', () => {
-    expect(validateBranchName('feat/ABC-123/crear-endoso')).toEqual([]);
+    expect(validateBranchName('feat/ABC-123/crear-endoso')).toStrictEqual([]);
   });
 
   it('rejects branches without Jira issue key', () => {
@@ -22,7 +22,7 @@ describe('branch policy', () => {
   it('allows a deterministic GitOps branch only for the trusted bot', () => {
     const branch = 'gitops/promote-production-0123456789ab';
 
-    expect(validateBranchName(branch, 'github-actions[bot]')).toEqual([]);
+    expect(validateBranchName(branch, 'github-actions[bot]')).toStrictEqual([]);
     expect(validateBranchName(branch, 'developer')).toHaveLength(2);
     expect(validateBranchName(branch)).toHaveLength(2);
   });
@@ -39,7 +39,7 @@ describe('branch policy', () => {
   it('allows only the explicitly configured GitOps App bot', () => {
     const branch = 'gitops/promote-development-0123456789ab';
 
-    expect(validateBranchName(branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toEqual([]);
+    expect(validateBranchName(branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toStrictEqual([]);
     expect(validateBranchName(branch, 'github-actions[bot]', 'vigilio-gitops[bot]')).toHaveLength(
       2,
     );
