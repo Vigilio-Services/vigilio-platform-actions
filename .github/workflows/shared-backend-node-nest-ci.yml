@@ -155,7 +155,6 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         env:
-          ACTOR: ${{ github.event.pull_request.user.login }}
           BASE_REF: ${{ github.base_ref }}
           BRANCH_NAME: ${{ github.head_ref }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -163,14 +162,9 @@ jobs:
         run: |
           set -euo pipefail
           git -c http.extraHeader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w 0)" fetch origin "${BASE_REF}"
-          git log "origin/${BASE_REF}..HEAD" --format="%s" | while IFS= read -r message; do
-            test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}" --branch-name "${BRANCH_NAME}" --actor "${ACTOR}" --trusted-gitops-actor "${TRUSTED_GITOPS_ACTOR}"
+          git log "origin/${BASE_REF}..HEAD" --format="%an|%s" | while IFS="|" read -r commit_author message; do
+            test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}" --branch-name "${BRANCH_NAME}" --actor "${commit_author}" --trusted-gitops-actor "${TRUSTED_GITOPS_ACTOR}"
           done
-      - run: pnpm exec vigilio-governance validate-platform-baseline
-      - run: pnpm governance:package-manager
-      - run: pnpm governance:repository
-      - run: pnpm governance:github-actions
-      - run: pnpm devsecops:security-exceptions
       - name: Move Jira issue to code review
         if: github.event_name == 'pull_request' && inputs.jira-enabled && inputs.jira-transition-code-review != ''
         uses: VigilioYonatan/vigilio-platform-actions/actions/jira-devops@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1

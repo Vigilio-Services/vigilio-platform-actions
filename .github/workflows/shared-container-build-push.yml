@@ -41,8 +41,10 @@ on:
 
 permissions:
   contents: read
+  # Required for AWS OIDC authentication and Cosign OIDC signing when push=true
   id-token: write
   packages: read
+  # Required for Trivy vulnerability SARIF report upload to GitHub Security
   security-events: write
 
 jobs:
@@ -95,6 +97,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           platforms: ${{ inputs.platforms }}
           push: ${{ inputs.push }}
+          load: ${{ !inputs.push }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
@@ -103,15 +106,7 @@ jobs:
           sbom: true
           secrets: |
             "npmrc=//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}"
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: inputs.push
-      - name: Sign immutable digest with GitHub OIDC
-        if: inputs.push
-        run: cosign sign --yes "${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
-        env:
-          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
-          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-      - name: Scan pushed image
+      - name: Scan image for vulnerabilities before signing
         if: inputs.push
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -121,6 +116,14 @@ jobs:
           output: trivy-image.sarif
           severity: HIGH,CRITICAL
           exit-code: 1
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: inputs.push
+      - name: Sign immutable digest with GitHub OIDC
+        if: inputs.push
+        run: cosign sign --yes "${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+        env:
+          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: ${{ always() && inputs.push && hashFiles('trivy-image.sarif') != '' }}
         with:
