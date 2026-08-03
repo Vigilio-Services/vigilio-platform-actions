@@ -39,7 +39,9 @@ describe('branch policy', () => {
   it('allows only the explicitly configured GitOps App bot', () => {
     const branch = 'gitops/promote-development-0123456789ab';
 
-    expect(validateBranchName(branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toStrictEqual([]);
+    expect(validateBranchName(branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toStrictEqual(
+      [],
+    );
     expect(validateBranchName(branch, 'github-actions[bot]', 'vigilio-gitops[bot]')).toHaveLength(
       2,
     );

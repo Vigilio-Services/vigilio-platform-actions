@@ -3,9 +3,9 @@ import { validateCommitMessage, validatePrBody, validatePrTitle } from '../src/p
 
 describe('PR policy', () => {
   it('allows valid PR title', () => {
-    expect(validatePrTitle('[ABC-123] - feat: Crear endoso', 'feat/ABC-123/crear-endoso')).toStrictEqual(
-      [],
-    );
+    expect(
+      validatePrTitle('[ABC-123] - feat: Crear endoso', 'feat/ABC-123/crear-endoso'),
+    ).toStrictEqual([]);
   });
 
   it('rejects PR title with different ticket', () => {
@@ -59,9 +59,9 @@ describe('PR policy', () => {
     const branch = 'gitops/promote-production-0123456789ab';
     const subject = 'chore(gitops): promote invoice-api to production';
 
-    expect(validatePrTitle(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]')).toStrictEqual(
-      [],
-    );
+    expect(
+      validatePrTitle(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]'),
+    ).toStrictEqual([]);
     expect(
       validateCommitMessage(subject, branch, 'vigilio-gitops[bot]', 'vigilio-gitops[bot]'),
     ).toStrictEqual([]);
