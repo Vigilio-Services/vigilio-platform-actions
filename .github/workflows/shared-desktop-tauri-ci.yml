@@ -37,7 +37,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
@@ -69,7 +69,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
@@ -96,7 +96,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
@@ -106,7 +106,7 @@ jobs:
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
       - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: tauri-playwright-report
