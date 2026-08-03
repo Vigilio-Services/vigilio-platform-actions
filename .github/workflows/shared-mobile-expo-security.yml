@@ -14,14 +14,16 @@ on:
 
 permissions:
   contents: read
-  packages: read
-  security-events: write
 
 jobs:
   security:
     name: Mobile Security
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      # Required to upload CodeQL, Semgrep, and Trivy SARIF security scan reports
+      security-events: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:

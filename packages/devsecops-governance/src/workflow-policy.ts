@@ -83,7 +83,7 @@ function usesOidcCapability(content: string, workflowsDir: string): boolean {
   }
 
   if (
-    /\buses:\s*[^\s]+\/\.github\/workflows\/(shared-backend-node-nest-ci|shared-container-build-push|shared-terraform-plan|shared-terraform-apply|shared-terraform-drift)\.yml@[a-f0-9]{40}\b/.test(
+    /\buses:\s*VigilioYonatan\/vigilio-platform-actions\/\.github\/workflows\/(shared-backend-node-nest-ci|shared-container-build-push|shared-terraform-plan|shared-terraform-apply|shared-terraform-drift)\.yml@[a-f0-9]{40}\b/.test(
       content,
     )
   ) {

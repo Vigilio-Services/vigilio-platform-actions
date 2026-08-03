@@ -97,7 +97,7 @@ jobs:
       - run: pnpm run --if-present governance:environments
       - run: pnpm expo:check
       - run: pnpm expo:doctor
-      - run: pnpm audit --audit-level=high --prod
+      - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage

@@ -66,7 +66,7 @@ jobs:
       - run: pnpm governance:env
       - run: pnpm governance:contracts
       - run: pnpm run --if-present governance:environments
-      - run: pnpm audit --audit-level=high --prod
+      - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
