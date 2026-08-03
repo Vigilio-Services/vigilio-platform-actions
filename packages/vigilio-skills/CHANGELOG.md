@@ -1,5 +1,11 @@
 # @vigilioyonatan/vigilio-skills
 
+## 0.3.0
+
+### Minor Changes
+
+- 85ba9f4: Update web-mfe and mobile-mfe skills to clarify contract request DTO form schema usage and useSignal state management patterns.
+
 ## 0.2.0
 
 ### Minor Changes
