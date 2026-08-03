@@ -18,6 +18,13 @@ vigilio-governance validate-commit-message --message "[ABC-123] - feat: Crear de
 vigilio-governance validate-stage-source --stage production --ref-name main
 ```
 
+Los cambios humanos conservan el ticket obligatorio. La unica excepcion sin ticket es una
+promocion GitOps generada por el GitHub App bot configurado: la rama debe ser
+`gitops/promote-<development|staging|production>-<digest12>`, el mensaje debe ser
+`chore(gitops): promote <workload> to <stage>` y la etapa debe coincidir. El workflow compartido
+entrega al validador la rama y el autor real del PR; cambiar solo el texto no permite saltarse la
+politica. `--trusted-gitops-actor` solo acepta identidades terminadas en `[bot]`.
+
 ## Publicacion
 
 El workflow `release-package.yml` publica en GitHub Packages cuando se crea un GitHub Release o se ejecuta manualmente.

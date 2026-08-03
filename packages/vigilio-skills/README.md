@@ -11,6 +11,15 @@ pnpm exec vigilio-skills sync --profile core --profile node-nest --profile opens
 pnpm exec vigilio-skills check --profile core --profile node-nest --profile openspec
 ```
 
+Expo/React Native repositories use the isolated mobile profile:
+
+```bash
+pnpm exec vigilio-skills sync --profile core --profile mobile-mfe --profile openspec
+pnpm exec vigilio-skills sync --target .agents/skills --profile core --profile mobile-mfe --profile openspec
+pnpm exec vigilio-skills check --profile core --profile mobile-mfe --profile openspec
+pnpm exec vigilio-skills check --target .agents/skills --profile core --profile mobile-mfe --profile openspec
+```
+
 The default target is `.opencode/skills`. Use `--target .agents/skills` for another agent runtime.
 Synchronization tracks SHA-256 hashes in `.vigilio-manifest.json`, refuses local conflicts and prunes
 only files previously managed by this package. Use `--force` only after reviewing the diff.

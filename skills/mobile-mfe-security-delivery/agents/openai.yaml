@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile MFE Security and Delivery"
+  short_description: "Protege secretos, permisos, OTA y pipelines EAS."
+  default_prompt: "Usa $mobile-mfe-security-delivery para revisar seguridad nativa, supply chain y promoción EAS de este cambio mobile."

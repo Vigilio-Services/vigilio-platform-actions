@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile MFE Quality"
+  short_description: "Audita accesibilidad, rendimiento y resiliencia móvil."
+  default_prompt: "Usa $mobile-mfe-quality para revisar accesibilidad nativa, rendimiento, lifecycle, offline y observabilidad de esta entrega mobile."

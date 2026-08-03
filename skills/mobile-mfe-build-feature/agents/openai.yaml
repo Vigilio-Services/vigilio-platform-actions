@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile MFE Build Feature"
+  short_description: "Implementa features Expo con límites nativos claros."
+  default_prompt: "Usa $mobile-mfe-build-feature para implementar esta feature de Expo/React Native respetando Expo Router, ownership de estado y lifecycle móvil."

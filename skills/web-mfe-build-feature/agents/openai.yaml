@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Build Feature"
+  short_description: "Build Preact MFE features by project rules"
+  default_prompt: "Use $web-mfe-build-feature to implement or review a production-ready frontend feature."

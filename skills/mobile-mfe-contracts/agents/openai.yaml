@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile MFE Contracts"
+  short_description: "Integra contratos backend sin duplicar tipos en mobile."
+  default_prompt: "Usa $mobile-mfe-contracts para integrar este flujo HTTP mobile desde el paquete de contratos publicado, derivar tipos de UI y mantener validación Zod, React Hook Form y TanStack Query."

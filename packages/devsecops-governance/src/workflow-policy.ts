@@ -82,6 +82,14 @@ function usesOidcCapability(content: string, workflowsDir: string): boolean {
     return true;
   }
 
+  if (
+    /\buses:\s*VigilioYonatan\/vigilio-platform-actions\/\.github\/workflows\/(shared-backend-node-nest-ci|shared-container-build-push|shared-terraform-plan|shared-terraform-apply|shared-terraform-drift)\.yml@[a-f0-9]{40}\b/.test(
+      content,
+    )
+  ) {
+    return true;
+  }
+
   for (const match of content.matchAll(/\buses:\s*\.\/\.github\/workflows\/([^\s#]+)/g)) {
     const referencedFile = match[1];
     if (!referencedFile) {

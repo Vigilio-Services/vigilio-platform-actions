@@ -1,0 +1,73 @@
+name: mobile-expo-security
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        type: string
+        required: false
+        default: .
+      semgrep-version:
+        type: string
+        required: false
+        default: '1.165.0'
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: Mobile Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      # Required to upload CodeQL, Semgrep, and Trivy SARIF security scan reports
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate workflows
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+      - name: Scan secrets
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+      - name: Analyze CodeQL
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - name: Install pinned Semgrep
+        env:
+          SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+        run: python -m pip install "semgrep==${SEMGREP_VERSION}"
+      - name: Scan OWASP mobile source patterns
+        env:
+          SOURCE_PATH: ${{ inputs.working-directory }}
+        run: semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif --error "${SOURCE_PATH}"
+      - name: Scan dependencies and configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: success() || failure()
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.working-directory }}
+          format: sarif
+          output: trivy-mobile.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          version: v0.72.0
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        with:
+          sarif_file: semgrep.sarif
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && hashFiles('trivy-mobile.sarif') != '' }}
+        with:
+          sarif_file: trivy-mobile.sarif

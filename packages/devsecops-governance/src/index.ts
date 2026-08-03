@@ -11,6 +11,7 @@ export {
   evaluateGitHubGovernance,
   renderGovernanceMarkdown,
 } from './github-governance-policy.js';
+export { isTrustedGitOpsBranch, isTrustedGitOpsPromotion } from './gitops-automation-policy.js';
 export { validatePackageManagerPolicy } from './package-manager-policy.js';
 export type {
   PlatformBaseline,

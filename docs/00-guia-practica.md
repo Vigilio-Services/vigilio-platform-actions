@@ -34,7 +34,7 @@ Si quieres agregar una validación:
 5. Agrega un Changeset y usa Conventional Commits:
    ```bash
    pnpm changeset
-   git commit -m "feat(governance): agrega politica"
+   git commit -m "[PLAT-123] - feat: agrega politica de governance"
    ```
 
 ---

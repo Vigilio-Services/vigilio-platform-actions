@@ -98,6 +98,10 @@ jobs:
     secrets: inherit
 ```
 
+Para seguridad móvil programada, consume `shared-mobile-expo-security.yml`. Los workflows móviles
+aceptan `working-directory` y `app-name`, por lo que sirven tanto para repositorios dedicados como
+para aplicaciones dentro de un monorepo.
+
 Tauri:
 
 ```yaml

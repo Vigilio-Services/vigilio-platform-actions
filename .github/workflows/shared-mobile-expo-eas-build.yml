@@ -26,6 +26,10 @@ on:
         type: string
         required: false
         default: '20.1.0'
+      app-name:
+        type: string
+        required: false
+        default: mobile-app
     secrets:
       EXPO_TOKEN:
         required: true
@@ -45,7 +49,7 @@ jobs:
     timeout-minutes: 35
     environment: ${{ inputs.profile }}
     concurrency:
-      group: mobile-eas-${{ inputs.profile }}
+      group: mobile-eas-${{ inputs.app-name }}-${{ inputs.profile }}
       cancel-in-progress: false
     defaults:
       run:
@@ -58,11 +62,30 @@ jobs:
         with:
           stage: ${{ inputs.profile }}
           ref-name: ${{ github.ref_name }}
+      - name: Validate EAS inputs
+        shell: bash
+        env:
+          EAS_PLATFORM: ${{ inputs.platform }}
+          EAS_PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          case "${EAS_PROFILE}" in
+            development|test|staging|production) ;;
+            *) echo "Unsupported EAS profile: ${EAS_PROFILE}" >&2; exit 1 ;;
+          esac
+          case "${EAS_PLATFORM}" in
+            android|ios|all) ;;
+            *) echo "Unsupported EAS platform: ${EAS_PLATFORM}" >&2; exit 1 ;;
+          esac
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN }}
+          install: false
+      - name: Install application dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
       - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: ${{ inputs.eas-version }}
@@ -70,6 +93,8 @@ jobs:
       - run: pnpm governance:package-manager
       - run: pnpm governance:github-actions
       - run: pnpm governance:env
+      - run: pnpm governance:contracts
+      - run: pnpm run --if-present governance:environments
       - run: pnpm expo:check
       - run: pnpm expo:doctor
       - run: pnpm audit --audit-level=high
@@ -81,7 +106,7 @@ jobs:
       - run: pnpm sbom:generate
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mobile-${{ inputs.profile }}-dist
+          name: ${{ inputs.app-name }}-${{ inputs.profile }}-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 30
       - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
@@ -90,4 +115,7 @@ jobs:
             ${{ inputs.working-directory }}/dist/**
             ${{ inputs.working-directory }}/reports/sbom.cdx.json
       - name: EAS build
-        run: eas build --profile "${{ inputs.profile }}" --platform "${{ inputs.platform }}" --non-interactive --no-wait
+        env:
+          EAS_PLATFORM: ${{ inputs.platform }}
+          EAS_PROFILE: ${{ inputs.profile }}
+        run: eas build --profile "${EAS_PROFILE}" --platform "${EAS_PLATFORM}" --non-interactive --no-wait

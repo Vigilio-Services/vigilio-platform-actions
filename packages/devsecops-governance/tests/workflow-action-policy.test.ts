@@ -11,6 +11,7 @@ const requiredWorkflows = [
   'shared-web-mfe-deploy-s3-cloudfront.yml',
   'shared-mobile-expo-ci.yml',
   'shared-mobile-expo-eas-build.yml',
+  'shared-mobile-expo-security.yml',
   'shared-desktop-tauri-ci.yml',
   'shared-desktop-tauri-build.yml',
 ];
@@ -198,6 +199,50 @@ describe('workflow and action policies', () => {
     expect(
       validateWorkflows(directory).filter((error) => error.includes('deploy-production')),
     ).toEqual([]);
+  });
+
+  it('allows OIDC only for approved remote reusable workflows pinned by SHA', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-remote-call-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createValidWorkflows(directory);
+    writeFileSync(
+      join(directory, 'container-delivery.yml'),
+      [
+        'name: container-delivery',
+        'on:',
+        '  workflow_dispatch:',
+        'permissions:',
+        '  contents: read',
+        '  id-token: write',
+        'jobs:',
+        '  delivery:',
+        '    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@0000000000000000000000000000000000000000',
+      ].join('\n'),
+    );
+
+    expect(validateWorkflows(directory, { profile: 'consumer' })).toEqual([]);
+  });
+
+  it('allows the pinned Terraform drift workflow to receive OIDC', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-drift-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(
+      join(directory, 'terraform-drift.yml'),
+      [
+        'name: terraform-drift',
+        'on:',
+        '  schedule:',
+        "    - cron: '17 5 * * *'",
+        'permissions:',
+        '  contents: read',
+        '  id-token: write',
+        'jobs:',
+        '  drift:',
+        '    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-drift.yml@0000000000000000000000000000000000000000',
+      ].join('\n'),
+    );
+
+    expect(validateWorkflows(directory, { profile: 'consumer' })).toEqual([]);
   });
 
   it('allows valid composite actions', () => {
