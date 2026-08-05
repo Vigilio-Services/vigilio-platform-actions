@@ -37,10 +37,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@74ad35aeb42db1ffed5ed03527339aac28f700b8 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -69,7 +69,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
@@ -96,17 +96,17 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@74ad35aeb42db1ffed5ed03527339aac28f700b8 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@74ad35aeb42db1ffed5ed03527339aac28f700b8 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: tauri-playwright-report
