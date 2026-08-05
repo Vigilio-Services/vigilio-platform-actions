@@ -40,13 +40,13 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: ./actions/setup-node-pnpm
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@17deb75b6e2161415f6c82403579e6e02c76a64b # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: ./actions/configure-github-packages
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/configure-github-packages@17deb75b6e2161415f6c82403579e6e02c76a64b # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
