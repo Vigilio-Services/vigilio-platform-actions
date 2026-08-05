@@ -48,7 +48,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.base-branch }}
           token: ${{ steps.app-token.outputs.token }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@17deb75b6e2161415f6c82403579e6e02c76a64b # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ inputs.base-branch }}
