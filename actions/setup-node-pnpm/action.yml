@@ -21,7 +21,7 @@ inputs:
   github-packages-token:
     description: Optional token used to authenticate npm.pkg.github.com before install.
     required: false
-    default: ''
+    default: ${{ github.token }}
   working-directory:
     description: Directory where pnpm install is executed.
     required: false
