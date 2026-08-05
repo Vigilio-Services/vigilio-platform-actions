@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1 # v1
         with:
           stage: ${{ inputs.profile }}
           ref-name: ${{ github.ref_name }}
@@ -77,7 +77,7 @@ jobs:
             android|ios|all) ;;
             *) echo "Unsupported EAS platform: ${EAS_PLATFORM}" >&2; exit 1 ;;
           esac
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}

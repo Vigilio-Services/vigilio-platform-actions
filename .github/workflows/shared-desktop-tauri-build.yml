@@ -49,12 +49,12 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@v1 # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ github.ref_name }}
           allow-release-for-staging: ${{ inputs.allow-release-for-staging && 'true' || 'false' }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@6ec57444f16f24b4168cfdd3695f5a54150281e0 # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@v1 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
