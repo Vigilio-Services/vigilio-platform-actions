@@ -40,10 +40,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@b3b1e4ecf15f7720915e0a20d6da4036ce01f30a # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -52,7 +52,7 @@ jobs:
           install: false
       - name: Install application dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ inputs.working-directory }}/.cache/jest
@@ -72,7 +72,7 @@ jobs:
       - run: pnpm test:coverage
       - run: pnpm expo:check
       - run: pnpm expo:doctor
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: ${{ inputs.app-name }}-coverage
@@ -94,10 +94,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@b3b1e4ecf15f7720915e0a20d6da4036ce01f30a # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -106,7 +106,7 @@ jobs:
           install: false
       - name: Install application dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ${{ inputs.working-directory }}/.expo
@@ -116,17 +116,17 @@ jobs:
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.app-name }}-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 14
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.app-name }}-sbom
           path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
           retention-days: 30
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+      - uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4
         with:
           subject-path: |
             ${{ inputs.working-directory }}/dist/**
