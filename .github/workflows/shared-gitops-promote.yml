@@ -16,6 +16,10 @@ on:
         type: string
         required: false
         default: main
+      gitops-repository:
+        type: string
+        required: false
+        default: VigilioYonatan/vigilio-deploy
       gitops-app-client-id:
         type: string
         required: true
@@ -44,6 +48,7 @@ jobs:
           permission-pull-requests: write
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
+          repository: ${{ inputs.gitops-repository || 'VigilioYonatan/vigilio-deploy' }}
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.base-branch }}
@@ -61,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'Invalid sha256 digest'; exit 1; }
-          [[ "${VALUES_FILE}" =~ ^deploy/gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]] || {
+          [[ "${VALUES_FILE}" =~ ^(?:deploy/)?gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]] || {
             echo 'values-file is outside the allowed GitOps paths'
             exit 1
           }
