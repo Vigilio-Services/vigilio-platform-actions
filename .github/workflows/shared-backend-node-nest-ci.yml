@@ -162,7 +162,7 @@ jobs:
         run: |
           set -euo pipefail
           git -c http.extraHeader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w 0)" fetch origin "${BASE_REF}"
-          git log "origin/${BASE_REF}..HEAD" --format="%an|%s" | while IFS="|" read -r commit_author message; do
+          git log --no-merges "origin/${BASE_REF}..HEAD" --format="%an|%s" | while IFS="|" read -r commit_author message; do
             test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}" --branch-name "${BRANCH_NAME}" --actor "${commit_author}" --trusted-gitops-actor "${TRUSTED_GITOPS_ACTOR}"
           done
       - name: Move Jira issue to code review
