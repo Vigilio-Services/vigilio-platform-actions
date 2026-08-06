@@ -23,6 +23,10 @@ on:
         type: boolean
         required: false
         default: true
+      rust-version:
+        type: string
+        required: false
+        default: 'stable'
 
 permissions:
   contents: read
@@ -74,6 +78,7 @@ jobs:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
+          toolchain: ${{ inputs.rust-version }}
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
