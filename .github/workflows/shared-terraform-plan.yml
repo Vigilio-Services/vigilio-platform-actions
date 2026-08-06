@@ -32,6 +32,10 @@ on:
         type: string
         required: false
         default: infra/policies/conftest
+      trivy-version:
+        type: string
+        required: false
+        default: v0.72.0
     secrets:
       AWS_ROLE_ARN:
         required: false
@@ -121,7 +125,7 @@ jobs:
       - name: Scan Terraform configuration
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          version: v0.72.0
+          version: ${{ inputs.trivy-version }}
           scan-type: config
           scan-ref: ${{ inputs.working-directory }}
           severity: HIGH,CRITICAL

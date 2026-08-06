@@ -11,6 +11,10 @@ on:
         type: string
         required: false
         default: '1.165.0'
+      trivy-version:
+        type: string
+        required: false
+        default: v0.72.0
 
 permissions:
   contents: read
@@ -60,7 +64,7 @@ jobs:
           output: trivy-mobile.sarif
           severity: HIGH,CRITICAL
           exit-code: 1
-          version: v0.72.0
+          version: ${{ inputs.trivy-version }}
       - name: Upload Semgrep SARIF
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
