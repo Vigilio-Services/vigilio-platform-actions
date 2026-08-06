@@ -162,7 +162,7 @@ jobs:
         run: |
           set -euo pipefail
           git -c http.extraHeader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w 0)" fetch origin "${BASE_REF}"
-          git log "origin/${BASE_REF}..HEAD" --format="%an|%s" | while IFS="|" read -r commit_author message; do
+          git log --no-merges "origin/${BASE_REF}..HEAD" --format="%an|%s" | while IFS="|" read -r commit_author message; do
             test -z "${message}" || pnpm exec vigilio-governance validate-commit-message --message "${message}" --branch-name "${BRANCH_NAME}" --actor "${commit_author}" --trusted-gitops-actor "${TRUSTED_GITOPS_ACTOR}"
           done
       - name: Move Jira issue to code review
@@ -374,6 +374,20 @@ jobs:
     if: inputs.run-browser-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -390,6 +404,11 @@ jobs:
         with:
           working-directory: ${{ inputs.working-directory }}
       - run: pnpm test:e2e:browser
+        env:
+          E2E_AUTO_START_POSTGRES: 'false'
+          E2E_DATABASE_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          E2E_DATABASE_NAME: backend_browser_e2e
+          E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/backend_browser_e2e
 
   infrastructure:
     name: CDK
