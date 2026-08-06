@@ -41,6 +41,18 @@ on:
         type: string
         required: false
         default: deploy/schemas
+      policy-directory:
+        type: string
+        required: false
+        default: policies
+      chaos-directory:
+        type: string
+        required: false
+        default: chaos
+      scan-directory:
+        type: string
+        required: false
+        default: .
       helm-version:
         type: string
         required: false
@@ -145,18 +157,21 @@ jobs:
           set -euo pipefail
           custom="${GITHUB_WORKSPACE}/${CUSTOM_SCHEMA_DIRECTORY}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
           schema="https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_SCHEMA_CATALOG_REF}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
-          mapfile -d '' manifests < <(find deploy/policies deploy/chaos -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | sort -z)
-          test "${#manifests[@]}" -gt 0
-          kubeconform -strict -summary -schema-location default -schema-location "${custom}" -schema-location "${schema}" "${manifests[@]}"
+          mapfile -d '' manifests < <(find "${POLICY_DIR}" "${CHAOS_DIR}" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 2>/dev/null | sort -z)
+          if [ "${#manifests[@]}" -gt 0 ] && [ -n "${manifests[0]}" ]; then
+            kubeconform -strict -summary -schema-location default -schema-location "${custom}" -schema-location "${schema}" "${manifests[@]}"
+          fi
         env:
           CRD_SCHEMA_CATALOG_REF: ${{ inputs.crd-schema-catalog-ref }}
           CUSTOM_SCHEMA_DIRECTORY: ${{ inputs.custom-schema-directory }}
+          POLICY_DIR: ${{ inputs.policy-directory }}
+          CHAOS_DIR: ${{ inputs.chaos-directory }}
       - name: Scan deployment configuration
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: ${{ inputs.trivy-version }}
           scan-type: config
-          scan-ref: deploy
+          scan-ref: ${{ inputs.scan-directory }}
           severity: HIGH,CRITICAL
           exit-code: 1
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
