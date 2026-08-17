@@ -55,10 +55,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/validate-stage-source@b3b1e4ecf15f7720915e0a20d6da4036ce01f30a # v1
         with:
           stage: ${{ inputs.profile }}
           ref-name: ${{ github.ref_name }}
@@ -77,7 +77,7 @@ jobs:
             android|ios|all) ;;
             *) echo "Unsupported EAS platform: ${EAS_PLATFORM}" >&2; exit 1 ;;
           esac
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@b3b1e4ecf15f7720915e0a20d6da4036ce01f30a # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -86,7 +86,7 @@ jobs:
           install: false
       - name: Install application dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
-      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
+      - uses: expo/expo-github-action@eab7a230208c952974db8c3245cfd78402c7b385 # v9
         with:
           eas-version: ${{ inputs.eas-version }}
           token: ${{ secrets.EXPO_TOKEN }}
@@ -104,12 +104,12 @@ jobs:
       - run: pnpm export
       - run: pnpm export:budget
       - run: pnpm sbom:generate
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ inputs.app-name }}-${{ inputs.profile }}-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 30
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
             ${{ inputs.working-directory }}/dist/**
