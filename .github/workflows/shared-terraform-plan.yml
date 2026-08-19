@@ -80,6 +80,7 @@ jobs:
             if [[ "${REQUIRE_ROLE}" == "true" ]]; then
               echo 'An AWS OIDC role ARN is required'; exit 1;
             else
+              # TECH DEBT: Running terraform init with -backend=false and skipping plan/conftest is a dry-run fallback for PRs without AWS credentials.
               echo '::warning::AWS_ROLE_ARN not provided — running Terraform dry-run validation without remote AWS authentication'
             fi
           fi
