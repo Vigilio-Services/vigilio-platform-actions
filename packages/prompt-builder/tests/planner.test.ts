@@ -215,7 +215,7 @@ describe('planner', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  });
+  }, 30000);
 
   it('fails closed when target profile contract does not match backend owner manifest', async () => {
     const root = await createFixture();

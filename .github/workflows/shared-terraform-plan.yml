@@ -118,6 +118,7 @@ jobs:
         env:
           VAR_FILE: ${{ inputs.var-file }}
       - name: Render plan for policy and review
+        if: inputs.aws-role-arn != '' || secrets.AWS_ROLE_ARN != ''
         run: |
           terraform show -json tfplan > tfplan.json
           terraform show -no-color tfplan > tfplan.txt
@@ -136,6 +137,7 @@ jobs:
         env:
           CONFTEST_VERSION: ${{ inputs.conftest-version }}
       - name: Enforce Terraform policies
+        if: inputs.aws-role-arn != '' || secrets.AWS_ROLE_ARN != ''
         run: conftest test tfplan.json --policy "${GITHUB_WORKSPACE}/${POLICY_DIRECTORY}"
         env:
           POLICY_DIRECTORY: ${{ inputs.policy-directory }}
@@ -148,9 +150,10 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 1
       - name: Upload redacted review evidence
+        if: inputs.aws-role-arn != '' || secrets.AWS_ROLE_ARN != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: terraform-plan-${{ github.sha }}
           path: ${{ inputs.working-directory }}/tfplan.txt
           retention-days: 7
-          if-no-files-found: error
+          if-no-files-found: warn

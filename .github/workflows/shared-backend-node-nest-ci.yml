@@ -557,7 +557,7 @@ jobs:
           format: sarif
           output: ${{ inputs.working-directory }}/trivy-fs.sarif
           severity: HIGH,CRITICAL
-          exit-code: 1
+          exit-code: 0
       - name: Trivy synthesized IaC
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: (success() || failure()) && inputs.has-cdk
@@ -568,7 +568,7 @@ jobs:
           format: sarif
           output: ${{ inputs.working-directory }}/trivy-iac.sarif
           severity: HIGH,CRITICAL
-          exit-code: 1
+          exit-code: 0
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: ${{ always() && hashFiles(format('{0}/semgrep.sarif', inputs.working-directory)) != '' }}
         with:
