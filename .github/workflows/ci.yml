@@ -31,6 +31,10 @@ jobs:
           persist-credentials: false
       - name: Actionlint
         uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-check
+          fail_level: error
       - name: Install pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
@@ -97,19 +101,21 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      pull-requests: read
       security-events: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: 'false'
-          GITLEAKS_ENABLE_SUMMARY: 'true'
+      - name: Run Gitleaks
+        shell: bash
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.24.0"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}" -o "${archive}"
+          tar -xzf "${archive}" gitleaks
+          ./gitleaks detect --verbose --no-banner --redact
 
   deep-security:
     name: Deep Security

@@ -35,10 +35,19 @@ jobs:
           persist-credentials: false
       - name: Validate workflows
         uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+        with:
+          github_token: ${{ github.token }}
+          reporter: github-check
+          fail_level: error
       - name: Scan secrets
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.24.0"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}" -o "${archive}"
+          tar -xzf "${archive}" gitleaks
+          ./gitleaks detect --verbose --no-banner --redact
       - name: Initialize CodeQL
         uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
