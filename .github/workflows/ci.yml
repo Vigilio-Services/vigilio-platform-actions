@@ -53,9 +53,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin "${{ github.base_ref }}"
-          CHANGED_PACKAGES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^packages/' || true)
-          CHANGED_CHANGESETS=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^\.changeset/[^/]+\.md$' || true)
+          CHANGED_PACKAGES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" 2>/dev/null | grep -E '^packages/' || git diff --name-only HEAD~1...HEAD | grep -E '^packages/' || true)
+          CHANGED_CHANGESETS=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" 2>/dev/null | grep -E '^\.changeset/[^/]+\.md$' || git diff --name-only HEAD~1...HEAD | grep -E '^\.changeset/[^/]+\.md$' || true)
           if [ -n "${CHANGED_PACKAGES}" ] && [ -z "${CHANGED_CHANGESETS}" ]; then
             echo "Error: Code changes detected in packages/ without a declared .changeset/*.md file."
             echo "Please run 'pnpm changeset' locally and commit the resulting file."
@@ -98,6 +97,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+      pull-requests: read
       security-events: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -108,6 +108,8 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+          GITLEAKS_ENABLE_SUMMARY: 'true'
 
   deep-security:
     name: Deep Security
