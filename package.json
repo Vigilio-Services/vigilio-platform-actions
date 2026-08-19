@@ -14,7 +14,7 @@
     "check": "biome check --write .",
     "format": "biome format --write .",
     "lint": "biome ci .",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --workspace-concurrency 1 test",
     "test:packages": "node scripts/test-packages.ts",
     "test:coverage": "pnpm -r test:coverage",
     "typecheck": "tsc --noEmit && tsc --noEmit -p actions/jira-devops/tsconfig.json && pnpm -r --workspace-concurrency 1 typecheck",
