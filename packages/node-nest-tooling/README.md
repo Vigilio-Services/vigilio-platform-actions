@@ -20,6 +20,12 @@ Use `VIGILIO_PROJECT_ROOT` only when deliberately operating on another project. 
 infer safe local names from `package.json`; explicit names remain available through the existing
 `DATABASE_*`, `E2E_*` and `RESTORE_*` environment variables.
 
+Local connection defaults are namespaced and portable: `LOCAL_POSTGRES_HOST`,
+`LOCAL_POSTGRES_PORT`, `LOCAL_POSTGRES_USER`, `LOCAL_POSTGRES_PASSWORD` for development and the
+equivalent `E2E_POSTGRES_*` variables for disposable integration databases. Full
+`DATABASE_URL`, `LOCAL_DATABASE_ADMIN_URL`, `E2E_DATABASE_URL`, or `E2E_DATABASE_ADMIN_URL`
+values still take precedence.
+
 `package-lambda` emits an allowlisted runtime artifact containing `node_modules`, `package.json`,
 `dist`, and `run.sh`. Set `VIGILIO_LAMBDA_INCLUDE` to a comma-separated list of additional
 top-level runtime assets when needed, for example `drizzle,templates`. Prefer

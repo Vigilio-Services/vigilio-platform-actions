@@ -1,0 +1,4 @@
+interface:
+  display_name: "Commit AI Change"
+  short_description: "Verify affected code and create a safe commit"
+  default_prompt: "Use $commit-ai-change to resolve the current prompt slug, verify its affected scope, and create an AI-ticketed commit without pushing."

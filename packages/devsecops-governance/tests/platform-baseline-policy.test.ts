@@ -10,32 +10,32 @@ function createRepository(): string {
   writeFileSync(
     path.join(root, 'package.json'),
     JSON.stringify({
-      packageManager: 'pnpm@11.7.0',
-      engines: { node: '>=24 <25', pnpm: '11.7.0' },
+      packageManager: 'pnpm@11.20.0',
+      engines: { node: '>=24 <25', pnpm: '11.20.0' },
       devDependencies: {
-        '@biomejs/biome': '2.5.0',
-        '@types/node': '24.10.4',
-        '@vitest/coverage-v8': '4.1.9',
-        typescript: '6.0.3',
-        vitest: '4.1.9',
+        '@biomejs/biome': '2.5.7',
+        '@types/node': '26.2.0',
+        '@vitest/coverage-v8': '4.1.10',
+        typescript: '7.0.2',
+        vitest: '4.1.10',
       },
     }),
   );
   writeFileSync(path.join(root, 'pnpm-workspace.yaml'), 'nodeVersion: 24.16.0\n');
   writeFileSync(
     path.join(root, 'biome.json'),
-    JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.5.0/schema.json' }),
+    JSON.stringify({ $schema: 'https://biomejs.dev/schemas/2.5.7/schema.json' }),
   );
   writeFileSync(
     path.join(root, '.github', 'workflows', 'ci.yml'),
     `env:
   NODE_VERSION: '24.16.0'
-  PNPM_VERSION: '11.7.0'
+  PNPM_VERSION: '11.20.0'
   SEMGREP_VERSION: '1.165.0'
 steps:
   - uses: pnpm/action-setup@immutable-sha
     with:
-      version: '11.7.0'
+      version: '11.20.0'
   - uses: actions/setup-node@immutable-sha
     with:
       node-version: '24.16.0'
@@ -48,7 +48,7 @@ describe('platform baseline policy', () => {
   it('loads the packaged baseline', () => {
     const baseline = loadPlatformBaseline();
     expect(baseline.profile).toBe('node-backend-2026');
-    expect(baseline.packageManager.version).toBe('11.7.0');
+    expect(baseline.packageManager.version).toBe('11.20.0');
     expect(baseline.deploymentStages).toEqual(['development', 'staging', 'production']);
   });
 
@@ -94,10 +94,10 @@ steps:
 
     const errors = validatePlatformBaseline({ root });
     expect(errors).toContain(
-      'package.json packageManager must be pnpm@11.7.0; received pnpm@11.6.0',
+      'package.json packageManager must be pnpm@11.20.0; received pnpm@11.6.0',
     );
-    expect(errors).toContain('biome.json $schema must target 2.5.0');
-    expect(errors).toContain('ci.yml PNPM_VERSION must be 11.7.0; received 11.6.0');
-    expect(errors).toContain('ci.yml pnpm/action-setup@version must be 11.7.0; received 11.6.0');
+    expect(errors).toContain('biome.json $schema must target 2.5.7');
+    expect(errors).toContain('ci.yml PNPM_VERSION must be 11.20.0; received 11.6.0');
+    expect(errors).toContain('ci.yml pnpm/action-setup@version must be 11.20.0; received 11.6.0');
   });
 });

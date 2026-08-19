@@ -7,6 +7,21 @@ on:
         type: string
         required: false
         default: .
+      source-repository:
+        description: Optional owner/repository whose exact revision is overlaid into the build context.
+        type: string
+        required: false
+        default: ''
+      source-ref:
+        description: Full 40 or 64 character commit SHA from source-repository.
+        type: string
+        required: false
+        default: ''
+      source-checkout-path:
+        description: Workspace-relative path where the exact source revision is checked out.
+        type: string
+        required: false
+        default: ''
       dockerfile:
         type: string
         required: true
@@ -62,6 +77,36 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Validate exact source overlay
+        if: inputs.source-repository != '' || inputs.source-ref != '' || inputs.source-checkout-path != ''
+        shell: bash
+        env:
+          SOURCE_CHECKOUT_PATH: ${{ inputs.source-checkout-path }}
+          SOURCE_REF: ${{ inputs.source-ref }}
+          SOURCE_REPOSITORY: ${{ inputs.source-repository }}
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_REPOSITORY}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || {
+            echo 'source-repository must use the owner/repository form'
+            exit 1
+          }
+          [[ "${SOURCE_REF}" =~ ^([a-f0-9]{40}|[a-f0-9]{64})$ ]] || {
+            echo 'source-ref must be a full commit SHA'
+            exit 1
+          }
+          [[ "${SOURCE_CHECKOUT_PATH}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$ ]] || {
+            echo 'source-checkout-path must stay inside the workspace'
+            exit 1
+          }
+      - name: Checkout exact application source
+        if: inputs.source-repository != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ inputs.source-repository }}
+          ref: ${{ inputs.source-ref }}
+          path: ${{ inputs.source-checkout-path }}
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - name: Require deployment identity for pushes
         if: inputs.push
         shell: bash
@@ -92,8 +137,8 @@ jobs:
           tags: |
             type=sha,prefix=sha-
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ inputs.source-ref || github.sha }}
+            org.opencontainers.image.source=${{ inputs.source-repository && format('{0}/{1}', github.server_url, inputs.source-repository) || format('{0}/{1}', github.server_url, github.repository) }}
       - uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         id: build
         with:

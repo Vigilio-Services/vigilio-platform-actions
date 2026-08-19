@@ -37,6 +37,23 @@ export function projectDatabaseName(suffix = ''): string {
   return `${projectSlug()}${suffix}`.slice(0, 63);
 }
 
+export function localPostgresUrl(database: string, environmentPrefix: string): string {
+  const host = process.env[`${environmentPrefix}_HOST`] ?? '127.0.0.1';
+  const port = Number(process.env[`${environmentPrefix}_PORT`] ?? 5432);
+  const username = process.env[`${environmentPrefix}_USER`] ?? 'postgres';
+  const password = process.env[`${environmentPrefix}_PASSWORD`] ?? 'postgres';
+
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`Invalid ${environmentPrefix}_HOST or ${environmentPrefix}_PORT`);
+  }
+
+  const url = new URL(`postgres://${host}:${port}`);
+  url.username = username;
+  url.password = password;
+  url.pathname = database;
+  return url.toString();
+}
+
 export function assertSafeDatabaseName(database: string, allowedSuffixes: readonly string[]): void {
   const validName = /^[a-z][a-z0-9_]{2,62}$/.test(database);
   const validSuffix = allowedSuffixes.some((suffix) => database.endsWith(suffix));

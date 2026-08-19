@@ -17,6 +17,7 @@ actions/                           composite actions
 packages/devsecops-governance/     governance TypeScript compilado
 packages/devsecops-evidence/       DORA, SLSA y evidencia TypeScript compilado
 packages/node-nest-tooling/        tooling Node/Nest TypeScript compilado
+packages/web-mfe-tooling/          tooling Web MFE TypeScript compilado
 packages/vigilio-skills/           sincronizador de skills TypeScript compilado
 docs/                              documentacion de plataforma
 ```

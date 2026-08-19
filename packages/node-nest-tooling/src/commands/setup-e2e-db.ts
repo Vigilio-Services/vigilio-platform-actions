@@ -6,17 +6,15 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { Client as PgClient } from 'pg';
 import pg from 'pg';
 import { resolveContainerCli } from './container-runtime.js';
-import { assertSafeDatabaseName, projectDatabaseName, projectSlug } from './project-context.js';
+import {
+  assertSafeDatabaseName,
+  localPostgresUrl,
+  projectDatabaseName,
+  projectSlug,
+} from './project-context.js';
 
-function localPostgresUrl(database: string): string {
-  const url = new URL('postgres://127.0.0.1:5432');
-  url.username = 'postgres';
-  url.password = 'postgres';
-  url.pathname = database;
-  return url.toString();
-}
-
-const adminUrl = process.env['E2E_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres');
+const adminUrl =
+  process.env['E2E_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres', 'E2E_POSTGRES');
 const databaseName = process.env['E2E_DATABASE_NAME'] ?? projectDatabaseName('_e2e');
 const containerName =
   process.env['E2E_POSTGRES_CONTAINER_NAME'] ??
@@ -179,7 +177,8 @@ async function recreateDatabase(adminClient: PgClient): Promise<void> {
 }
 
 async function applyMigrations(): Promise<void> {
-  const databaseUrl = process.env['E2E_DATABASE_URL'] ?? localPostgresUrl(databaseName);
+  const databaseUrl =
+    process.env['E2E_DATABASE_URL'] ?? localPostgresUrl(databaseName, 'E2E_POSTGRES');
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
 
   try {

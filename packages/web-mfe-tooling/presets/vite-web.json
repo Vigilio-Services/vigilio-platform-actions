@@ -1,0 +1,69 @@
+{
+  "bundle": {
+    "dist": "dist",
+    "maxCssBytes": 81920,
+    "maxJsBytes": 256000
+  },
+  "contracts": {
+    "forbiddenPatterns": [
+      {
+        "label": "backend framework runtime",
+        "pattern": "(?:nestjs-zod|@nestjs/|@prisma/client|typeorm)"
+      },
+      {
+        "label": "Node.js server runtime",
+        "pattern": "(?:node:)?(?:child_process|fs|net|tls)(?:/|['\"]|$)"
+      },
+      {
+        "flags": "m",
+        "label": "backend documentation adapter",
+        "pattern": "^export .*\\.doc"
+      }
+    ],
+    "scanDirectory": "dist"
+  },
+  "publicEnv": {
+    "enforceDeclaredVariables": true,
+    "file": ".env.example",
+    "forbiddenNameFragments": ["SECRET", "TOKEN", "PASSWORD", "PRIVATE", "SESSION", "COOKIE"],
+    "prefix": "VITE_"
+  },
+  "runtimeConfig": {
+    "freeze": true,
+    "inheritPublicEnv": true,
+    "output": "dist/runtime-config.js",
+    "requirePublicEnvParity": true
+  },
+  "sbom": {
+    "includeDevDependencies": true,
+    "output": "reports/sbom.cdx.json",
+    "packageJson": "package.json"
+  },
+  "securityHeaders": {
+    "headers": [
+      {
+        "label": "content-security-policy",
+        "pattern": "default-src\\s+'self'"
+      },
+      {
+        "label": "permissions-policy",
+        "pattern": ".+"
+      },
+      {
+        "label": "referrer-policy",
+        "pattern": "^(no-referrer|strict-origin|strict-origin-when-cross-origin)$"
+      },
+      {
+        "label": "x-content-type-options",
+        "pattern": "^nosniff$"
+      }
+    ],
+    "httpsHeaders": [
+      {
+        "label": "strict-transport-security",
+        "pattern": "max-age=(?:[3-9]\\d{7}|[1-9]\\d{8,})"
+      }
+    ],
+    "timeoutMs": 15000
+  }
+}

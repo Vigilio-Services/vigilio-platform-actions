@@ -23,6 +23,8 @@ La matriz siguiente selecciona mínimos por riesgo; no obliga a duplicar el mism
 | Componente interactivo | role/name + teclado + disabled/focus |
 | Ruta critica | E2E happy path + auth/guard relevante |
 | CSS/layout sensible | visual regression revisada |
+| `lightweight-charts` | normalizacion + create/remove/update unit; resize/canvas y alternativa accesible en Playwright |
+| OGL/WebGL | reduced motion + fallback + cancelacion async + cleanup RAF/observer; canvas/resize/errores WebGL en Playwright |
 | Runtime config | schema valido + variable ausente/invalida |
 
 ## Definition of Done

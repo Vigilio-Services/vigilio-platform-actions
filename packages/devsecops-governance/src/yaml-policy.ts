@@ -92,7 +92,10 @@ export function validateCheckoutCredentials(content: string, source: string): st
       continue;
     }
 
-    const stepIndent = line.search(/\S/);
+    const usesIndent = line.search(/\S/);
+    const stepIndent = line.trimStart().startsWith('- ')
+      ? usesIndent
+      : findParentStepIndent(lines, index, usesIndent);
     const stepLines = [line];
     for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
       const candidate = lines[cursor] ?? '';
@@ -113,4 +116,23 @@ export function validateCheckoutCredentials(content: string, source: string): st
   }
 
   return errors;
+}
+
+function findParentStepIndent(
+  lines: readonly string[],
+  usesIndex: number,
+  usesIndent: number,
+): number {
+  for (let cursor = usesIndex - 1; cursor >= 0; cursor -= 1) {
+    const candidate = lines[cursor] ?? '';
+    if (candidate.trim() === '') continue;
+
+    const candidateIndent = candidate.search(/\S/);
+    if (candidateIndent < usesIndent && candidate.trimStart().startsWith('- ')) {
+      return candidateIndent;
+    }
+    if (candidateIndent < usesIndent) break;
+  }
+
+  return usesIndent;
 }

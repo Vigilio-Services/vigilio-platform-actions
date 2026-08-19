@@ -3,20 +3,14 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
-import { projectDatabaseName } from './project-context.js';
+import { localPostgresUrl, projectDatabaseName } from './project-context.js';
 
-function localPostgresUrl(database: string): string {
-  const url = new URL('postgres://127.0.0.1:5432');
-  url.username = 'postgres';
-  url.password = 'postgres';
-  url.pathname = database;
-  return url.toString();
-}
-
-const databaseUrl = process.env['DATABASE_URL'] ?? localPostgresUrl(projectDatabaseName());
+const databaseUrl =
+  process.env['DATABASE_URL'] ?? localPostgresUrl(projectDatabaseName(), 'LOCAL_POSTGRES');
 const database = new URL(databaseUrl);
 const databaseName = database.pathname.replace('/', '');
-const adminUrl = process.env['LOCAL_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres');
+const adminUrl =
+  process.env['LOCAL_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres', 'LOCAL_POSTGRES');
 const shouldReset =
   process.env['LOCAL_DATABASE_RESET'] === 'true' || process.argv.includes('--reset');
 

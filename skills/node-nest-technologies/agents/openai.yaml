@@ -1,0 +1,4 @@
+interface:
+  display_name: "Node Nest Technologies"
+  short_description: "Validate NestJS backend technology APIs"
+  default_prompt: "Use $node-nest-technologies to verify NestJS, Drizzle, PostgreSQL, AWS, and EKS compatibility before coding."

@@ -15,6 +15,51 @@ on:
         type: string
         required: false
         default: .
+      frontend-checkout-path:
+        description: Optional checkout path for monorepo or sibling-repository layouts.
+        type: string
+        required: false
+        default: ''
+      backend-repository:
+        description: Optional repository containing the backend OpenAPI source.
+        type: string
+        required: false
+        default: ''
+      backend-checkout-path:
+        description: Checkout path for the optional backend repository.
+        type: string
+        required: false
+        default: .contract-source/backend
+      backend-openapi-path:
+        description: OpenAPI path resolved from the frontend working directory.
+        type: string
+        required: false
+        default: ''
+      run-config-validation:
+        description: Validate web-mfe-tooling.config.json consistency.
+        type: boolean
+        required: false
+        default: false
+      run-skills-check:
+        description: Verify synchronized managed skills.
+        type: boolean
+        required: false
+        default: false
+      run-runtime-tests:
+        description: Run the consumer runtime test script.
+        type: boolean
+        required: false
+        default: false
+      run-cdk-synth:
+        description: Synthesize consumer CDK infrastructure.
+        type: boolean
+        required: false
+        default: false
+      run-visual-tests:
+        description: Run Playwright visual tests after browser smoke tests.
+        type: boolean
+        required: false
+        default: false
       run-e2e:
         type: boolean
         required: false
@@ -40,23 +85,57 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Checkout frontend at repository root
+        if: inputs.frontend-checkout-path == ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Checkout frontend at configured path
+        if: inputs.frontend-checkout-path != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: ${{ inputs.frontend-checkout-path }}
+          persist-credentials: false
+      - name: Checkout backend contract source
+        if: inputs.backend-repository != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ inputs.backend-repository }}
+          path: ${{ inputs.backend-checkout-path }}
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+          working-directory: ${{ inputs.working-directory }}
       - run: pnpm governance:package-manager
       - run: pnpm governance:repository
       - run: pnpm governance:github-actions
       - run: pnpm governance:env
-      - run: pnpm governance:contracts
+      - name: Validate contract policy from consumer configuration
+        if: inputs.backend-openapi-path == ''
+        run: pnpm governance:contracts
+      - name: Validate contract policy from checked-out backend
+        if: inputs.backend-openapi-path != ''
+        run: pnpm governance:contracts
+        env:
+          BACKEND_OPENAPI_PATH: ${{ inputs.backend-openapi-path }}
+      - name: Validate tooling configuration
+        if: inputs.run-config-validation
+        run: pnpm exec vigilio-web validate-config
+      - name: Validate synchronized skills
+        if: inputs.run-skills-check
+        run: pnpm skills:check
       - run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test:coverage
+      - name: Test runtime adapter
+        if: inputs.run-runtime-tests
+        run: pnpm test:runtime
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -78,16 +157,37 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Checkout frontend at repository root
+        if: inputs.frontend-checkout-path == ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Checkout frontend at configured path
+        if: inputs.frontend-checkout-path != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: ${{ inputs.frontend-checkout-path }}
+          persist-credentials: false
+      - name: Checkout backend contract source
+        if: inputs.backend-repository != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ inputs.backend-repository }}
+          path: ${{ inputs.backend-checkout-path }}
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+          working-directory: ${{ inputs.working-directory }}
       - run: pnpm build
       - run: pnpm bundle:budget
+      - name: Synthesize CDK infrastructure
+        if: inputs.run-cdk-synth
+        run: pnpm cdk:synth
       - run: pnpm sbom:generate
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -115,14 +215,32 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - name: Checkout frontend at repository root
+        if: inputs.frontend-checkout-path == ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Checkout frontend at configured path
+        if: inputs.frontend-checkout-path != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          path: ${{ inputs.frontend-checkout-path }}
+          persist-credentials: false
+      - name: Checkout backend contract source
+        if: inputs.backend-repository != ''
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: ${{ inputs.backend-repository }}
+          path: ${{ inputs.backend-checkout-path }}
+          persist-credentials: false
+          token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+          github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
+          working-directory: ${{ inputs.working-directory }}
       - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -144,6 +262,11 @@ jobs:
           cat /tmp/web-preview.log
           exit 1
       - run: pnpm test:e2e
+        env:
+          E2E_BASE_URL: http://127.0.0.1:${{ inputs.preview-port }}
+      - name: Run visual tests
+        if: inputs.run-visual-tests
+        run: pnpm test:visual
         env:
           E2E_BASE_URL: http://127.0.0.1:${{ inputs.preview-port }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
