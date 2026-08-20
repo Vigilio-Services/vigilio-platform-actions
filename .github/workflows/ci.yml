@@ -59,10 +59,12 @@ jobs:
       - name: Require changeset on package code changes
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          CHANGED_PACKAGES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" 2>/dev/null | grep -E '^packages/' || git diff --name-only HEAD~1...HEAD | grep -E '^packages/' || true)
-          CHANGED_CHANGESETS=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" 2>/dev/null | grep -E '^\.changeset/[^/]+\.md$' || git diff --name-only HEAD~1...HEAD | grep -E '^\.changeset/[^/]+\.md$' || true)
+          CHANGED_PACKAGES=$(git diff --name-only "origin/${BASE_REF}...HEAD" 2>/dev/null | grep -E '^packages/' || git diff --name-only HEAD~1...HEAD | grep -E '^packages/' || true)
+          CHANGED_CHANGESETS=$(git diff --name-only "origin/${BASE_REF}...HEAD" 2>/dev/null | grep -E '^\.changeset/[^/]+\.md$' || git diff --name-only HEAD~1...HEAD | grep -E '^\.changeset/[^/]+\.md$' || true)
           if [ -n "${CHANGED_PACKAGES}" ] && [ -z "${CHANGED_CHANGESETS}" ]; then
             echo "Error: Code changes detected in packages/ without a declared .changeset/*.md file."
             echo "Please run 'pnpm changeset' locally and commit the resulting file."
@@ -151,6 +153,7 @@ jobs:
           output: trivy-fs.sarif
           severity: HIGH,CRITICAL
           exit-code: 1
+          limit-severities-for-sarif: true
       - name: Trivy config scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: success() || failure()
@@ -162,6 +165,7 @@ jobs:
           output: trivy-config.sarif
           severity: HIGH,CRITICAL
           exit-code: 1
+          limit-severities-for-sarif: true
       - name: Upload Trivy filesystem SARIF
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: ${{ always() && hashFiles('trivy-fs.sarif') != '' }}

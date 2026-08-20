@@ -393,12 +393,13 @@ jobs:
         env:
           ROLLBACK_TARGET_SHA: ${{ github.event.before || '' }}
       - name: Write deploy operational evidence
-        run: ${{ inputs.evidence-command }}
         env:
+          EVIDENCE_COMMAND: ${{ inputs.evidence-command }}
           EVIDENCE_PHASE: deploy
           DEPLOY_MODE: ${{ inputs.deploy-mode }}
           RUN_SMOKE: ${{ inputs.run-smoke }}
           AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: eval "$EVIDENCE_COMMAND"
       - name: Archive evidence to S3 Object Lock
         if: inputs.deploy-mode == 'apply' && inputs.archive-evidence && vars.AUDIT_EVIDENCE_BUCKET != ''
         shell: bash
