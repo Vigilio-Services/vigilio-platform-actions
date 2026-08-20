@@ -117,6 +117,34 @@ test('proposes configuration from the consumer layout without writing files', ()
   }
 });
 
+test('does not overwrite an existing configuration unless force is explicit', () => {
+  const fixture = mkdtempSync(path.join(os.tmpdir(), 'vigilio-node-config-existing-'));
+  const configFile = path.join(fixture, 'node-nest-tooling.config.json');
+  writeFileSync(path.join(fixture, 'package.json'), '{"name":"@example/orders-api"}\n');
+  writeFileSync(configFile, '{"owner":"consumer"}\n');
+
+  try {
+    assert.throws(
+      () =>
+        execFileSync(process.execPath, [path.resolve('dist/bin/cli.js'), 'init'], {
+          cwd: fixture,
+        }),
+      /Command failed/,
+    );
+    assert.equal(readFileSync(configFile, 'utf8'), '{"owner":"consumer"}\n');
+
+    execFileSync(process.execPath, [path.resolve('dist/bin/cli.js'), 'init', '--force'], {
+      cwd: fixture,
+    });
+    const generated = JSON.parse(readFileSync(configFile, 'utf8')) as {
+      readonly contracts?: unknown;
+    };
+    assert.ok(generated.contracts);
+  } finally {
+    rmSync(fixture, { force: true, recursive: true });
+  }
+});
+
 function exists(target: string): boolean {
   try {
     statSync(target);

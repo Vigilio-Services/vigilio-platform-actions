@@ -9,6 +9,7 @@ import {
   configuredProjectPath,
   loadNodeNestToolingConfig,
 } from '../config.js';
+import { pnpmCommand } from '../internal/pnpm.js';
 import { hashDirectory, pruneLambdaDeployment } from './lambda-artifact.js';
 import { projectRoot, readProjectPackage } from './project-context.js';
 
@@ -117,13 +118,7 @@ async function deployProductionDependencies(deployTarget: string): Promise<void>
 }
 
 function runPnpm(args: string[]): Promise<void> {
-  const command =
-    process.platform === 'win32'
-      ? {
-          executable: 'cmd.exe',
-          args: ['/d', '/s', '/c', 'pnpm.cmd', ...args],
-        }
-      : { executable: 'pnpm', args };
+  const command = pnpmCommand(args);
 
   return new Promise<void>((resolve, reject) => {
     let output = '';

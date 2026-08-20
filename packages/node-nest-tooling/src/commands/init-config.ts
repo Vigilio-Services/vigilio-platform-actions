@@ -13,10 +13,6 @@ const output = resolveProjectPath(
 const force = process.argv.includes('--force');
 const dryRun = process.argv.includes('--dry-run');
 
-if (existsSync(output) && !force && !dryRun) {
-  throw new Error(`Config already exists: ${output}. Use --force to replace it.`);
-}
-
 const sourceDirectory = discover(['src'], 'src');
 const config = {
   contracts: {
@@ -57,7 +53,17 @@ const serialized = `${JSON.stringify(config, null, 2)}\n`;
 if (dryRun) {
   process.stdout.write(serialized);
 } else {
-  await writeFile(output, serialized, 'utf8');
+  try {
+    await writeFile(output, serialized, {
+      encoding: 'utf8',
+      flag: force ? 'w' : 'wx',
+    });
+  } catch (error) {
+    if (isErrnoException(error) && error.code === 'EEXIST') {
+      throw new Error(`Config already exists: ${output}. Use --force to replace it.`);
+    }
+    throw error;
+  }
   console.log(`node-nest-tooling config initialized: ${output}`);
 }
 
@@ -76,5 +82,14 @@ function relative(value: string): string {
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
-  return index < 0 ? undefined : process.argv[index + 1];
+  if (index < 0) return undefined;
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith('--')) {
+    throw new Error(`${name} requires a value`);
+  }
+  return value;
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
 }

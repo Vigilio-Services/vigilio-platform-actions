@@ -186,15 +186,15 @@ interface RunPnpmOptions {
 }
 
 function runPnpm(args: readonly string[], cwd: string, options: RunPnpmOptions = {}): string {
-  const pnpmScript = process.env['VIGILIO_PNPM_SCRIPT'];
-  const command = pnpmScript
-    ? { executable: process.execPath, args: [pnpmScript, ...args] }
-    : process.platform === 'win32'
-      ? {
-          executable: process.env['ComSpec'] ?? 'cmd.exe',
-          args: ['/d', '/s', '/c', 'pnpm.cmd', ...args],
-        }
-      : { executable: 'pnpm', args: [...args] };
+  const nodeDirectory = path.dirname(process.execPath);
+  const corepackPnpm =
+    process.platform === 'win32'
+      ? path.join(nodeDirectory, 'node_modules', 'corepack', 'dist', 'pnpm.js')
+      : path.resolve(nodeDirectory, '..', 'lib', 'node_modules', 'corepack', 'dist', 'pnpm.js');
+  const command = {
+    executable: process.execPath,
+    args: [corepackPnpm, ...args],
+  };
   const result = spawnSync(command.executable, command.args, {
     cwd,
     encoding: 'utf8',
