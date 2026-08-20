@@ -4,6 +4,11 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmod, cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  configuredOrDiscoveredProjectPath,
+  configuredProjectPath,
+  loadNodeNestToolingConfig,
+} from '../config.js';
 import { hashDirectory, pruneLambdaDeployment } from './lambda-artifact.js';
 import { projectRoot, readProjectPackage } from './project-context.js';
 
@@ -16,17 +21,36 @@ class PnpmCommandError extends Error {
   }
 }
 
-const artifactsRoot = path.join(projectRoot, '.artifacts');
-const target = path.join(artifactsRoot, 'lambda');
-const distSource = path.join(projectRoot, 'dist');
-const distTarget = path.join(target, 'dist');
+const config = loadNodeNestToolingConfig();
+const artifactsRoot = configuredProjectPath(
+  config.lambda?.artifactsDirectory,
+  'VIGILIO_ARTIFACTS_DIRECTORY',
+  '.artifacts',
+);
+const targetDirectory =
+  process.env['VIGILIO_LAMBDA_TARGET_DIRECTORY'] ?? config.lambda?.targetDirectory ?? 'lambda';
+const target = path.resolve(artifactsRoot, targetDirectory);
+const distSource = configuredOrDiscoveredProjectPath(
+  config.lambda?.distDirectory,
+  'VIGILIO_DIST_DIRECTORY',
+  ['dist', 'build'],
+  'dist',
+);
+const distRelative = path.relative(projectRoot, distSource);
+const distTarget = path.join(target, distRelative);
 
 if (!target.startsWith(`${artifactsRoot}${path.sep}`)) {
   throw new Error(`Unsafe Lambda artifact target: ${target}`);
 }
 
-const lambdaEntry = process.env['VIGILIO_LAMBDA_ENTRY'] ?? 'dist/src/main.js';
-const entryPath = path.join(projectRoot, lambdaEntry);
+const configuredEntry =
+  process.env['VIGILIO_LAMBDA_ENTRY'] ?? config.lambda?.entry ?? 'dist/src/main.js';
+const entryPath = configuredProjectPath(
+  configuredEntry,
+  'VIGILIO_LAMBDA_ENTRY',
+  'dist/src/main.js',
+);
+const lambdaEntry = path.relative(projectRoot, entryPath).replaceAll('\\', '/');
 await stat(entryPath);
 await rm(target, { force: true, recursive: true });
 await mkdir(artifactsRoot, { recursive: true });
@@ -37,9 +61,10 @@ const extraRuntimeEntries = (process.env['VIGILIO_LAMBDA_INCLUDE'] ?? '')
   .map((entry) => entry.trim())
   .filter(Boolean);
 await pruneLambdaDeployment(target, extraRuntimeEntries);
+await mkdir(path.dirname(distTarget), { recursive: true });
 await cp(distSource, distTarget, { recursive: true });
 
-const startupScript = `#!/bin/sh\nexec node ${lambdaEntry.replaceAll('\\', '/')}\n`;
+const startupScript = `#!/bin/sh\nexec node ${lambdaEntry}\n`;
 const startupPath = path.join(target, 'run.sh');
 await writeFile(startupPath, startupScript, { encoding: 'utf8' });
 await chmod(startupPath, 0o755);

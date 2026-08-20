@@ -19,6 +19,11 @@ on:
         type: number
         required: false
         default: 30
+      environment:
+        description: GitHub deployment environment used for DORA calculations.
+        type: string
+        required: false
+        default: production
     secrets:
       GITHUB_PACKAGES_TOKEN:
         required: false
@@ -50,8 +55,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
-      - run: pnpm devsecops:dora -- --window-days "$WINDOW_DAYS"
+      - run: pnpm devsecops:dora -- --environment "$DORA_ENVIRONMENT" --window-days "$WINDOW_DAYS"
         env:
+          DORA_ENVIRONMENT: ${{ inputs.environment }}
           GITHUB_TOKEN: ${{ github.token }}
           WINDOW_DAYS: ${{ inputs.window-days }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

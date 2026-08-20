@@ -1,21 +1,28 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { Client as PgClient } from 'pg';
 import pg from 'pg';
+import { configuredOrDiscoveredProjectPath, loadNodeNestToolingConfig } from '../config.js';
+import { applyPostgresMigrations, quotePostgresIdentifier } from '../internal/postgres.js';
 import { resolveContainerCli } from './container-runtime.js';
 import {
+  assertDatabaseUrlName,
   assertSafeDatabaseName,
+  assertSamePostgresServer,
+  isLocalPostgresUrl,
   localPostgresUrl,
+  postgresUrlWithDatabase,
   projectDatabaseName,
   projectSlug,
 } from './project-context.js';
 
-const adminUrl =
-  process.env['E2E_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres', 'E2E_POSTGRES');
+const config = loadNodeNestToolingConfig();
 const databaseName = process.env['E2E_DATABASE_NAME'] ?? projectDatabaseName('_e2e');
+const databaseUrl =
+  process.env['E2E_DATABASE_URL'] ?? localPostgresUrl(databaseName, 'E2E_POSTGRES');
+const adminUrl =
+  process.env['E2E_DATABASE_ADMIN_URL'] ?? postgresUrlWithDatabase(databaseUrl, 'postgres');
 const containerName =
   process.env['E2E_POSTGRES_CONTAINER_NAME'] ??
   `${projectSlug().replaceAll('_', '-')}-postgres-e2e`;
@@ -23,8 +30,16 @@ const postgresImage = process.env['E2E_POSTGRES_IMAGE'] ?? 'postgres:17-alpine';
 const postgresPort = process.env['E2E_POSTGRES_PORT'] ?? '5432';
 const postgresUser = process.env['E2E_POSTGRES_USER'] ?? 'postgres';
 const postgresPassword = process.env['E2E_POSTGRES_PASSWORD'] ?? 'postgres';
+const migrationsDirectory = configuredOrDiscoveredProjectPath(
+  config.database?.migrationsDirectory,
+  'DATABASE_MIGRATIONS_DIRECTORY',
+  ['drizzle', 'migrations', 'src/database/migrations'],
+  'drizzle',
+);
 
 assertSafeDatabaseName(databaseName, ['_e2e', '_integration']);
+assertDatabaseUrlName(databaseUrl, databaseName);
+assertSamePostgresServer(adminUrl, databaseUrl);
 
 function runContainerCli(cli: string, args: readonly string[]): string {
   const result = spawnSync(cli, args, { encoding: 'utf8', stdio: 'pipe' });
@@ -35,11 +50,6 @@ function runContainerCli(cli: string, args: readonly string[]): string {
   }
 
   return result.stdout.trim();
-}
-
-function isLocalAdminUrl(connectionString: string): boolean {
-  const url = new URL(connectionString);
-  return ['127.0.0.1', 'localhost', '::1'].includes(url.hostname);
 }
 
 async function canConnect(connectionString: string): Promise<boolean> {
@@ -103,7 +113,7 @@ async function ensureLocalPostgres(): Promise<void> {
   }
 
   const shouldAutostart =
-    process.env['E2E_AUTO_START_POSTGRES'] !== 'false' && isLocalAdminUrl(adminUrl);
+    process.env['E2E_AUTO_START_POSTGRES'] !== 'false' && isLocalPostgresUrl(adminUrl);
 
   if (!shouldAutostart) {
     throw new Error(
@@ -146,10 +156,6 @@ async function ensureLocalPostgres(): Promise<void> {
   await waitForPostgres(adminUrl);
 }
 
-function quoteIdentifier(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
 async function withDatabaseSetupLock(
   callback: (adminClient: PgClient) => Promise<void>,
 ): Promise<void> {
@@ -172,26 +178,14 @@ async function recreateDatabase(adminClient: PgClient): Promise<void> {
     'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
     [databaseName],
   );
-  await adminClient.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
-  await adminClient.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
-}
-
-async function applyMigrations(): Promise<void> {
-  const databaseUrl =
-    process.env['E2E_DATABASE_URL'] ?? localPostgresUrl(databaseName, 'E2E_POSTGRES');
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
-
-  try {
-    await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
-  } finally {
-    await pool.end();
-  }
+  await adminClient.query(`DROP DATABASE IF EXISTS ${quotePostgresIdentifier(databaseName)}`);
+  await adminClient.query(`CREATE DATABASE ${quotePostgresIdentifier(databaseName)}`);
 }
 
 await ensureLocalPostgres();
 await withDatabaseSetupLock(async (adminClient) => {
   await recreateDatabase(adminClient);
-  await applyMigrations();
+  await applyPostgresMigrations(databaseUrl, migrationsDirectory);
 });
 
 console.log(`E2E database ready: ${databaseName}`);

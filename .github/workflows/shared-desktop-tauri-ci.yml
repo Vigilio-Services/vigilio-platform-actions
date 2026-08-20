@@ -110,6 +110,8 @@ jobs:
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
       - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+        with:
+          working-directory: ${{ inputs.working-directory }}
       - run: pnpm test:e2e
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()

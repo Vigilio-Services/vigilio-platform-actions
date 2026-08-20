@@ -12,6 +12,10 @@ permissions:
   id-token: write
   attestations: write
 
+concurrency:
+  group: release-platform-packages
+  cancel-in-progress: false
+
 env:
   NODE_VERSION: '24.16.0'
   PNPM_VERSION: '11.7.0'

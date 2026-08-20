@@ -242,6 +242,8 @@ jobs:
           github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
           working-directory: ${{ inputs.working-directory }}
       - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+        with:
+          working-directory: ${{ inputs.working-directory }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: web-dist

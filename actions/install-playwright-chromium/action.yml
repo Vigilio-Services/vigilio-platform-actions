@@ -1,6 +1,12 @@
 name: Install Playwright Chromium
 description: Install only Chromium for fast Playwright browser checks.
 
+inputs:
+  working-directory:
+    description: Consumer directory containing package.json and pnpm-lock.yaml.
+    required: false
+    default: .
+
 runs:
   using: composite
   steps:
@@ -8,9 +14,10 @@ runs:
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.working-directory)) }}
         restore-keys: |
           playwright-chromium-${{ runner.os }}-
     - name: Install Chromium
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: pnpm exec playwright install --with-deps chromium

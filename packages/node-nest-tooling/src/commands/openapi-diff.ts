@@ -1,9 +1,21 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync } from 'node:fs';
+import { configuredOrDiscoveredProjectPath, loadNodeNestToolingConfig } from '../config.js';
 
-const currentFile = 'docs/openapi/openapi.json';
-const baseFile = process.env['OPENAPI_BASE_FILE'] ?? 'docs/openapi/openapi.base.json';
+const config = loadNodeNestToolingConfig();
+const currentFile = configuredOrDiscoveredProjectPath(
+  config.openapi?.currentFile,
+  'OPENAPI_CURRENT_FILE',
+  ['docs/openapi/openapi.json', 'docs/openapi.json', 'openapi.json'],
+  'docs/openapi/openapi.json',
+);
+const baseFile = configuredOrDiscoveredProjectPath(
+  config.openapi?.baseFile,
+  'OPENAPI_BASE_FILE',
+  ['docs/openapi/openapi.base.json', 'docs/openapi.base.json', 'openapi.base.json'],
+  'docs/openapi/openapi.base.json',
+);
 const httpMethods = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head']);
 type JsonObject = Record<string, unknown>;
 

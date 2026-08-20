@@ -1,3 +1,5 @@
+import { isRecord } from './internal/object.js';
+
 export interface GitHubGovernancePolicy {
   readonly codeowners: {
     readonly minimum_unique_owners: number;
@@ -267,8 +269,4 @@ function evaluateRuleset(
 
 function numberValue(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

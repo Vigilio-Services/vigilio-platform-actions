@@ -12,7 +12,7 @@ if (!command || command === '--help' || command === '-h') {
       'vigilio-evidence <command>',
       '',
       'Commands:',
-      '  collect-dora [--window-days 30] [--limit 50]',
+      '  collect-dora [--environment production] [--window-days 30] [--limit 50]',
       '  generate-slsa [--manifest reports/artifact-digests-{stage}.txt]',
       '  write-operational --policy-file .github/evidence-policy.json',
     ].join('\n'),
@@ -23,6 +23,7 @@ if (!command || command === '--help' || command === '-h') {
   if (!repository || !token) throw new Error('GITHUB_REPOSITORY and GITHUB_TOKEN are required');
   await collectDoraMetrics({
     apiUrl: process.env['GITHUB_API_URL'] ?? 'https://api.github.com',
+    environment: option(args, '--environment') ?? process.env['DORA_ENVIRONMENT'] ?? 'production',
     repository,
     token,
     windowDays: numberOption(args, '--window-days', process.env['DORA_WINDOW_DAYS'] ?? '30'),

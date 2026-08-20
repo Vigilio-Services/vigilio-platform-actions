@@ -9,13 +9,33 @@ const repositoryRoot = process.cwd();
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'vigilio-package-consumer-'));
 const tarballs = path.join(fixture, 'tarballs');
 const consumer = path.join(fixture, 'consumer');
-const packages = [
-  '@vigilioyonatan/devsecops-evidence',
-  '@vigilioyonatan/devsecops-governance',
-  '@vigilioyonatan/vigilio-skills',
-  '@vigilioyonatan/node-nest-tooling',
-  '@vigilioyonatan/web-mfe-tooling',
-];
+const packages = await discoverPublishablePackages();
+
+async function discoverPublishablePackages(): Promise<string[]> {
+  const packagesDirectory = path.join(repositoryRoot, 'packages');
+  const entries = await readdir(packagesDirectory, { withFileTypes: true });
+  const discovered: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(packagesDirectory, entry.name, 'package.json');
+    try {
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        readonly name?: unknown;
+        readonly private?: unknown;
+      };
+      if (manifest.private !== true && typeof manifest.name === 'string' && manifest.name) {
+        discovered.push(manifest.name);
+      }
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') continue;
+      throw error;
+    }
+  }
+
+  if (discovered.length === 0) throw new Error('No publishable workspace packages were discovered');
+  return discovered.sort();
+}
 
 try {
   await mkdir(tarballs, { recursive: true });

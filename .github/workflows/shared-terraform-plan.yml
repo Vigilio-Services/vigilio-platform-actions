@@ -125,6 +125,7 @@ jobs:
           terraform show -json tfplan > tfplan.json
           terraform show -no-color tfplan > tfplan.txt
       - name: Install Conftest with checksum verification
+        if: inputs.aws-role-arn != '' || env.PLAN_AWS_ROLE_ARN != ''
         shell: bash
         working-directory: ${{ runner.temp }}
         run: |

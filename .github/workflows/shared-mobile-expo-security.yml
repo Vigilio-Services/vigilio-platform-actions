@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
+      checks: write
       contents: read
       # Required to upload CodeQL, Semgrep, and Trivy SARIF security scan reports
       security-events: write
@@ -40,14 +41,9 @@ jobs:
           reporter: github-check
           fail_level: error
       - name: Scan secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          GITLEAKS_VERSION="8.24.0"
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}" -o "${archive}"
-          tar -xzf "${archive}" gitleaks
-          ./gitleaks detect --verbose --no-banner --redact
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Initialize CodeQL
         uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:

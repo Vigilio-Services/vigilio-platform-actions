@@ -146,7 +146,7 @@ jobs:
           file: ${{ inputs.dockerfile }}
           platforms: ${{ inputs.platforms }}
           push: ${{ inputs.push }}
-          load: ${{ !inputs.push }}
+          load: ${{ !inputs.push && !contains(inputs.platforms, ',') }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
@@ -156,11 +156,11 @@ jobs:
           secrets: |
             "npmrc=//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}"
       - name: Scan image for vulnerabilities before signing
-        if: inputs.push
+        if: inputs.push || !contains(inputs.platforms, ',')
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: ${{ inputs.trivy-version }}
-          image-ref: ${{ inputs.image-repository }}@${{ steps.build.outputs.digest }}
+          image-ref: ${{ inputs.push && format('{0}@{1}', inputs.image-repository, steps.build.outputs.digest) || steps.metadata.outputs.tags }}
           format: sarif
           output: trivy-image.sarif
           severity: HIGH,CRITICAL
@@ -174,7 +174,7 @@ jobs:
           IMAGE_REPOSITORY: ${{ inputs.image-repository }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && inputs.push && hashFiles('trivy-image.sarif') != '' }}
+        if: ${{ always() && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
         with:
           sarif_file: trivy-image.sarif
           category: trivy-container

@@ -65,6 +65,8 @@ jobs:
 ```
 
 Después de publicar y firmar la imagen, `shared-gitops-promote.yml` abre un PR que modifica únicamente `image.digest`. Nunca actualiza producción directamente.
+El consumidor debe declarar `gitops-repository` explícitamente; la plataforma no selecciona un
+repositorio de despliegue por defecto.
 
 Cuando la receta OCI vive en el repositorio de plataforma pero la aplicación se versiona en otro
 repositorio, `shared-container-build-push.yml` puede superponer una revisión exacta dentro del
