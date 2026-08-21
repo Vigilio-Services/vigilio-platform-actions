@@ -22,7 +22,7 @@
     "governance:actions": "pnpm --filter @vigilioyonatan/devsecops-governance validate:actions",
     "governance:ruleset": "pnpm --filter @vigilioyonatan/devsecops-governance validate:ruleset",
     "governance": "pnpm governance:workflows && pnpm governance:actions && pnpm governance:ruleset && pnpm typecheck && pnpm test && pnpm build && pnpm test:packages",
-    "release": "pnpm -r publish --access restricted --no-git-checks",
+    "release": "changeset publish",
     "prepare": "husky",
     "commitlint": "commitlint",
     "lint-staged": "lint-staged"
