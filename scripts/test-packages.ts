@@ -117,12 +117,14 @@ try {
   const installedScope = path.join(consumer, 'node_modules', '@vigilioyonatan');
   await assertPathExists(path.join(installedScope, 'devsecops-evidence', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'node-nest-tooling', 'dist', 'bin', 'cli.js'));
+  await assertPathExists(path.join(installedScope, 'prompt-builder', 'dist', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'sync.d.ts'));
   await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'presets', 'vite-web.json'));
   await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'presets', 'vite-aws.json'));
   await assertPathMissing(path.join(installedScope, 'node-nest-tooling', 'src'));
+  await assertPathMissing(path.join(installedScope, 'prompt-builder', 'src'));
   await assertPathMissing(path.join(installedScope, 'vigilio-skills', 'src'));
   await assertPathMissing(path.join(installedScope, 'web-mfe-tooling', 'src'));
   runPnpm(
@@ -147,6 +149,13 @@ try {
   await assertPathExists(path.join(consumer, 'reports', 'operational-evidence-local-local.json'));
   runPnpm(['exec', 'vigilio-node', '--help'], consumer);
   runPnpm(['exec', 'vigilio-node', 'package-lambda'], consumer);
+  runPnpm(['exec', 'vigilio-prompt', '--help'], consumer);
+  const promptBuilderVersion = runPnpm(['exec', 'vigilio-prompt', '--version'], consumer, {
+    capture: true,
+  }).trim();
+  if (!/^\d+\.\d+\.\d+(?:[-+].+)?$/.test(promptBuilderVersion)) {
+    throw new Error(`Invalid prompt-builder version output: ${promptBuilderVersion}`);
+  }
   runPnpm(['exec', 'vigilio-web', '--help'], consumer);
   runPnpm(['exec', 'vigilio-web', 'init', '--dry-run'], consumer);
   runPnpm(['exec', 'vigilio-web', 'validate-bundle-budget'], consumer);

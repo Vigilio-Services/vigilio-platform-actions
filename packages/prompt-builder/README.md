@@ -2,25 +2,52 @@
 
 Deterministically assembles the minimum useful engineering context for an AI coding agent. It complements OpenSpec; it does not replace OpenSpec and it does not execute generated prompts.
 
+## Installation
+
+The package is published privately in GitHub Packages and requires Node.js 24.
+
+```ini
+# .npmrc
+@vigilioyonatan:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
+always-auth=true
+```
+
+```bash
+pnpm add -D @vigilioyonatan/prompt-builder
+pnpm exec vigilio-prompt --help
+```
+
+Use a token with `read:packages`. In GitHub Actions, grant `packages: read` and authorize the consuming repository in the package settings.
+
+For local workspace development, build and execute it without publishing:
+
+```bash
+pnpm --filter @vigilioyonatan/prompt-builder build
+node packages/prompt-builder/dist/cli.js --help
+```
+
 ## Commands
 
 Run from the project root and pass `--project-root` explicitly when the current directory is not the project root.
 
 ```bash
 # One pack and one phase
-pnpm --dir tools/prompt-builder build --project-root ../.. --pack identity.users-store --change add-user-registration --phase apply
+pnpm exec vigilio-prompt build --project-root . --pack identity.users-store --change add-user-registration --phase apply
 
 # Validate one pack without writing output
-pnpm --dir tools/prompt-builder validate --project-root ../.. --pack identity.users-store --phase apply
+pnpm exec vigilio-prompt validate --project-root . --pack identity.users-store --phase apply
 
 # Validate the full dependency graph and show counts; writes nothing
-pnpm --dir tools/prompt-builder plan --project-root ../.. --phases propose,apply,review
+pnpm exec vigilio-prompt plan --project-root . --phases propose,apply,review
 
 # Generate the complete ordered project prompt set
-pnpm --dir tools/prompt-builder build:all --project-root ../.. --plan-id full-project --phases propose,apply,review
+pnpm exec vigilio-prompt build-all --project-root . --plan-id full-project --phases propose,apply,review
 ```
 
-The intended root-level aliases are `context:build`, `context:validate`, `context:plan` and `context:build-all`.
+Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
+
+The generated Markdown is agent-neutral. Vigilio currently provisions synchronized skills for Codex and OpenCode; another AI coding agent can consume the generated prompts without being executed by this package.
 
 ## Ordering contract
 

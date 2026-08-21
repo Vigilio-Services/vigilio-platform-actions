@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildAll } from './build-all.js';
@@ -18,8 +19,49 @@ const { positionals, values } = parseArgs({
     'plan-id': { type: 'string', default: 'full-project' },
     'include-context-packs': { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
+    help: { type: 'boolean', short: 'h', default: false },
+    version: { type: 'boolean', short: 'v', default: false },
   },
 });
+
+const HELP = `vigilio-prompt - deterministic prompt compilation for AI coding agents
+
+Usage:
+  vigilio-prompt <command> [options]
+
+Commands:
+  build       Generate one prompt (default; requires --pack)
+  validate    Validate one prompt pack without writing output
+  plan        Validate and display the complete execution plan without writing output
+  build-all   Generate the ordered project prompt set and execution plan
+
+Options:
+  --pack <id>                    Prompt pack identifier
+  --change <id>                  Active OpenSpec change identifier
+  --phase <phase>                propose, apply, or review (default: apply)
+  --phases <list>                Comma-separated phases for plan/build-all
+  --token-budget <number>        Maximum estimated tokens (default: 60000)
+  --project-root <path>          Consumer project root (default: current directory)
+  --output-dir <path>            Generated prompt directory
+  --plan-id <id>                 Execution plan identifier (default: full-project)
+  --include-context-packs        Include non-executable context packs
+  --dry-run                      Validate build-all without writing files
+  -h, --help                     Show this help
+  -v, --version                  Show the installed package version`;
+
+if (values.help) {
+  console.log(HELP);
+  process.exit(0);
+}
+
+if (values.version) {
+  const manifest = JSON.parse(
+    await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as { version?: unknown };
+  if (typeof manifest.version !== 'string') throw new Error('Package version is unavailable');
+  console.log(manifest.version);
+  process.exit(0);
+}
 
 const command = positionals[0] ?? 'build';
 const projectRoot = path.resolve(values['project-root'] ?? process.cwd());
