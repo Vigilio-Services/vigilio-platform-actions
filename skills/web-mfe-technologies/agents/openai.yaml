@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Technologies"
+  short_description: "Validate version-aware Preact technology APIs"
+  default_prompt: "Use $web-mfe-technologies to verify the target profile, Preact/Vite/TanStack APIs, contracts, optional lightweight-charts or OGL lifecycle, and profile-aware delivery before coding."

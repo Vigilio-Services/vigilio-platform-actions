@@ -4,6 +4,7 @@ import { calculateDoraMetrics, type DeploymentRecord, renderDoraMarkdown } from 
 
 export interface CollectDoraOptions {
   readonly apiUrl: string;
+  readonly environment: string;
   readonly limit: number;
   readonly reportsDirectory: string;
   readonly repository: string;
@@ -13,6 +14,7 @@ export interface CollectDoraOptions {
 }
 
 export async function collectDoraMetrics(options: CollectDoraOptions): Promise<void> {
+  if (!options.environment.trim()) throw new Error('--environment must not be empty');
   if (!Number.isInteger(options.windowDays) || options.windowDays < 1 || options.windowDays > 365) {
     throw new Error('--window-days must be an integer between 1 and 365');
   }
@@ -36,7 +38,7 @@ export async function collectDoraMetrics(options: CollectDoraOptions): Promise<v
 
 async function collectDeploymentRecords(options: CollectDoraOptions): Promise<DeploymentRecord[]> {
   const deployments = await githubRequest<readonly Deployment[]>(
-    `/repos/${options.repository}/deployments?environment=production&per_page=100`,
+    `/repos/${options.repository}/deployments?environment=${encodeURIComponent(options.environment)}&per_page=100`,
     options,
   );
   const threshold = Date.now() - options.windowDays * 86_400_000;

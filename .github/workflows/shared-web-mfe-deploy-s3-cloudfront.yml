@@ -42,7 +42,7 @@ jobs:
     timeout-minutes: 20
     environment: ${{ inputs.stage }}
     concurrency:
-      group: web-mfe-${{ inputs.stage }}
+      group: web-mfe-${{ inputs.working-directory }}-${{ inputs.stage }}
       cancel-in-progress: false
     defaults:
       run:

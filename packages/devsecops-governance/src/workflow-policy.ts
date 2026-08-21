@@ -78,7 +78,13 @@ export function validateWorkflows(
 }
 
 function usesOidcCapability(content: string, workflowsDir: string): boolean {
-  if (content.includes('actions/attest@') || content.includes('configure-aws-credentials@')) {
+  if (
+    content.includes('actions/attest@') ||
+    content.includes('actions/attest-build-provenance@') ||
+    content.includes('configure-aws-credentials@') ||
+    content.includes('sigstore/cosign-installer@') ||
+    content.includes('actions/deploy-pages@')
+  ) {
     return true;
   }
 

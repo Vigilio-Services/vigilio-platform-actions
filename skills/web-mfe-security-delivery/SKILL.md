@@ -1,6 +1,6 @@
 ---
 name: web-mfe-security-delivery
-description: Endurece seguridad, configuracion, supply chain, CI/CD y despliegue AWS de web-mfe sobre S3/CloudFront. Usar al cambiar autenticacion, tokens, runtime env, uploads, CSP/headers, dependencias, GitHub Actions, previews, SBOM, provenance, CDK, buckets, distribuciones, dominios o estrategia de release/rollback.
+description: Endurece seguridad browser, configuracion, supply chain, CI/CD y delivery por perfil de web-mfe/web-mfe-v2. Usar al cambiar autenticacion, tokens, runtime env, uploads, CSP/headers, dependencias, GitHub Actions, previews, SBOM, provenance, OCI, ECR, Kubernetes, Helm, GitOps, Terraform, CDK/CDN cuando exista, dominios o release/rollback.
 ---
 
 <skill-content>
@@ -11,14 +11,15 @@ Todo codigo enviado al navegador es publico. Ninguna variable, bundle, source ma
 
 ## Flujo obligatorio
 
-1. Clasificar datos y superficie: publica, autenticada, privilegiada o regulada.
-2. Modelar amenazas para auth, uploads, XSS, supply chain y cache cuando cambie el riesgo.
-3. Validar configuracion publica con Zod y allowlist; rechazar nombres sensibles.
-4. Mantener CSP y headers en infraestructura/CDN, con excepciones minimas y documentadas.
-5. Ejecutar CI con permisos minimos, acciones fijadas por SHA y OIDC para AWS; no usar access keys persistentes.
-6. Generar/validar SBOM, escaneo de dependencias, secrets y artefactos.
-7. Desplegar artefacto inmutable, invalidar solo lo necesario y conservar rollback probado.
-8. Usar OpenSpec para cambios cross-repo, arquitectura, auth, infraestructura o contratos breaking.
+1. Resolver el perfil antes de editar: `current-web` preserva su delivery ejecutable; `k8s-v2` usa `/docker`, `/deploy` e `/infra` con OCI/ECR/Helm/Argo/EKS/Terraform.
+2. Clasificar datos y superficie: publica, autenticada, privilegiada o regulada.
+3. Modelar amenazas para auth, uploads, XSS, supply chain y cache cuando cambie el riesgo.
+4. Validar configuracion publica con Zod y allowlist; rechazar nombres sensibles.
+5. Mantener CSP y headers en el edge, CDN, reverse proxy o ingress owner del perfil, con excepciones minimas y documentadas.
+6. Ejecutar CI con permisos minimos, acciones fijadas por SHA y OIDC para AWS; no usar access keys persistentes.
+7. Generar/validar SBOM, escaneo de dependencias, secretos, imagen/manifests/IaC segun perfil y artefactos.
+8. Promover el mismo artefacto inmutable por digest/revision y conservar rollback probado; el deploy no recompila.
+9. Usar OpenSpec para cambios cross-repo, arquitectura, auth, infraestructura o contratos breaking.
 
 ## Seguridad frontend
 
@@ -30,11 +31,11 @@ Todo codigo enviado al navegador es publico. Ninguna variable, bundle, source ma
 
 ## CI/CD
 
-- Gates minimos: lint, typecheck, tests, contratos, build, bundle budget, SAST, dependency/secret scan y IaC synth.
+- Gates minimos: lint, typecheck, tests, contratos, build, bundle budget, SAST, dependency/secret scan y validacion de IaC/manifests/imagen segun el perfil.
 - Preview environments no usan datos productivos ni secretos de produccion.
 - Produccion requiere artefacto promovido, approval protegido y smoke/rollback.
 - El deploy no recompila con inputs diferentes al artefacto validado.
 
-Leer [references/security-delivery-checklist.md](references/security-delivery-checklist.md) para controles concretos de GitHub y AWS.
+Leer [references/security-delivery-checklist.md](references/security-delivery-checklist.md) para controles concretos de GitHub, AWS y Kubernetes por perfil.
 
 </skill-content>

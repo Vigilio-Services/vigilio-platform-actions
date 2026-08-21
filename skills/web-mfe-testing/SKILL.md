@@ -1,6 +1,6 @@
 ---
 name: web-mfe-testing
-description: Disena, implementa y revisa pruebas frontend en web-mfe con Vitest, Testing Library Preact, MSW y Playwright. Usar al agregar features, corregir bugs, cambiar formularios, contratos, queries, mutations, auth, uploads, accesibilidad, visuales, rutas, observabilidad o quality gates.
+description: Disena, implementa y revisa pruebas frontend en web-mfe con Vitest, Testing Library Preact, MSW y Playwright. Usar al agregar features, corregir bugs, cambiar formularios, contratos, queries, mutations, auth, uploads, accesibilidad, canvas, lightweight-charts, OGL/WebGL, visuales, rutas, observabilidad o quality gates.
 ---
 
 <skill-content>
@@ -29,11 +29,13 @@ Probar comportamiento observable por riesgo. No duplicar el mismo caso en todas 
 
 ## Reglas
 
-- Validar request y response con los schemas reales de `@vigilioyonatan/bus-contracts`.
+- Validar request y response con el package del perfil: `@vigilioyonatan/bus-contracts` en `web-mfe` o `@vigilioyonatan/bus-v2-contracts` en `web-mfe-v2`.
 - Probar loading, error, empty y success cuando existan como estados distintos.
 - Probar teclado/focus en widgets interactivos no nativos.
 - Mantener E2E pequeno y centrado en journeys criticos.
 - No usar snapshots grandes de DOM ni aprobar visual snapshots sin inspeccion.
+- Para charts, mockear lifecycle/normalización en unit y probar canvas/resize en navegador real; no comparar píxeles canvas en happy-dom.
+- Para OGL, probar reduced motion, fallback, init async cancelado, RAF/observer cleanup y máximo un canvas; la UI funcional no puede depender de GPU.
 - No bajar coverage ni agregar retries para ocultar flakiness.
 
 Leer [references/test-matrix.md](references/test-matrix.md) para la matriz de riesgo y Definition of Done.

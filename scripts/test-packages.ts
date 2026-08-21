@@ -9,12 +9,33 @@ const repositoryRoot = process.cwd();
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'vigilio-package-consumer-'));
 const tarballs = path.join(fixture, 'tarballs');
 const consumer = path.join(fixture, 'consumer');
-const packages = [
-  '@vigilioyonatan/devsecops-evidence',
-  '@vigilioyonatan/devsecops-governance',
-  '@vigilioyonatan/vigilio-skills',
-  '@vigilioyonatan/node-nest-tooling',
-];
+const packages = await discoverPublishablePackages();
+
+async function discoverPublishablePackages(): Promise<string[]> {
+  const packagesDirectory = path.join(repositoryRoot, 'packages');
+  const entries = await readdir(packagesDirectory, { withFileTypes: true });
+  const discovered: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = path.join(packagesDirectory, entry.name, 'package.json');
+    try {
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+        readonly name?: unknown;
+        readonly private?: unknown;
+      };
+      if (manifest.private !== true && typeof manifest.name === 'string' && manifest.name) {
+        discovered.push(manifest.name);
+      }
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') continue;
+      throw error;
+    }
+  }
+
+  if (discovered.length === 0) throw new Error('No publishable workspace packages were discovered');
+  return discovered.sort();
+}
 
 try {
   await mkdir(tarballs, { recursive: true });
@@ -52,6 +73,29 @@ try {
   await writeFile(path.join(consumer, 'dist', 'src', 'main.js'), 'console.log("ready");\n');
   await writeFile(path.join(consumer, 'README.md'), 'development documentation\n');
   await writeFile(path.join(consumer, 'biome.json'), '{}\n');
+  await writeFile(
+    path.join(consumer, '.env.example'),
+    'PUBLIC_API_URL=https://api.consumer.test\nPUBLIC_STAGE=qa\n',
+  );
+  await writeFile(
+    path.join(consumer, 'web-mfe-tooling.config.json'),
+    `${JSON.stringify(
+      {
+        extends: '@vigilioyonatan/web-mfe-tooling/presets/vite-web.json',
+        bundle: { dist: 'dist', maxCssBytes: 1024, maxJsBytes: 1024 },
+        publicEnv: {
+          file: '.env.example',
+          prefix: 'PUBLIC_',
+          variables: {
+            PUBLIC_API_URL: { required: true, type: 'url' },
+            PUBLIC_STAGE: { required: true, type: 'enum', values: ['qa', 'production'] },
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   await mkdir(path.join(consumer, '.github'), { recursive: true });
   await writeFile(
     path.join(consumer, '.github', 'evidence-policy.json'),
@@ -73,10 +117,16 @@ try {
   const installedScope = path.join(consumer, 'node_modules', '@vigilioyonatan');
   await assertPathExists(path.join(installedScope, 'devsecops-evidence', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'node-nest-tooling', 'dist', 'bin', 'cli.js'));
+  await assertPathExists(path.join(installedScope, 'prompt-builder', 'dist', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'vigilio-skills', 'dist', 'sync.d.ts'));
+  await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'dist', 'bin', 'cli.js'));
+  await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'presets', 'vite-web.json'));
+  await assertPathExists(path.join(installedScope, 'web-mfe-tooling', 'presets', 'vite-aws.json'));
   await assertPathMissing(path.join(installedScope, 'node-nest-tooling', 'src'));
+  await assertPathMissing(path.join(installedScope, 'prompt-builder', 'src'));
   await assertPathMissing(path.join(installedScope, 'vigilio-skills', 'src'));
+  await assertPathMissing(path.join(installedScope, 'web-mfe-tooling', 'src'));
   runPnpm(
     ['exec', 'vigilio-skills', 'sync', '--profile', 'core', '--profile', 'node-nest'],
     consumer,
@@ -99,6 +149,17 @@ try {
   await assertPathExists(path.join(consumer, 'reports', 'operational-evidence-local-local.json'));
   runPnpm(['exec', 'vigilio-node', '--help'], consumer);
   runPnpm(['exec', 'vigilio-node', 'package-lambda'], consumer);
+  runPnpm(['exec', 'vigilio-prompt', '--help'], consumer);
+  const promptBuilderVersion = runPnpm(['exec', 'vigilio-prompt', '--version'], consumer, {
+    capture: true,
+  }).trim();
+  if (!/^\d+\.\d+\.\d+(?:[-+].+)?$/.test(promptBuilderVersion)) {
+    throw new Error(`Invalid prompt-builder version output: ${promptBuilderVersion}`);
+  }
+  runPnpm(['exec', 'vigilio-web', '--help'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'init', '--dry-run'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'validate-bundle-budget'], consumer);
+  runPnpm(['exec', 'vigilio-web', 'validate-public-env'], consumer);
   runPnpm(
     [
       'exec',
@@ -134,13 +195,15 @@ interface RunPnpmOptions {
 }
 
 function runPnpm(args: readonly string[], cwd: string, options: RunPnpmOptions = {}): string {
-  const command =
+  const nodeDirectory = path.dirname(process.execPath);
+  const corepackPnpm =
     process.platform === 'win32'
-      ? {
-          executable: process.env['ComSpec'] ?? 'cmd.exe',
-          args: ['/d', '/s', '/c', 'pnpm.cmd', ...args],
-        }
-      : { executable: 'pnpm', args: [...args] };
+      ? path.join(nodeDirectory, 'node_modules', 'corepack', 'dist', 'pnpm.js')
+      : path.resolve(nodeDirectory, '..', 'lib', 'node_modules', 'corepack', 'dist', 'pnpm.js');
+  const command = {
+    executable: process.execPath,
+    args: [corepackPnpm, ...args],
+  };
   const result = spawnSync(command.executable, command.args, {
     cwd,
     encoding: 'utf8',

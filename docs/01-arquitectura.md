@@ -17,6 +17,9 @@ scripts/
 packages/devsecops-governance/
   paquete npm TypeScript con CLI reusable
 
+packages/web-mfe-tooling/
+  tooling browser-safe reusable para consumidores Web MFE
+
 docs/
   reglas de consumo, versionado y seguridad
 ```

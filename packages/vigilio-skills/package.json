@@ -1,6 +1,6 @@
 {
   "name": "@vigilioyonatan/vigilio-skills",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Versioned AI skills with explicit, conflict-safe synchronization.",
   "type": "module",
   "private": false,
@@ -23,8 +23,8 @@
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && node scripts/build-assets.ts && tsc -p tsconfig.build.json",
     "lint": "biome ci .",
     "prepack": "pnpm build",
-    "test": "pnpm build && vitest run",
-    "test:coverage": "pnpm build && vitest run --coverage",
+    "test": "vitest run --pool=threads",
+    "test:coverage": "vitest run --coverage --pool=threads",
     "typecheck": "tsc --noEmit"
   },
   "files": [

@@ -1,3 +1,5 @@
+import { isRecord } from './internal/object.js';
+
 const maximumValidityDays = {
   critical: 30,
   high: 30,
@@ -89,8 +91,4 @@ function readRequiredString(record: Record<string, unknown>, key: string): strin
 
 function isSeverity(value: string): value is Severity {
   return value in maximumValidityDays;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

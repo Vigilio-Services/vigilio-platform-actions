@@ -7,6 +7,7 @@
 | `devsecops-governance` | Policies y validadores CI/hook | Copiar archivos o desplegar |
 | `devsecops-evidence` | Métricas DORA, SLSA y evidencia operacional | Definir rutas de dominio del consumidor |
 | `node-nest-tooling` | Comandos ejecutables Node/Nest | Contener contratos de dominio |
+| `web-mfe-tooling` | Contratos, OpenAPI, bundle, runtime config, headers y SBOM Web MFE | Contener UI o valores específicos del consumidor |
 | `vigilio-skills` | Skills versionadas | Ejecutar cambios en `postinstall` |
 
 Los contratos OpenAPI de negocio, smoke tests, evidencias y scripts de dominio permanecen en cada

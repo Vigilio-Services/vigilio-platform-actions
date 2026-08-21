@@ -1,0 +1,169 @@
+import { access, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import YAML from 'yaml';
+import type {
+  ResolvedTargetProfile,
+  TargetProfile,
+  TargetProfilesFile,
+  TargetRepository,
+} from './types.js';
+
+async function exists(file: string) {
+  try {
+    await access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveInside(root: string, relative: string, label: string) {
+  const resolved = path.resolve(root, relative);
+  const relation = path.relative(root, resolved);
+  if (relation.startsWith('..') || path.isAbsolute(relation)) {
+    throw new Error(`${label} escapes project root: ${relative}`);
+  }
+  return resolved;
+}
+
+function assertRepositoryShape(repository: TargetRepository, label: string) {
+  if (!repository.repository?.trim() || !repository.root?.trim()) {
+    throw new Error(`Invalid target profile ${label}: repository and root are required`);
+  }
+  if (!(['current', 'target_not_materialized'] as const).includes(repository.state)) {
+    throw new Error(`Invalid target state for ${label}: ${String(repository.state)}`);
+  }
+  if (repository.state === 'target_not_materialized' && !repository.app_path?.trim()) {
+    throw new Error(`Greenfield target ${label} requires an exact app_path`);
+  }
+}
+
+async function readPackageName(file: string) {
+  const packageJson = JSON.parse(await readFile(file, 'utf8')) as { name?: unknown };
+  return typeof packageJson.name === 'string' ? packageJson.name : undefined;
+}
+
+async function validateBackend(input: {
+  projectRoot: string;
+  backend: TargetRepository;
+  contractPackage: string;
+}) {
+  const root = resolveInside(input.projectRoot, input.backend.root, 'backend root');
+  const materialized = await exists(root);
+  if (input.backend.state === 'current' && !materialized) {
+    throw new Error(`CURRENT backend target missing: ${input.backend.root}`);
+  }
+  if (!materialized) return false;
+  if (!input.backend.contract_manifest) {
+    throw new Error('Current backend target requires contract_manifest');
+  }
+  const manifest = resolveInside(
+    root,
+    input.backend.contract_manifest,
+    'backend contract manifest',
+  );
+  if (!(await exists(manifest))) throw new Error(`Backend contract manifest missing: ${manifest}`);
+  const actual = await readPackageName(manifest);
+  if (actual !== input.contractPackage) {
+    throw new Error(
+      `CONTRACT_OWNER_MISMATCH: backend publishes ${actual ?? '<unnamed>'}, expected ${input.contractPackage}`,
+    );
+  }
+  return true;
+}
+
+async function validateFrontend(input: {
+  projectRoot: string;
+  frontend: TargetRepository;
+  contractPackage: string;
+}) {
+  const root = resolveInside(input.projectRoot, input.frontend.root, 'frontend root');
+  const materialized = await exists(root);
+  if (input.frontend.state === 'current' && !materialized) {
+    throw new Error(`CURRENT frontend target missing: ${input.frontend.root}`);
+  }
+  if (input.frontend.app_path) resolveInside(root, input.frontend.app_path, 'frontend app_path');
+  if (!materialized) return false;
+
+  const packageManifest = resolveInside(
+    root,
+    input.frontend.package_manifest ?? 'package.json',
+    'frontend package manifest',
+  );
+  if (!(await exists(packageManifest)))
+    throw new Error(`Frontend package manifest missing: ${packageManifest}`);
+  const packageJson = JSON.parse(await readFile(packageManifest, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  const dependencies = {
+    ...((packageJson['dependencies'] as Record<string, unknown> | undefined) ?? {}),
+    ...((packageJson['devDependencies'] as Record<string, unknown> | undefined) ?? {}),
+  };
+  if (!(input.contractPackage in dependencies)) {
+    throw new Error(`CONTRACT_OWNER_MISMATCH: frontend does not declare ${input.contractPackage}`);
+  }
+  return true;
+}
+
+export async function resolveTargetProfile(
+  projectRoot: string,
+  profileId?: string,
+): Promise<ResolvedTargetProfile | undefined> {
+  if (!profileId) return undefined;
+  const configPath = path.resolve(projectRoot, 'docs/rules/target-profiles.yaml');
+  const raw = await readFile(configPath, 'utf8');
+  const parsed = YAML.parseDocument(raw, { uniqueKeys: true });
+  if (parsed.errors.length > 0) {
+    throw new Error(
+      `Invalid target profiles ${configPath}: ${parsed.errors.map((error) => error.message).join('; ')}`,
+    );
+  }
+  const config = parsed.toJS() as TargetProfilesFile;
+  if (config.schema_version !== 1 || !config.profiles || typeof config.profiles !== 'object') {
+    throw new Error(`Invalid target profiles schema: ${configPath}`);
+  }
+  const profile = config.profiles[profileId] as TargetProfile | undefined;
+  if (!profile) throw new Error(`Unknown target profile: ${profileId}`);
+
+  assertRepositoryShape(profile.backend, `${profileId}.backend`);
+  assertRepositoryShape(profile.frontend, `${profileId}.frontend`);
+  if (
+    profile.contract.owner !== profile.backend.repository ||
+    profile.contract.consumer !== profile.frontend.repository
+  ) {
+    throw new Error(
+      `CONTRACT_OWNER_MISMATCH: ${profileId} owner/consumer do not match target repositories`,
+    );
+  }
+  if (!profile.contract.package?.trim())
+    throw new Error(`Invalid contract package for ${profileId}`);
+
+  const backend = await validateBackend({
+    projectRoot,
+    backend: profile.backend,
+    contractPackage: profile.contract.package,
+  });
+  const frontend = await validateFrontend({
+    projectRoot,
+    frontend: profile.frontend,
+    contractPackage: profile.contract.package,
+  });
+  return {
+    id: profileId,
+    ...profile,
+    forbidden_paths: [...new Set(profile.forbidden_paths ?? [])],
+    materialized: { backend, frontend },
+  };
+}
+
+export function formatTargetProfile(profile?: ResolvedTargetProfile) {
+  if (!profile) return '- none declared; generic pack';
+  return [
+    `- profile: ${profile.id}`,
+    `- backend: ${profile.backend.repository} (${profile.backend.state}; root=${profile.backend.root})`,
+    `- frontend: ${profile.frontend.repository} (${profile.frontend.state}; root=${profile.frontend.root}; app=${profile.frontend.app_path ?? 'resolved-from-existing-target'})`,
+    `- contract: ${profile.contract.package} (${profile.contract.owner} -> ${profile.contract.consumer})`,
+    `- materialized: backend=${profile.materialized.backend}, frontend=${profile.materialized.frontend}`,
+  ].join('\n');
+}

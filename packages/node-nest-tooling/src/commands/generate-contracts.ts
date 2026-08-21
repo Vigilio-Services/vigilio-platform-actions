@@ -2,8 +2,27 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { configuredProjectPath, loadNodeNestToolingConfig } from '../config.js';
 
-const exportableDirectories = new Set(['dtos', 'schemas', 'responses', 'types']);
+const config = loadNodeNestToolingConfig();
+const configuredExportableDirectories = process.env['CONTRACT_EXPORTABLE_DIRECTORIES']
+  ?.split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const exportableDirectories = new Set(
+  configuredExportableDirectories ??
+    config.contracts?.exportableDirectories ?? ['dtos', 'schemas', 'responses', 'types'],
+);
+const srcDirectory = configuredProjectPath(
+  config.contracts?.sourceDirectory,
+  'CONTRACT_SOURCE_DIRECTORY',
+  'src',
+);
+const contractsPath = configuredProjectPath(
+  config.contracts?.output,
+  'CONTRACT_OUTPUT_FILE',
+  'src/contracts.ts',
+);
 const ignoredFilePatterns = [
   /\.d\.ts$/,
   /\.spec\.ts$/,
@@ -42,12 +61,11 @@ function toExportLine(file: string, srcDirectory: string): string {
 }
 
 async function generateContracts(): Promise<void> {
-  const srcDirectory = path.resolve(process.cwd(), 'src');
-  const contractsPath = path.resolve(srcDirectory, 'contracts.ts');
   const allFiles = await getFiles(srcDirectory);
 
   const exportLines = allFiles
     .filter((file) => file.endsWith('.ts'))
+    .filter((file) => path.resolve(file) !== contractsPath)
     .filter((file) => isInsideExportableDirectory(file, srcDirectory))
     .filter((file) => !isIgnoredFile(file))
     .map((file) => toExportLine(file, srcDirectory))
@@ -60,9 +78,12 @@ async function generateContracts(): Promise<void> {
     '',
   ].join('\n');
 
+  await fs.mkdir(path.dirname(contractsPath), { recursive: true });
   await fs.writeFile(contractsPath, `${header}${exportLines.join('\n')}\n`);
 
-  console.log(`Generated src/contracts.ts with ${exportLines.length} exports.`);
+  console.log(
+    `Generated ${path.relative(process.cwd(), contractsPath)} with ${exportLines.length} exports.`,
+  );
 }
 
 generateContracts().catch((error) => {

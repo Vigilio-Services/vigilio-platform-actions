@@ -8,20 +8,25 @@
 | BFF, ApiClient, errores y auth | [vigilio-docs/5-bff-http-runtime-auth](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/5-bff-http-runtime-auth.md) |
 | Feature completa | [vigilio-docs/6-golden-path-feature](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/6-golden-path-feature-componentes-hooks.md) |
 | Pruebas de contrato | [vigilio-docs/7-testing-vitest-msw-playwright](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/7-testing-vitest-msw-playwright.md) |
-| Contrato ejecutable | `@vigilioyonatan/bus-contracts` instalado por el consumidor |
+| Contrato ejecutable | Package exacto del perfil instalado por el consumidor |
+
+| Perfil | Owner | Package | Consumer |
+|---|---|---|---|
+| `current-web` | `bus-impl` | `@vigilioyonatan/bus-contracts` | `web-mfe` |
+| `k8s-v2` | `bus-impl-v2` | `@vigilioyonatan/bus-v2-contracts` | `web-mfe-v2` |
 
 No sustituir el paquete publicado ni el OpenAPI por snippets documentales. Confirmar nombres y tipos contra la versión instalada.
 
 ## React Hook Form
 
-> **Nota de Gobernanza:** En la gran mayoría de los casos **NO SE CREARÁ** un schema local de formulario manual como `const productStoreFormSchema = z.object({ ... })`. Se consume directamente el `requestDto` publicado desde el paquete de contratos del proyecto (ej. `@vigilioyonatan/bus-contracts` — *el nombre del paquete variará según el proyecto*). Únicamente en situaciones excepcionales de UI complejas se requerirá un schema local intermedio.
+> **Nota de Gobernanza:** En la gran mayoría de los casos **NO SE CREARÁ** un schema local de formulario manual como `const productStoreFormSchema = z.object({ ... })`. Se consume directamente el `requestDto` publicado desde el package resuelto por perfil. Únicamente en situaciones excepcionales de UI complejas se requerirá un schema local intermedio.
 
 ```ts
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   productStoreRequestDto,
   type ProductStoreRequestDto,
-} from '@vigilioyonatan/bus-contracts'; // El nombre del paquete de contratos varía según el proyecto
+} from '@vigilioyonatan/bus-v2-contracts'; // Perfil k8s-v2; current-web usa bus-contracts
 import { useForm } from 'react-hook-form';
 
 // MAYORMENTE SERÁ ASÍ: Consumo directo del contrato DTO publicado
@@ -42,7 +47,7 @@ Los `defaultValues` deben respetar `nullable`, `optional` y coerciones del contr
 import {
   productIndexResponseDto,
   type ProductIndexResponseDto,
-} from '@vigilioyonatan/bus-contracts';
+} from '@vigilioyonatan/bus-v2-contracts'; // Perfil k8s-v2; current-web usa bus-contracts
 
 export function listProducts(): Promise<ProductIndexResponseDto> {
   return apiClient.get('/products', {

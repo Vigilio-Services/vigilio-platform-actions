@@ -233,7 +233,7 @@ try {
   await run(process.argv.slice(2));
 } catch (error) {
   if (error instanceof GovernanceError) {
-    console.error(error.errors.map((message) => `- ${message}`).join('\n'));
+    console.error(error.errors.map((message) => `\x1b[31m✖ ${message}\x1b[0m`).join('\n'));
     process.exit(1);
   }
 

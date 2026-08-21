@@ -1,37 +1,60 @@
 #!/usr/bin/env node
 
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
-import { projectDatabaseName } from './project-context.js';
+import { configuredOrDiscoveredProjectPath, loadNodeNestToolingConfig } from '../config.js';
+import { applyPostgresMigrations, quotePostgresIdentifier } from '../internal/postgres.js';
+import {
+  assertDatabaseUrlName,
+  assertSamePostgresServer,
+  databaseNameFromUrl,
+  isLocalPostgresUrl,
+  localPostgresUrl,
+  postgresUrlWithDatabase,
+  projectDatabaseName,
+} from './project-context.js';
 
-function localPostgresUrl(database: string): string {
-  const url = new URL('postgres://127.0.0.1:5432');
-  url.username = 'postgres';
-  url.password = 'postgres';
-  url.pathname = database;
-  return url.toString();
-}
+const config = loadNodeNestToolingConfig();
 
-const databaseUrl = process.env['DATABASE_URL'] ?? localPostgresUrl(projectDatabaseName());
-const database = new URL(databaseUrl);
-const databaseName = database.pathname.replace('/', '');
-const adminUrl = process.env['LOCAL_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres');
+const databaseUrl =
+  process.env['DATABASE_URL'] ?? localPostgresUrl(projectDatabaseName(), 'LOCAL_POSTGRES');
+const databaseName = databaseNameFromUrl(databaseUrl);
+const adminUrl =
+  process.env['LOCAL_DATABASE_ADMIN_URL'] ?? postgresUrlWithDatabase(databaseUrl, 'postgres');
 const shouldReset =
   process.env['LOCAL_DATABASE_RESET'] === 'true' || process.argv.includes('--reset');
+const allowRemote = process.env['LOCAL_DATABASE_ALLOW_REMOTE'] === 'true';
+const migrationsDirectory = configuredOrDiscoveredProjectPath(
+  config.database?.migrationsDirectory,
+  'DATABASE_MIGRATIONS_DIRECTORY',
+  ['drizzle', 'migrations', 'src/database/migrations'],
+  'drizzle',
+);
 
-if (!databaseName || !/^[a-z0-9_]+$/.test(databaseName)) {
+if (!databaseName || !/^[a-z][a-z0-9_]{2,62}$/.test(databaseName)) {
   throw new Error(`Unsafe local database name: ${databaseName}`);
 }
 
-if (!isLocalUrl(databaseUrl) && process.env['LOCAL_DATABASE_ALLOW_REMOTE'] !== 'true') {
+if (['postgres', 'template0', 'template1'].includes(databaseName)) {
+  throw new Error(`Refusing to prepare PostgreSQL system database: ${databaseName}`);
+}
+
+assertDatabaseUrlName(databaseUrl, databaseName);
+assertSamePostgresServer(adminUrl, databaseUrl);
+
+if ((!isLocalPostgresUrl(databaseUrl) || !isLocalPostgresUrl(adminUrl)) && !allowRemote) {
   throw new Error(
     'Refusing to prepare a non-local database. Set LOCAL_DATABASE_ALLOW_REMOTE=true if intentional.',
   );
 }
 
+if (shouldReset && allowRemote && process.env['LOCAL_DATABASE_ALLOW_REMOTE_RESET'] !== 'true') {
+  throw new Error(
+    'Refusing to reset a remote database. Set LOCAL_DATABASE_ALLOW_REMOTE_RESET=true if intentional.',
+  );
+}
+
 await ensureDatabase();
-await applyMigrations();
+await applyPostgresMigrations(databaseUrl, migrationsDirectory);
 
 console.log(`Local database ready: ${databaseName}`);
 
@@ -45,7 +68,7 @@ async function ensureDatabase(): Promise<void> {
         'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
         [databaseName],
       );
-      await client.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(databaseName)}`);
+      await client.query(`DROP DATABASE IF EXISTS ${quotePostgresIdentifier(databaseName)}`);
     }
 
     const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
@@ -53,28 +76,9 @@ async function ensureDatabase(): Promise<void> {
     ]);
 
     if (result.rowCount === 0) {
-      await client.query(`CREATE DATABASE ${quoteIdentifier(databaseName)}`);
+      await client.query(`CREATE DATABASE ${quotePostgresIdentifier(databaseName)}`);
     }
   } finally {
     await client.end();
   }
-}
-
-async function applyMigrations(): Promise<void> {
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 2 });
-
-  try {
-    await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
-  } finally {
-    await pool.end();
-  }
-}
-
-function quoteIdentifier(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
-function isLocalUrl(connectionString: string): boolean {
-  const url = new URL(connectionString);
-  return ['127.0.0.1', 'localhost', '::1'].includes(url.hostname);
 }

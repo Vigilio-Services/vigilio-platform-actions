@@ -3,6 +3,7 @@
 const commands = new Map([
   ['fix-esm-imports', 'fix-esm-imports.js'],
   ['generate-contracts', 'generate-contracts.js'],
+  ['init', 'init-config.js'],
   ['openapi-diff', 'openapi-diff.js'],
   ['package-lambda', 'package-lambda.js'],
   ['setup-e2e-db', 'setup-e2e-db.js'],

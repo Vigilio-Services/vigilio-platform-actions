@@ -18,16 +18,17 @@ runs:
   steps:
     - name: Validate branch to stage
       shell: bash
+      env:
+        REF_NAME: ${{ inputs.ref-name }}
+        STAGE: ${{ inputs.stage }}
       run: |
         set -euo pipefail
-        stage="${{ inputs.stage }}"
-        ref_name="${{ inputs.ref-name }}"
-        case "${stage}" in
+        case "${STAGE}" in
           development|test|staging|preproduction|production)
-            [[ "${ref_name}" == "main" ]] || { echo "${stage} must run from main in trunk-based mode."; exit 1; }
+            [[ "${REF_NAME}" == "main" ]] || { echo "${STAGE} must run from main in trunk-based mode."; exit 1; }
             ;;
           *)
-            echo "Unsupported stage: ${stage}"
+            echo "Unsupported stage: ${STAGE}"
             exit 1
             ;;
         esac

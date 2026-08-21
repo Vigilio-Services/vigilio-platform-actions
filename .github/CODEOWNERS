@@ -2,19 +2,22 @@
 # CODEOWNERS — vigilio-platform-actions (2026)
 # ──────────────────────────────────────────────────────
 
-# Core Governance (Librería de DevSecOps) — Platform + Security
-packages/devsecops-governance/src/   @vigilio/platform @vigilio/security
-packages/devsecops-governance/tests/ @vigilio/platform
+# Este repositorio vive bajo una cuenta personal. Mantener owners resolubles;
+# reemplazarlos por equipos solo después de migrar a una organización y darles acceso.
+
+# Core Governance (librería de DevSecOps)
+packages/devsecops-governance/src/   @VigilioYonatan
+packages/devsecops-governance/tests/ @VigilioYonatan
 
 # Documentación de Seguridad — Security Lead
-SECURITY.md                          @vigilio/security
+SECURITY.md                          @VigilioYonatan
 
 # CI/CD y automatización de publicación
-.github/workflows/                   @vigilio/devops
+.github/workflows/                   @VigilioYonatan
 
 # Documentación Core
-README.md                            @vigilio/platform
-CHANGELOG.md                         @vigilio/platform
+README.md                            @VigilioYonatan
+CHANGELOG.md                         @VigilioYonatan
 
 # Fallback global — Si nadie está asignado, lo aprueba Platform
-*                                    @vigilio/platform
+*                                    @VigilioYonatan

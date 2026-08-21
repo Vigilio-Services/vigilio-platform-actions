@@ -335,4 +335,27 @@ describe('workflow and action policies', () => {
       ),
     ).toBe(true);
   });
+
+  it('accepts persist-credentials in a named checkout step', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-named-checkout-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    createValidWorkflows(directory);
+    createWorkflow(
+      directory,
+      'extra.yml',
+      [
+        '      - name: Checkout source',
+        `        uses: actions/checkout@${CHECKOUT_SHA}`,
+        '        with:',
+        '          path: source/app',
+        '          persist-credentials: false',
+      ].join('\n'),
+    );
+
+    expect(
+      validateWorkflows(directory).some(
+        (error) => error.includes('extra.yml') && error.includes('persist-credentials'),
+      ),
+    ).toBe(false);
+  });
 });

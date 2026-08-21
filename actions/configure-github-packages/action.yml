@@ -15,10 +15,10 @@ runs:
   steps:
     - name: Configure npm auth
       shell: bash
-      run: |
-        set -euo pipefail
-        npmrc_path="${{ inputs.npmrc-path }}"
-        expanded_path="${npmrc_path/#\~/$HOME}"
-        printf "//npm.pkg.github.com/:_authToken=%s\n" "${GITHUB_PACKAGES_TOKEN}" >> "${expanded_path}"
       env:
         GITHUB_PACKAGES_TOKEN: ${{ inputs.token }}
+        NPMRC_PATH: ${{ inputs.npmrc-path }}
+      run: |
+        set -euo pipefail
+        expanded_path="${NPMRC_PATH/#\~/$HOME}"
+        printf "//npm.pkg.github.com/:_authToken=%s\n" "${GITHUB_PACKAGES_TOKEN}" >> "${expanded_path}"

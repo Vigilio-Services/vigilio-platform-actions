@@ -6,6 +6,7 @@ Skills compartidos para todos los proyectos Vigilio. Se instalan via npm package
 
 | Skill | Descripción |
 |---|---|
+| `commit-ai-change` | Cierre Git por prompt: `prompt_slug` enlaza lock, rama y trailers del commit; impacto selectivo y sin push |
 | `grill-me` | Alineación pre-código via entrevista hasta shared understanding |
 | `diagnosing-bugs` | Debugging estructurado de 6 fases para bugs duros |
 | `improve-codebase-architecture` | Escaneo de deuda arquitectónica con HTML report + grilling |

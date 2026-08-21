@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isRecord } from './internal/object.js';
+import { readJson, readText, yamlScalar } from './internal/policy-io.js';
 
 export interface PlatformBaseline {
   readonly schemaVersion: 1;
@@ -296,35 +298,6 @@ function expectValue(errors: string[], label: string, actual: unknown, expected:
   }
 }
 
-function readJson(file: string, errors: string[]): Record<string, unknown> | undefined {
-  try {
-    const value: unknown = JSON.parse(readFileSync(file, 'utf8'));
-    if (!isRecord(value)) throw new Error('root must be an object');
-    return value;
-  } catch (error) {
-    errors.push(
-      `${path.basename(file)}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return undefined;
-  }
-}
-
-function readText(file: string, errors: string[]): string | undefined {
-  try {
-    return readFileSync(file, 'utf8');
-  } catch (error) {
-    errors.push(
-      `${path.basename(file)}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return undefined;
-  }
-}
-
-function yamlScalar(content: string, key: string): string {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped}:\\s*['"]?([^'"\\s#]+)`, 'm').exec(content)?.[1] ?? '';
-}
-
 function stringValue(record: Record<string, unknown>, key: string): string {
   const value = record[key];
   return typeof value === 'string' ? value : '';
@@ -332,8 +305,4 @@ function stringValue(record: Record<string, unknown>, key: string): string {
 
 function isStringRecord(value: Record<string, unknown>): value is Record<string, string> {
   return Object.values(value).every((entry) => typeof entry === 'string');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

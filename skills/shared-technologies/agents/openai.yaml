@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shared Technologies"
+  short_description: "Validate shared TypeScript and tooling APIs"
+  default_prompt: "Use $shared-technologies to verify shared runtime, contract, and tooling compatibility before coding."

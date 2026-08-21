@@ -17,9 +17,9 @@ on:
         required: false
         default: main
       gitops-repository:
+        description: Explicit owner/repository containing the GitOps values.
         type: string
-        required: false
-        default: VigilioYonatan/vigilio-deploy
+        required: true
       gitops-app-client-id:
         type: string
         required: true
@@ -36,19 +36,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: gitops-promote-${{ inputs.stage }}
+      group: gitops-promote-${{ inputs.gitops-repository }}-${{ inputs.values-file }}-${{ inputs.stage }}
       cancel-in-progress: false
     steps:
+      - name: Resolve GitOps repository scope
+        id: target
+        shell: bash
+        env:
+          GITOPS_REPOSITORY: ${{ inputs.gitops-repository }}
+        run: |
+          set -euo pipefail
+          [[ "${GITOPS_REPOSITORY}" =~ ^([A-Za-z0-9][A-Za-z0-9_.-]*)/([A-Za-z0-9][A-Za-z0-9_.-]*)$ ]] || {
+            echo 'gitops-repository must use the owner/repository form'
+            exit 1
+          }
+          echo "owner=${BASH_REMATCH[1]}" >> "${GITHUB_OUTPUT}"
+          echo "repository=${BASH_REMATCH[2]}" >> "${GITHUB_OUTPUT}"
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token
         with:
           client-id: ${{ inputs.gitops-app-client-id }}
           private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+          owner: ${{ steps.target.outputs.owner }}
+          repositories: ${{ steps.target.outputs.repository }}
           permission-contents: write
           permission-pull-requests: write
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          repository: ${{ inputs.gitops-repository || 'VigilioYonatan/vigilio-deploy' }}
+          repository: ${{ inputs.gitops-repository }}
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.base-branch }}
@@ -113,7 +128,7 @@ jobs:
           set -euo pipefail
           short_digest="${DIGEST#sha256:}"
           branch="gitops/promote-${STAGE}-${short_digest:0:12}"
-          [[ "${VALUES_FILE}" =~ ^deploy/gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]]
+          [[ "${VALUES_FILE}" =~ ^(?:deploy/)?gitops/apps/([a-z0-9]([a-z0-9-]*[a-z0-9])?)/(development|staging|production)/values\.yaml$ ]]
           workload="${BASH_REMATCH[1]}"
           subject="chore(gitops): promote ${workload} to ${STAGE}"
           bot_actor="${GITOPS_APP_SLUG}[bot]"

@@ -9,15 +9,15 @@
     "pnpm": "11.7.0"
   },
   "scripts": {
-    "build": "pnpm build:actions && pnpm -r build",
+    "build": "pnpm build:actions && pnpm -r --workspace-concurrency 1 build",
     "build:actions": "tsc -p actions/jira-devops/tsconfig.json",
     "check": "biome check --write .",
     "format": "biome format --write .",
     "lint": "biome ci .",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --workspace-concurrency 1 test",
     "test:packages": "node scripts/test-packages.ts",
     "test:coverage": "pnpm -r test:coverage",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p actions/jira-devops/tsconfig.json && pnpm -r typecheck",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p actions/jira-devops/tsconfig.json && pnpm -r --workspace-concurrency 1 typecheck",
     "governance:workflows": "pnpm --filter @vigilioyonatan/devsecops-governance validate:workflows",
     "governance:actions": "pnpm --filter @vigilioyonatan/devsecops-governance validate:actions",
     "governance:ruleset": "pnpm --filter @vigilioyonatan/devsecops-governance validate:ruleset",

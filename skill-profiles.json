@@ -2,6 +2,8 @@
   "schema_version": 1,
   "profiles": {
     "core": [
+      "shared-technologies",
+      "commit-ai-change",
       "coderabbit-compliance",
       "diagnosing-bugs",
       "grill-me",
@@ -9,6 +11,7 @@
       "token-context-compression"
     ],
     "node-nest": [
+      "node-nest-technologies",
       "node-nest-build-feature",
       "node-nest-persistence",
       "node-nest-security-aws",
@@ -22,6 +25,15 @@
       "mobile-mfe-testing"
     ],
     "web-mfe": [
+      "web-mfe-technologies",
+      "web-mfe-build-feature",
+      "web-mfe-contracts",
+      "web-mfe-quality",
+      "web-mfe-security-delivery",
+      "web-mfe-testing"
+    ],
+    "web-mfe-v2": [
+      "web-mfe-technologies",
       "web-mfe-build-feature",
       "web-mfe-contracts",
       "web-mfe-quality",

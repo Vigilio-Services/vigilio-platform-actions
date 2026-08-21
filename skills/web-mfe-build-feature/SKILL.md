@@ -14,12 +14,13 @@ Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. 
 1. Delimitar el flujo de usuario, estados de carga/vacio/error/exito y criterios de accesibilidad.
 2. Confirmar ownership: estado servidor en TanStack Query; formulario en React Hook Form; estado cliente local en hooks/signals; estado global solo cuando varios flujos lo requieran.
 3. Invocar `web-mfe-contracts` si existe request/response HTTP.
-4. Mantener HTTP y parsing en `services/`; mantener componentes libres de detalles de transporte.
-5. Crear componentes especificos dentro de la feature y promover a `libs/ui` solo despues de reutilizacion real y API estable.
-6. Implementar navegacion por teclado, focus, labels y anuncios de error desde el inicio.
-7. Invocar `web-mfe-testing` y seleccionar la capa de prueba mas barata que cubra el riesgo.
-8. Invocar `web-mfe-quality` para cambios visibles, rutas publicas o impacto en bundle/render.
-9. Invocar `web-mfe-security-delivery` para runtime config, auth, uploads, headers, AWS o pipelines.
+4. Invocar `web-mfe-technologies` cuando el cambio use una API sensible a versión, especialmente canvas, `lightweight-charts` u OGL.
+5. Mantener HTTP y parsing en `services/`; mantener componentes libres de detalles de transporte.
+6. Crear componentes especificos dentro de la feature y promover a `libs/ui` solo despues de reutilizacion real y API estable.
+7. Implementar navegacion por teclado, focus, labels y anuncios de error desde el inicio.
+8. Invocar `web-mfe-testing` y seleccionar la capa de prueba mas barata que cubra el riesgo.
+9. Invocar `web-mfe-quality` para cambios visibles, rutas publicas o impacto en bundle/render.
+10. Invocar `web-mfe-security-delivery` para runtime config, auth, uploads, headers, infraestructura o pipelines.
 
 ## Limites de capas
 
@@ -27,7 +28,7 @@ Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. 
 - `features/`: composicion del caso de uso, UI y hooks especificos.
 - `services/`: cliente HTTP, auth, configuracion, observabilidad y adapters externos.
 - `libs/ui`: primitivas visuales agnosticas de negocio; sin llamadas HTTP ni contratos de una feature.
-- `@vigilioyonatan/bus-contracts`: unica fuente de schemas y tipos HTTP compartidos.
+- Paquete contractual resuelto por perfil: `@vigilioyonatan/bus-contracts` para `web-mfe` o `@vigilioyonatan/bus-v2-contracts` para `web-mfe-v2`; ambos son pares activos y nunca se cruzan.
 
 ## Reglas de implementacion
 

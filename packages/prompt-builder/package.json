@@ -1,0 +1,48 @@
+{
+  "name": "@vigilioyonatan/prompt-builder",
+  "version": "0.1.0",
+  "description": "Deterministic engineering context and prompt compilation engine for AI coding agents in Vigilio repositories.",
+  "type": "module",
+  "private": false,
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VigilioYonatan/vigilio-platform-actions.git",
+    "directory": "packages/prompt-builder"
+  },
+  "bin": {
+    "vigilio-prompt": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "templates",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "lint": "biome ci .",
+    "prepack": "pnpm build",
+    "test": "vitest run --pool=threads",
+    "test:coverage": "vitest run --coverage --pool=threads",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ajv": "8.17.1",
+    "yaml": "2.8.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "@types/node": "24.13.3",
+    "@vitest/coverage-v8": "4.1.10",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com"
+  }
+}

@@ -39,6 +39,8 @@ Medir contra el repositorio y ambiente objetivo. No convertir una recomendación
 - Imagenes responsivas, formatos modernos y lazy loading fuera del viewport.
 - Fonts con subset/preload solo si son criticas.
 - Sin dependencias duplicadas o Node polyfills en browser.
+- Charts canvas mantienen alternativa textual/tabular accesible y actualizan puntos sin reconstruir el historial por tick.
+- OGL mantiene un canvas maximo por pagina, fallback/reduced motion, DPR cap y cleanup verificado de RAF/observer/contexto.
 - Cache immutable para assets hasheados; HTML/runtime config con politica corta.
 - Medir LCP, INP, CLS y error rate por version.
 

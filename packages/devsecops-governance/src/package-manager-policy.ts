@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { isRecord } from './internal/object.js';
+import { readJson, readText, yamlScalar } from './internal/policy-io.js';
 
 const requiredWorkspaceSettings = new Map<string, string>([
   ['engineStrict', 'true'],
@@ -81,35 +82,6 @@ export function validatePackageManagerPolicy(root = process.cwd()): string[] {
   return errors;
 }
 
-function readJson(file: string, errors: string[]): Record<string, unknown> | undefined {
-  try {
-    const value: unknown = JSON.parse(readFileSync(file, 'utf8'));
-    if (!isRecord(value)) throw new Error('root must be an object');
-    return value;
-  } catch (error) {
-    errors.push(
-      `${path.basename(file)}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return undefined;
-  }
-}
-
-function readText(file: string, errors: string[]): string | undefined {
-  try {
-    return readFileSync(file, 'utf8');
-  } catch (error) {
-    errors.push(
-      `${path.basename(file)}: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    return undefined;
-  }
-}
-
-function yamlScalar(content: string, key: string): string {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped}:\\s*['"]?([^'"\\s#]+)`, 'm').exec(content)?.[1] ?? '';
-}
-
 function parseNpmrc(content: string): Map<string, string> {
   const entries = content
     .split(/\r?\n/)
@@ -127,8 +99,4 @@ function parseNpmrc(content: string): Map<string, string> {
 function readString(record: Record<string, unknown>, key: string): string {
   const value = record[key];
   return typeof value === 'string' ? value : '';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

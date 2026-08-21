@@ -1,6 +1,6 @@
 ---
 name: web-mfe-quality
-description: Revisa y mejora accesibilidad, SEO, Core Web Vitals, rendimiento de render, bundle, imagenes, cache y observabilidad frontend en web-mfe. Usar al modificar UI visible, rutas publicas, metadata, estilos, assets, carga diferida, tablas grandes, telemetria, logging, dashboards o budgets de performance.
+description: Revisa y mejora accesibilidad, SEO, Core Web Vitals, rendimiento de render, bundle, imagenes, cache y observabilidad frontend en web-mfe. Usar al modificar UI visible, rutas publicas, metadata, estilos, assets, carga diferida, tablas grandes, canvas, lightweight-charts, OGL/WebGL, telemetria, logging, dashboards o budgets de performance.
 ---
 
 <skill-content>
@@ -30,6 +30,8 @@ Medir antes y despues. No declarar mejoras de rendimiento, SEO o accesibilidad s
 - Reservar dimensiones de imagenes y contenido async para evitar CLS.
 - Virtualizar tablas/listas solo con volumen medido que lo justifique.
 - No memoizar por reflejo; usar profiler y estabilidad de props.
+- Canvas financiero requiere alternativa accesible y actualizaciones incrementales; no repintar el historial completo por tick.
+- OGL requiere un canvas máximo por página, lazy boundary, reduced-motion/fallback, DPR cap, pausa fuera de vista y presupuesto GPU/bundle medido.
 - Mantener budgets versionados y hacer fallar CI ante regresiones relevantes.
 
 ## Observabilidad

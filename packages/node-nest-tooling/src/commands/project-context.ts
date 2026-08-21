@@ -37,6 +37,70 @@ export function projectDatabaseName(suffix = ''): string {
   return `${projectSlug()}${suffix}`.slice(0, 63);
 }
 
+export function localPostgresUrl(database: string, environmentPrefix: string): string {
+  const host = process.env[`${environmentPrefix}_HOST`] ?? '127.0.0.1';
+  const port = Number(process.env[`${environmentPrefix}_PORT`] ?? 5432);
+  const username = process.env[`${environmentPrefix}_USER`] ?? 'postgres';
+  const password = process.env[`${environmentPrefix}_PASSWORD`] ?? 'postgres';
+
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`Invalid ${environmentPrefix}_HOST or ${environmentPrefix}_PORT`);
+  }
+
+  const url = new URL(`postgres://${host}:${port}`);
+  url.username = username;
+  url.password = password;
+  url.pathname = database;
+  return url.toString();
+}
+
+export function postgresUrlWithDatabase(connectionString: string, database: string): string {
+  const url = new URL(connectionString);
+  url.pathname = database;
+  return url.toString();
+}
+
+export function databaseNameFromUrl(connectionString: string): string {
+  return decodeURIComponent(new URL(connectionString).pathname.replace(/^\//, ''));
+}
+
+export function isLocalPostgresUrl(connectionString: string): boolean {
+  const hostname = new URL(connectionString).hostname.replace(/^\[|\]$/g, '');
+  return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1';
+}
+
+export function assertSamePostgresServer(
+  adminConnectionString: string,
+  databaseConnectionString: string,
+): void {
+  const admin = new URL(adminConnectionString);
+  const database = new URL(databaseConnectionString);
+  const adminPort = admin.port || '5432';
+  const databasePort = database.port || '5432';
+  const normalizeProtocol = (protocol: string): string =>
+    protocol === 'postgres:' || protocol === 'postgresql:' ? 'postgres:' : protocol;
+  const normalizeHost = (hostname: string): string => {
+    const value = hostname.replace(/^\[|\]$/g, '');
+    return value === 'localhost' || value === '::1' ? '127.0.0.1' : value;
+  };
+  if (
+    normalizeProtocol(admin.protocol) !== normalizeProtocol(database.protocol) ||
+    normalizeHost(admin.hostname) !== normalizeHost(database.hostname) ||
+    adminPort !== databasePort
+  ) {
+    throw new Error('Administrative and database PostgreSQL URLs must target the same server');
+  }
+}
+
+export function assertDatabaseUrlName(connectionString: string, expectedName: string): void {
+  const actualName = databaseNameFromUrl(connectionString);
+  if (actualName !== expectedName) {
+    throw new Error(
+      `PostgreSQL URL must target database ${expectedName}; received ${actualName || '<empty>'}`,
+    );
+  }
+}
+
 export function assertSafeDatabaseName(database: string, allowedSuffixes: readonly string[]): void {
   const validName = /^[a-z][a-z0-9_]{2,62}$/.test(database);
   const validSuffix = allowedSuffixes.some((suffix) => database.endsWith(suffix));

@@ -11,7 +11,10 @@ permissions:
   packages: write
   id-token: write
   attestations: write
-  artifact-metadata: write
+
+concurrency:
+  group: release-platform-packages
+  cancel-in-progress: false
 
 env:
   NODE_VERSION: '24.16.0'
@@ -55,12 +58,14 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Pack published packages for provenance
         if: steps.changesets.outputs.published == 'true'
+        env:
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
         run: |
           mkdir -p reports/packages
-          pnpm --filter @vigilioyonatan/devsecops-evidence pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
-          pnpm --filter @vigilioyonatan/devsecops-governance pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
-          pnpm --filter @vigilioyonatan/vigilio-skills pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
-          pnpm --filter @vigilioyonatan/node-nest-tooling pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          echo "$PUBLISHED_PACKAGES" | jq -e 'type == "array" and length > 0'
+          echo "$PUBLISHED_PACKAGES" | jq -r '.[].name' | while IFS= read -r package_name; do
+            pnpm --filter "$package_name" pack --pack-destination "$GITHUB_WORKSPACE/reports/packages"
+          done
       - name: Generate CycloneDX SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: steps.changesets.outputs.published == 'true'

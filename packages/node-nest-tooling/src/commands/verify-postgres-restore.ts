@@ -2,8 +2,18 @@
 
 import { spawnSync } from 'node:child_process';
 import pg from 'pg';
+import { quotePostgresIdentifier } from '../internal/postgres.js';
 import { resolveContainerCli } from './container-runtime.js';
-import { assertSafeDatabaseName, projectDatabaseName, projectSlug } from './project-context.js';
+import {
+  assertDatabaseUrlName,
+  assertSafeDatabaseName,
+  assertSamePostgresServer,
+  isLocalPostgresUrl,
+  localPostgresUrl,
+  postgresUrlWithDatabase,
+  projectDatabaseName,
+  projectSlug,
+} from './project-context.js';
 
 const sourceDatabase = process.env['E2E_DATABASE_NAME'] ?? projectDatabaseName('_e2e');
 const restoreDatabase =
@@ -11,16 +21,24 @@ const restoreDatabase =
 const containerName =
   process.env['E2E_POSTGRES_CONTAINER_NAME'] ??
   `${projectSlug().replaceAll('_', '-')}-postgres-e2e`;
+const postgresUser = process.env['E2E_POSTGRES_USER'] ?? 'postgres';
+const adminUrl =
+  process.env['E2E_DATABASE_ADMIN_URL'] ?? localPostgresUrl('postgres', 'E2E_POSTGRES');
+const sourceUrl =
+  process.env['E2E_DATABASE_URL'] ?? postgresUrlWithDatabase(adminUrl, sourceDatabase);
 const cli = resolveContainerCli();
 if (!cli) {
   throw new Error('Podman or Docker must be running for the restore drill');
 }
-const adminUrl = postgresUrl('postgres');
-
 assertSafeDatabaseName(sourceDatabase, ['_e2e', '_integration']);
 assertSafeDatabaseName(restoreDatabase, ['_restore_drill']);
+assertDatabaseUrlName(sourceUrl, sourceDatabase);
+assertSamePostgresServer(adminUrl, sourceUrl);
+if (!isLocalPostgresUrl(adminUrl)) {
+  throw new Error('Restore drill requires a local PostgreSQL container');
+}
 
-const source = new pg.Client({ connectionString: postgresUrl(sourceDatabase) });
+const source = new pg.Client({ connectionString: sourceUrl });
 await source.connect();
 try {
   await source.query(
@@ -38,7 +56,7 @@ const dump = run(cli, [
   containerName,
   'pg_dump',
   '-U',
-  'postgres',
+  postgresUser,
   '--no-owner',
   '--no-acl',
   sourceDatabase,
@@ -50,14 +68,14 @@ try {
   await admin.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1', [
     restoreDatabase,
   ]);
-  await admin.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(restoreDatabase)}`);
-  await admin.query(`CREATE DATABASE ${quoteIdentifier(restoreDatabase)}`);
+  await admin.query(`DROP DATABASE IF EXISTS ${quotePostgresIdentifier(restoreDatabase)}`);
+  await admin.query(`CREATE DATABASE ${quotePostgresIdentifier(restoreDatabase)}`);
 } finally {
   await admin.end();
 }
 
 try {
-  run(cli, ['exec', '-i', containerName, 'psql', '-U', 'postgres', '-d', restoreDatabase], dump);
+  run(cli, ['exec', '-i', containerName, 'psql', '-U', postgresUser, '-d', restoreDatabase], dump);
   const restored = new pg.Client({ connectionString: postgresUrl(restoreDatabase) });
   await restored.connect();
   try {
@@ -77,25 +95,14 @@ try {
       'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
       [restoreDatabase],
     );
-    await cleanup.query(`DROP DATABASE IF EXISTS ${quoteIdentifier(restoreDatabase)}`);
+    await cleanup.query(`DROP DATABASE IF EXISTS ${quotePostgresIdentifier(restoreDatabase)}`);
   } finally {
     await cleanup.end();
   }
 }
 
 function postgresUrl(database: string): string {
-  const url = process.env['E2E_DATABASE_ADMIN_URL']
-    ? new URL(process.env['E2E_DATABASE_ADMIN_URL'])
-    : localPostgresUrl();
-  url.pathname = database;
-  return url.toString();
-}
-
-function localPostgresUrl(): URL {
-  const url = new URL('postgres://127.0.0.1:5432/postgres');
-  url.username = 'postgres';
-  url.password = 'postgres';
-  return url;
+  return postgresUrlWithDatabase(adminUrl, database);
 }
 
 function run(command: string, args: readonly string[], input?: string): string {
@@ -108,8 +115,4 @@ function run(command: string, args: readonly string[], input?: string): string {
     throw new Error(`${command} ${args.join(' ')} failed: ${result.stderr.trim()}`);
   }
   return result.stdout;
-}
-
-function quoteIdentifier(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`;
 }
