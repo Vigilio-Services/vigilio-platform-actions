@@ -1,5 +1,11 @@
 # @vigilioyonatan/prompt-builder
 
+## 0.2.1
+
+### Patch Changes
+
+- cf3ec95: Publish Prompt Builder through the Changesets release contract so GitHub Actions can emit package-specific provenance, SBOM, and release evidence.
+
 ## 0.2.0
 
 ### Minor Changes
