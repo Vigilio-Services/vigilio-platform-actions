@@ -1,6 +1,6 @@
 {
   "name": "@vigilioyonatan/prompt-builder",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic engineering context and prompt compilation engine for AI coding agents in Vigilio repositories.",
   "type": "module",
   "private": false,
