@@ -1,5 +1,13 @@
 # @vigilioyonatan/devsecops-evidence
 
+## 0.3.0
+
+### Minor Changes
+
+- 0865663: Add safe consumer-owned Node/Nest tooling configuration, project path autodiscovery, consistent
+  PostgreSQL endpoint validation, dynamic Lambda/OpenAPI/contracts paths, and configurable DORA
+  deployment environments.
+
 ## 0.2.0
 
 ### Minor Changes

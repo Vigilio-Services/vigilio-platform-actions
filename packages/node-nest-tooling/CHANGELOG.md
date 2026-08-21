@@ -1,5 +1,18 @@
 # @vigilioyonatan/node-nest-tooling
 
+## 0.3.0
+
+### Minor Changes
+
+- 0865663: Add safe consumer-owned Node/Nest tooling configuration, project path autodiscovery, consistent
+  PostgreSQL endpoint validation, dynamic Lambda/OpenAPI/contracts paths, and configurable DORA
+  deployment environments.
+
+### Patch Changes
+
+- 0865663: Derive local and E2E PostgreSQL connection URLs from namespaced environment settings while keeping
+  safe project-based database names and explicit URL overrides.
+
 ## 0.2.0
 
 ### Minor Changes

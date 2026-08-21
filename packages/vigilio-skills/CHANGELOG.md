@@ -1,5 +1,13 @@
 # @vigilioyonatan/vigilio-skills
 
+## 0.5.0
+
+### Minor Changes
+
+- 0865663: Add the `commit-ai-change` core skill for prompt-derived AI-ticketed branches, `Prompt-Id`/`Prompt-Slug` commit traceability, impact-based verification, explicit staging, repository-native commit validation, and commit-only finalization without push.
+- 0865663: Add @vigilioyonatan/prompt-builder package to platform-actions for deterministic engineering context and prompt compilation for AI coding agents. Update DevSecOps governance with ANSI color error formatting and extended OIDC capability recognition. Bump skills with commit-ai-change and technologies standards.
+- 0865663: Add version-aware shared, Node/Nest, and Web MFE technology skills. Resolve legacy and Kubernetes v2 frontend/backend contract pairs without cross-linking their packages.
+
 ## 0.3.0
 
 ### Minor Changes
