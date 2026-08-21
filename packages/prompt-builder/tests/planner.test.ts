@@ -151,10 +151,13 @@ scope:
   allowed_paths: [apps/bus-impl-v2/src/**, apps/web-mfe-v2/apps/salud/backoffice/src/**]
 quality_gates:
   required: [typecheck, unit]
+  activation_required: [build, security]
   conditional:
     frontend:
       when_document_exists: pages.md
       gates: [frontend-build, e2e]
+activation_requirements:
+  - verify executable evidence before enabling execution
 `,
     );
     await write(root, `${base}/business.md`, `# ${pack.id} business rules\n`);
@@ -204,6 +207,9 @@ describe('planner', () => {
       const firstPrompt = await readFile(plan.steps[0].prompt, 'utf8');
       assert.match(firstPrompt, /identity\.users-store frontend pages/);
       assert.match(firstPrompt, /web-mfe-build-feature/);
+      assert.match(firstPrompt, /Gates required before execution activation/);
+      assert.match(firstPrompt, /- security/);
+      assert.match(firstPrompt, /verify executable evidence before enabling execution/);
       assert.match(firstPrompt, /profile: k8s-v2/);
       assert.match(firstPrompt, /@vigilioyonatan\/bus-v2-contracts/);
       assert.match(firstPrompt, /apps\/bus-impl-v2\/src\/\*\*/);
@@ -212,6 +218,10 @@ describe('planner', () => {
       const firstLock = JSON.parse(await readFile(plan.steps[0].lockfile, 'utf8'));
       assert.equal(firstLock.target_profile.id, 'k8s-v2');
       assert.equal(firstLock.target_profile.materialized.frontend, true);
+      assert.deepEqual(firstLock.activation_gates, ['build', 'security']);
+      assert.deepEqual(firstLock.activation_requirements, [
+        'verify executable evidence before enabling execution',
+      ]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -2,7 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
 import { createProjectPlan } from './planner.js';
-import type { Phase, PreparedPrompt } from './types.js';
+import type { ConditionContext, Phase, PreparedPrompt } from './types.js';
 
 function safeSegment(value: string) {
   const safe = value
@@ -33,6 +33,7 @@ export async function buildAll(input: {
   outputDirectory?: string | undefined;
   includeContextPacks?: boolean | undefined;
   dryRun?: boolean | undefined;
+  conditionContext?: ConditionContext | undefined;
 }) {
   const planId = safeSegment(input.planId);
   const outputDirectory = input.outputDirectory
@@ -58,6 +59,7 @@ export async function buildAll(input: {
         phase,
         tokenBudget: input.tokenBudget,
         dependencies: pack.dependencies,
+        conditionContext: input.conditionContext,
       });
       steps.push({
         sequence,

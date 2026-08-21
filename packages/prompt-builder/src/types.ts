@@ -7,9 +7,19 @@ export type Scope = {
   forbidden_paths?: string[] | undefined;
 };
 
+export type ConditionPredicate = {
+  name: string;
+  equals: boolean;
+};
+
+export type RuleCondition = {
+  document_exists?: string | undefined;
+  change_touches?: string[] | undefined;
+  predicates?: ConditionPredicate[] | undefined;
+};
+
 export type ConditionalRule = {
-  when_document_exists?: string | undefined;
-  when_change_touches?: string[] | undefined;
+  when?: RuleCondition | undefined;
   use?: string[] | undefined;
 };
 
@@ -21,9 +31,15 @@ export type SkillConfiguration = {
 
 export type QualityGateConfiguration = {
   required?: string[] | undefined;
+  activation_required?: string[] | undefined;
   conditional?:
     | Record<string, Omit<ConditionalRule, 'use'> & { gates?: string[] | undefined }>
     | undefined;
+};
+
+export type ConditionContext = {
+  changedPaths?: string[] | undefined;
+  predicates?: Record<string, boolean> | undefined;
 };
 
 export type TargetState = 'current' | 'target_not_materialized';
@@ -62,12 +78,16 @@ export type ResolvedTargetProfile = TargetProfile & {
 };
 
 export type PromptPack = {
+  schema_version: 2;
   id: string;
   version: number;
   status: 'active' | 'deprecated';
   kind?: 'global' | 'module' | 'use-case' | 'workflow' | 'contract' | 'infra' | undefined;
   module?: string | undefined;
   use_case?: string | undefined;
+  use_cases?: string[] | undefined;
+  workflow?: string | undefined;
+  related_capabilities?: string[] | undefined;
   target_profile?: string | undefined;
   inherits?: string[] | undefined;
   depends_on?: string[] | undefined;
@@ -79,24 +99,18 @@ export type PromptPack = {
       }
     | undefined;
   documents?:
-    | string[]
     | {
         required?: string[] | undefined;
         optional?: string[] | undefined;
       }
     | undefined;
-  openspec?:
-    | {
-        capability?: string | undefined;
-        capabilities?: string[] | undefined;
-      }
-    | undefined;
-  skills?: string[] | SkillConfiguration | undefined;
-  allowed_code_paths?: string[] | undefined;
-  forbidden_code_paths?: string[] | undefined;
+  openspec?: { capabilities?: string[] | undefined } | undefined;
+  skills?: SkillConfiguration | undefined;
   scope?: Scope | undefined;
   federated_scope?: Record<string, Scope> | undefined;
-  quality_gates?: string[] | QualityGateConfiguration | undefined;
+  quality_gates?: QualityGateConfiguration | undefined;
+  activation_requirements?: string[] | undefined;
+  documentation_sync?: string[] | undefined;
 };
 
 export type RegistryEntry = {
@@ -132,6 +146,7 @@ export type BuildRequest = {
 
 export type PreparedPrompt = {
   packId: string;
+  schemaVersion: 2;
   packVersion: number;
   change?: string | undefined;
   phase: Phase;
@@ -140,6 +155,8 @@ export type PreparedPrompt = {
   openspec: OpenSpecContext;
   skills: string[];
   qualityGates: string[];
+  activationGates: string[];
+  activationRequirements: string[];
   allowedPaths: string[];
   forbiddenPaths: string[];
   inheritance: string[];

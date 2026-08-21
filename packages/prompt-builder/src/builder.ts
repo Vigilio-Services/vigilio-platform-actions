@@ -4,6 +4,8 @@ import { assemble, loadTemplate } from './assembler.js';
 import { writeLockfile } from './lockfile.js';
 import { readOpenSpecContext } from './openspec-reader.js';
 import {
+  resolveActivationGates,
+  resolveActivationRequirements,
   resolveCapabilities,
   resolveQualityGates,
   resolveScopes,
@@ -13,7 +15,7 @@ import { loadPack, resolveDocuments, resolveInheritance } from './resolver.js';
 import { resolveSkills } from './skill-resolver.js';
 import { resolveTargetProfile } from './target-profile.js';
 import { enforceBudget } from './token-budget.js';
-import type { Phase, PreparedPrompt } from './types.js';
+import type { ConditionContext, Phase, PreparedPrompt } from './types.js';
 import { validateBudget } from './validator.js';
 
 export async function preparePrompt(input: {
@@ -23,6 +25,7 @@ export async function preparePrompt(input: {
   phase: Phase;
   tokenBudget: number;
   dependencies?: string[] | undefined;
+  conditionContext?: ConditionContext | undefined;
 }): Promise<PreparedPrompt> {
   validateBudget(input.tokenBudget);
   const inheritance = await resolveInheritance(input.packId, input.projectRoot);
@@ -39,8 +42,10 @@ export async function preparePrompt(input: {
   });
   const template = await loadTemplate(input.phase);
   const budgeted = enforceBudget({ documents, openspec, template, budget: input.tokenBudget });
-  const skills = resolveSkills(manifests, budgeted.documents);
-  const qualityGates = resolveQualityGates(manifests, budgeted.documents);
+  const skills = resolveSkills(manifests, budgeted.documents, input.conditionContext);
+  const qualityGates = resolveQualityGates(manifests, budgeted.documents, input.conditionContext);
+  const activationGates = resolveActivationGates(manifests);
+  const activationRequirements = resolveActivationRequirements(manifests);
   const scopes = resolveScopes(manifests);
   const targetProfile = await resolveTargetProfile(
     input.projectRoot,
@@ -56,6 +61,8 @@ export async function preparePrompt(input: {
     change: input.change,
     skills,
     qualityGates,
+    activationGates,
+    activationRequirements,
     allowedPaths: scopes.allowed,
     forbiddenPaths,
     dependencies,
@@ -66,6 +73,7 @@ export async function preparePrompt(input: {
 
   return {
     packId: input.packId,
+    schemaVersion: target.schema_version,
     packVersion: target.version,
     change: input.change,
     phase: input.phase,
@@ -74,6 +82,8 @@ export async function preparePrompt(input: {
     openspec,
     skills,
     qualityGates,
+    activationGates,
+    activationRequirements,
     allowedPaths: scopes.allowed,
     forbiddenPaths,
     inheritance,

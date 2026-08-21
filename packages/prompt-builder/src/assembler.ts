@@ -16,6 +16,8 @@ export function assemble(input: {
   change?: string | undefined;
   skills: string[];
   qualityGates: string[];
+  activationGates: string[];
+  activationRequirements: string[];
   allowedPaths: string[];
   forbiddenPaths: string[];
   dependencies: string[];
@@ -36,6 +38,14 @@ export function assemble(input: {
     .replaceAll(
       '{{QUALITY_GATES}}',
       input.qualityGates.map((s) => `- ${s}`).join('\n') || '- none declared',
+    )
+    .replaceAll(
+      '{{ACTIVATION_GATES}}',
+      input.activationGates.map((s) => `- ${s}`).join('\n') || '- none declared',
+    )
+    .replaceAll(
+      '{{ACTIVATION_REQUIREMENTS}}',
+      input.activationRequirements.map((s) => `- ${s}`).join('\n') || '- none declared',
     )
     .replaceAll(
       '{{ALLOWED_PATHS}}',

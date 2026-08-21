@@ -1,10 +1,15 @@
-import path from 'node:path';
-import type { LoadedDocument, Phase, PromptPack, QualityGateConfiguration } from './types.js';
+import { conditionMatches } from './condition-evaluator.js';
+import type {
+  ConditionContext,
+  LoadedDocument,
+  Phase,
+  PromptPack,
+  QualityGateConfiguration,
+} from './types.js';
 
 export function resolveCapabilities(packs: PromptPack[]) {
   const capabilities = new Set<string>();
   for (const pack of packs) {
-    if (pack.openspec?.capability) capabilities.add(pack.openspec.capability);
     for (const capability of pack.openspec?.capabilities ?? []) capabilities.add(capability);
   }
   return [...capabilities];
@@ -22,33 +27,41 @@ export function resolveTargetProfileId(packs: PromptPack[]) {
   return profiles[0];
 }
 
-export function resolveQualityGates(packs: PromptPack[], documents: LoadedDocument[]) {
+export function resolveQualityGates(
+  packs: PromptPack[],
+  documents: LoadedDocument[],
+  context: ConditionContext = {},
+) {
   const gates = new Set<string>();
-  const documentNames = new Set(documents.map((document) => path.basename(document.source)));
   for (const pack of packs) {
-    if (Array.isArray(pack.quality_gates)) {
-      for (const gate of pack.quality_gates) gates.add(gate);
-      continue;
-    }
-    const configuration = pack.quality_gates as QualityGateConfiguration | undefined;
+    const configuration: QualityGateConfiguration | undefined = pack.quality_gates;
     for (const gate of configuration?.required ?? []) gates.add(gate);
     for (const [gateName, rule] of Object.entries(configuration?.conditional ?? {})) {
-      if (rule.when_document_exists && !documentNames.has(rule.when_document_exists)) continue;
-      if (rule.when_change_touches?.length) continue;
+      if (!conditionMatches(rule.when, documents, context)) continue;
       for (const gate of rule.gates?.length ? rule.gates : [gateName]) gates.add(gate);
     }
   }
   return [...gates];
 }
 
+export function resolveActivationGates(packs: PromptPack[]) {
+  const gates = new Set<string>();
+  for (const pack of packs) {
+    for (const gate of pack.quality_gates?.activation_required ?? []) gates.add(gate);
+  }
+  return [...gates];
+}
+
+export function resolveActivationRequirements(packs: PromptPack[]) {
+  return [...new Set(packs.flatMap((pack) => pack.activation_requirements ?? []))];
+}
+
 export function resolveScopes(packs: PromptPack[]) {
   const allowed = new Set<string>();
   const forbidden = new Set<string>();
   for (const pack of packs) {
-    for (const item of pack.scope?.allowed_paths ?? pack.allowed_code_paths ?? [])
-      allowed.add(item);
-    for (const item of pack.scope?.forbidden_paths ?? pack.forbidden_code_paths ?? [])
-      forbidden.add(item);
+    for (const item of pack.scope?.allowed_paths ?? []) allowed.add(item);
+    for (const item of pack.scope?.forbidden_paths ?? []) forbidden.add(item);
     for (const [repository, scope] of Object.entries(pack.federated_scope ?? {})) {
       for (const item of scope.allowed_paths ?? []) allowed.add(`${repository}: ${item}`);
       for (const item of scope.forbidden_paths ?? []) forbidden.add(`${repository}: ${item}`);
