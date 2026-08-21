@@ -4,6 +4,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildAll } from './build-all.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
+import { migratePromptPacks } from './migrator.js';
 import { PHASES, type Phase } from './types.js';
 
 const { positionals, values } = parseArgs({
@@ -17,8 +18,13 @@ const { positionals, values } = parseArgs({
     'project-root': { type: 'string', default: process.cwd() },
     'output-dir': { type: 'string' },
     'plan-id': { type: 'string', default: 'full-project' },
+    'rules-root': { type: 'string' },
+    'backup-dir': { type: 'string' },
     'include-context-packs': { type: 'boolean', default: false },
+    'changed-path': { type: 'string', multiple: true },
+    condition: { type: 'string', multiple: true },
     'dry-run': { type: 'boolean', default: false },
+    write: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
     version: { type: 'boolean', short: 'v', default: false },
   },
@@ -34,6 +40,7 @@ Commands:
   validate    Validate one prompt pack without writing output
   plan        Validate and display the complete execution plan without writing output
   build-all   Generate the ordered project prompt set and execution plan
+  migrate     Convert prompt packs to schema v2 (dry-run unless --write)
 
 Options:
   --pack <id>                    Prompt pack identifier
@@ -44,8 +51,13 @@ Options:
   --project-root <path>          Consumer project root (default: current directory)
   --output-dir <path>            Generated prompt directory
   --plan-id <id>                 Execution plan identifier (default: full-project)
+  --rules-root <path>            Rules directory (default: docs/rules)
+  --backup-dir <path>            Backup directory used by migrate --write
   --include-context-packs        Include non-executable context packs
+  --changed-path <path>          Changed path used by conditional rules (repeatable)
+  --condition <name=boolean>     Predicate value used by conditional rules (repeatable)
   --dry-run                      Validate build-all without writing files
+  --write                        Persist schema-v2 migration changes
   -h, --help                     Show this help
   -v, --version                  Show the installed package version`;
 
@@ -84,6 +96,57 @@ function parsePhases(value: string | undefined): Phase[] {
   return unique;
 }
 
+function parseConditions(entries: string[] | undefined) {
+  const predicates: Record<string, boolean> = {};
+  for (const entry of entries ?? []) {
+    const match = /^([a-z][a-z0-9_]*)=(true|false)$/.exec(entry);
+    if (!match) throw new Error(`Invalid --condition value: ${entry}; expected name=true|false`);
+    const name = match[1];
+    const value = match[2];
+    if (!name || !value) throw new Error(`Invalid --condition value: ${entry}`);
+    predicates[name] = value === 'true';
+  }
+  return predicates;
+}
+
+const conditionContext = {
+  changedPaths: values['changed-path'],
+  predicates: parseConditions(values.condition),
+};
+
+if (command === 'migrate') {
+  if (values.write && values['dry-run']) {
+    throw new Error('Use either --write or --dry-run for migrate, not both');
+  }
+  if (values['backup-dir'] && !values.write) {
+    throw new Error('--backup-dir requires --write');
+  }
+  const rulesRoot = path.resolve(projectRoot, values['rules-root'] ?? 'docs/rules');
+  const write = values.write;
+  const backupRoot = write
+    ? path.resolve(
+        projectRoot,
+        values['backup-dir'] ??
+          `.prompt-builder-backup/${new Date().toISOString().replaceAll(/[:.]/g, '-')}`,
+      )
+    : undefined;
+  const result = await migratePromptPacks({ rulesRoot, write, backupRoot });
+  console.log(
+    JSON.stringify(
+      {
+        rules_root: rulesRoot,
+        scanned: result.scanned,
+        changed: result.changed.length,
+        written: result.written,
+        backup_directory: backupRoot ?? null,
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
 if (command === 'build-all' || command === 'plan') {
   const result = await buildAll({
     projectRoot,
@@ -94,6 +157,7 @@ if (command === 'build-all' || command === 'plan') {
     outputDirectory: values['output-dir'],
     includeContextPacks: values['include-context-packs'],
     dryRun: command === 'plan' || values['dry-run'],
+    conditionContext,
   });
   console.log(
     JSON.stringify(
@@ -118,6 +182,7 @@ const prepared = await preparePrompt({
   change: values.change,
   phase,
   tokenBudget,
+  conditionContext,
 });
 
 if (command === 'validate') {

@@ -45,6 +45,56 @@ pnpm exec vigilio-prompt plan --project-root . --phases propose,apply,review
 pnpm exec vigilio-prompt build-all --project-root . --plan-id full-project --phases propose,apply,review
 ```
 
+### Prompt-pack schema v2
+
+Schema v2 separates always-active skills, conditional skills, validation gates and gates that must
+be proven before execution is enabled. Conditions use a closed, machine-readable structure:
+
+```yaml
+schema_version: 2
+skills:
+  primary: [node-nest-build-feature]
+  supporting: [node-nest-testing]
+  conditional:
+    frontend:
+      when:
+        document_exists: pages.md
+      use: [web-mfe-build-feature, web-mfe-testing]
+quality_gates:
+  required: [prompt-pack, architecture, openspec]
+  activation_required: [lint, typecheck, build, unit, security, evidence]
+  conditional:
+    migration:
+      when:
+        change_touches: [migrations/**, prisma/**]
+      gates: [migration]
+```
+
+Project-specific predicates are data, not hardcoded package logic:
+
+```yaml
+quality_gates:
+  conditional:
+    performance:
+      when:
+        predicates:
+          - name: payload_size_is_material
+            equals: true
+      gates: [performance]
+```
+
+Pass known values with repeatable `--condition name=true|false` and changed paths with repeatable
+`--changed-path path`. Unknown conditions are included conservatively; Prompt Builder never treats
+missing evidence as proof that a control does not apply.
+
+Legacy manifests remain readable through a normalization boundary. Migrate a repository in two
+steps; dry-run is the default and `--write` creates a backup before changing prompt packs:
+
+```bash
+pnpm exec vigilio-prompt migrate --project-root .
+pnpm exec vigilio-prompt migrate --project-root . --write
+```
+
 Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
 
 The generated Markdown is agent-neutral. Vigilio currently provisions synchronized skills for Codex and OpenCode; another AI coding agent can consume the generated prompts without being executed by this package.
@@ -102,7 +152,7 @@ generated/prompts/full-project/
 5. required and optional documents
 6. OpenSpec current capability specs
 7. active change proposal, design, tasks and delta specs
-8. skills and quality gates
+8. skills, required quality gates, activation gates and activation requirements
 9. target profile + contract owner/package/consumer gate
 10. allowed and forbidden scopes, including protected current-pair paths
 11. token budget

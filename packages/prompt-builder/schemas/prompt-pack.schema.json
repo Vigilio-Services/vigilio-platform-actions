@@ -1,14 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vigilio.dev/schemas/prompt-pack.v2.schema.json",
+  "title": "Vigilio Prompt Pack v2",
   "type": "object",
-  "required": ["id", "version", "status"],
+  "required": ["schema_version", "id", "version", "status"],
   "properties": {
+    "schema_version": { "const": 2 },
     "id": { "type": "string", "minLength": 3, "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
     "version": { "type": "integer", "minimum": 1 },
     "status": { "enum": ["active", "deprecated"] },
     "kind": { "enum": ["global", "module", "use-case", "workflow", "contract", "infra"] },
     "module": { "type": "string", "minLength": 1 },
     "use_case": { "type": "string", "minLength": 1 },
+    "use_cases": { "$ref": "#/$defs/stringList" },
+    "workflow": { "type": "string", "minLength": 1 },
+    "related_capabilities": { "$ref": "#/$defs/stringList" },
     "target_profile": {
       "type": "string",
       "minLength": 1,
@@ -31,71 +37,48 @@
       "additionalProperties": false
     },
     "documents": {
-      "oneOf": [
-        { "$ref": "#/$defs/stringList" },
-        {
-          "type": "object",
-          "properties": {
-            "required": { "$ref": "#/$defs/stringList" },
-            "optional": { "$ref": "#/$defs/stringList" }
-          },
-          "additionalProperties": false
-        }
-      ]
+      "type": "object",
+      "properties": {
+        "required": { "$ref": "#/$defs/stringList" },
+        "optional": { "$ref": "#/$defs/stringList" }
+      },
+      "additionalProperties": false
     },
     "openspec": {
       "type": "object",
       "properties": {
-        "capability": { "type": "string" },
         "capabilities": { "$ref": "#/$defs/stringList" }
       },
       "additionalProperties": false
     },
     "skills": {
-      "oneOf": [
-        { "$ref": "#/$defs/stringList" },
-        {
+      "type": "object",
+      "properties": {
+        "primary": { "$ref": "#/$defs/stringList" },
+        "supporting": { "$ref": "#/$defs/stringList" },
+        "conditional": {
           "type": "object",
-          "properties": {
-            "primary": { "$ref": "#/$defs/stringList" },
-            "supporting": { "$ref": "#/$defs/stringList" },
-            "conditional": {
-              "type": "object",
-              "additionalProperties": { "$ref": "#/$defs/conditionalSkill" }
-            }
-          },
-          "additionalProperties": false
+          "additionalProperties": { "$ref": "#/$defs/conditionalSkill" }
         }
-      ]
+      },
+      "additionalProperties": false
     },
-    "allowed_code_paths": { "$ref": "#/$defs/stringList" },
-    "forbidden_code_paths": { "$ref": "#/$defs/stringList" },
     "scope": { "$ref": "#/$defs/scope" },
     "federated_scope": { "type": "object", "additionalProperties": { "$ref": "#/$defs/scope" } },
     "quality_gates": {
-      "oneOf": [
-        { "$ref": "#/$defs/stringList" },
-        {
+      "type": "object",
+      "properties": {
+        "required": { "$ref": "#/$defs/stringList" },
+        "activation_required": { "$ref": "#/$defs/stringList" },
+        "conditional": {
           "type": "object",
-          "properties": {
-            "required": { "$ref": "#/$defs/stringList" },
-            "conditional": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "object",
-                "properties": {
-                  "when_document_exists": { "type": "string" },
-                  "when_change_touches": { "$ref": "#/$defs/stringList" },
-                  "gates": { "$ref": "#/$defs/stringList" }
-                },
-                "additionalProperties": false
-              }
-            }
-          },
-          "additionalProperties": false
+          "additionalProperties": { "$ref": "#/$defs/conditionalGate" }
         }
-      ]
-    }
+      },
+      "additionalProperties": false
+    },
+    "activation_requirements": { "$ref": "#/$defs/stringList" },
+    "documentation_sync": { "$ref": "#/$defs/stringList" }
   },
   "$defs": {
     "phase": { "enum": ["explore", "propose", "apply", "review", "fix"] },
@@ -112,16 +95,46 @@
       },
       "additionalProperties": false
     },
+    "predicate": {
+      "type": "object",
+      "required": ["name", "equals"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "pattern": "^[a-z][a-z0-9_]*$" },
+        "equals": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "condition": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "document_exists": { "type": "string", "minLength": 1 },
+        "change_touches": { "$ref": "#/$defs/stringList" },
+        "predicates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/predicate" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
     "conditionalSkill": {
       "type": "object",
+      "required": ["use"],
       "properties": {
-        "when_document_exists": { "type": "string" },
-        "when_change_touches": { "$ref": "#/$defs/stringList" },
+        "when": { "$ref": "#/$defs/condition" },
         "use": { "$ref": "#/$defs/stringList" }
       },
-      "required": ["use"],
+      "additionalProperties": false
+    },
+    "conditionalGate": {
+      "type": "object",
+      "properties": {
+        "when": { "$ref": "#/$defs/condition" },
+        "gates": { "$ref": "#/$defs/stringList" }
+      },
       "additionalProperties": false
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

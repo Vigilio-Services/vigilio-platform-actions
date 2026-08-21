@@ -6,13 +6,16 @@ import type { PromptPack } from './types.js';
 
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export async function validatePackShape(pack: PromptPack) {
+export async function validatePackShape(pack: PromptPack, source = 'prompt-pack.yaml') {
   const schemaPath = path.join(TOOL_ROOT, 'schemas/prompt-pack.schema.json');
   const schema = JSON.parse(await readFile(schemaPath, 'utf8'));
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   const validate = ajv.compile(schema);
   if (!validate(pack)) {
-    throw new Error(`Invalid prompt pack: ${JSON.stringify(validate.errors, null, 2)}`);
+    const details = (validate.errors ?? [])
+      .map((error) => `${error.instancePath || '/'} ${error.message ?? 'is invalid'}`)
+      .join('; ');
+    throw new Error(`Invalid prompt pack at ${source}: ${details}`);
   }
 }
 

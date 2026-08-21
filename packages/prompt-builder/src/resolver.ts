@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { normalizePromptPack } from './normalizer.js';
 import { resolvePackPath } from './registry.js';
 import type { LoadedDocument, PromptPack } from './types.js';
 import {
@@ -13,20 +14,26 @@ import {
 export async function loadPack(packId: string, projectRoot: string) {
   const manifestPath = await resolvePackPath(packId, projectRoot);
   const raw = await readFile(manifestPath, 'utf8');
-  const manifest = YAML.parse(raw) as PromptPack;
-  await validatePackShape(manifest);
+  const normalized = normalizePromptPack(YAML.parse(raw) as unknown);
+  const manifest = normalized.manifest;
+  await validatePackShape(manifest, manifestPath);
   if (manifest.id !== packId) {
     throw new Error(
       `Registry id ${packId} does not match manifest id ${manifest.id} at ${manifestPath}`,
     );
   }
-  const allowed = manifest.scope?.allowed_paths ?? manifest.allowed_code_paths ?? [];
-  const forbidden = manifest.scope?.forbidden_paths ?? manifest.forbidden_code_paths ?? [];
+  const allowed = manifest.scope?.allowed_paths ?? [];
+  const forbidden = manifest.scope?.forbidden_paths ?? [];
   validateScope(allowed, forbidden);
   for (const scope of Object.values(manifest.federated_scope ?? {})) {
     validateScope(scope.allowed_paths ?? [], scope.forbidden_paths ?? []);
   }
-  return { manifest, manifestPath, directory: path.dirname(manifestPath) };
+  return {
+    manifest,
+    manifestPath,
+    directory: path.dirname(manifestPath),
+    migrated: normalized.migrated,
+  };
 }
 
 export async function resolveInheritance(
@@ -46,7 +53,6 @@ export async function resolveInheritance(
 
 function normalizeDocs(pack: PromptPack) {
   if (!pack.documents) return { required: [], optional: [] };
-  if (Array.isArray(pack.documents)) return { required: pack.documents, optional: [] };
   return {
     required: pack.documents.required ?? [],
     optional: pack.documents.optional ?? [],

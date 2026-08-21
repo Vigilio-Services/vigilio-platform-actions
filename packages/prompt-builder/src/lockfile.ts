@@ -15,6 +15,7 @@ export async function writeLockfile(input: {
   await mkdir(path.dirname(input.outputBase), { recursive: true });
   const payload = {
     pack: input.prepared.packId,
+    prompt_pack_schema_version: input.prepared.schemaVersion,
     pack_version: input.prepared.packVersion,
     change: input.prepared.change ?? null,
     phase: input.prepared.phase,
@@ -28,6 +29,8 @@ export async function writeLockfile(input: {
     target_profile: input.prepared.targetProfile ?? null,
     skills: input.prepared.skills,
     quality_gates: input.prepared.qualityGates,
+    activation_gates: input.prepared.activationGates,
+    activation_requirements: input.prepared.activationRequirements,
     allowed_paths: input.prepared.allowedPaths,
     forbidden_paths: input.prepared.forbiddenPaths,
     documents: input.prepared.documents.map((d) => ({
