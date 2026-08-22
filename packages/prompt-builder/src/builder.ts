@@ -15,7 +15,13 @@ import { loadPack, resolveDocuments, resolveInheritance } from './resolver.js';
 import { resolveSkills } from './skill-resolver.js';
 import { resolveTargetProfile } from './target-profile.js';
 import { enforceBudget } from './token-budget.js';
-import type { ConditionContext, Phase, PreparedPrompt } from './types.js';
+import type {
+  ConditionContext,
+  PackPlanNode,
+  Phase,
+  PlanSelectionEvidence,
+  PreparedPrompt,
+} from './types.js';
 import { validateBudget } from './validator.js';
 
 export async function preparePrompt(input: {
@@ -104,6 +110,8 @@ export async function writePreparedPrompt(input: {
   planId?: string | undefined;
   sequence?: number | undefined;
   level?: number | undefined;
+  planSelection?: PlanSelectionEvidence | undefined;
+  selectionReason?: PackPlanNode['selectionReason'] | undefined;
 }) {
   await mkdir(path.dirname(input.outputBase), { recursive: true });
   const output = `${input.outputBase}.md`;
@@ -114,6 +122,8 @@ export async function writePreparedPrompt(input: {
     planId: input.planId,
     sequence: input.sequence,
     level: input.level,
+    planSelection: input.planSelection,
+    selectionReason: input.selectionReason,
   });
   return { output, lockfile: `${input.outputBase}.lock.json` };
 }

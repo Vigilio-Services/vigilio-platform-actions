@@ -1,0 +1,9 @@
+schema_version: 1
+id: first-vertical-slice
+
+# include-transitive adds every execution-enabled dependency and records why it
+# was selected. require-explicit fails unless the complete closure is listed.
+dependency_policy: include-transitive
+
+packs:
+  - module.use-case

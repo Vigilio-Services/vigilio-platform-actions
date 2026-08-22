@@ -96,6 +96,7 @@ export type PromptPack = {
         enabled?: boolean | undefined;
         order?: number | undefined;
         phases?: Phase[] | undefined;
+        blocking_decisions?: string[] | undefined;
       }
     | undefined;
   documents?:
@@ -127,6 +128,43 @@ export type RegistryEntry = {
 export type RegistryFile = {
   version?: number | undefined;
   packs: Record<string, RegistryEntry>;
+};
+
+export type DependencyPolicy = 'include-transitive' | 'require-explicit';
+
+export type PromptPlanFile = {
+  schema_version: 1;
+  id: string;
+  packs: string[];
+  dependency_policy: DependencyPolicy;
+};
+
+export type ResolvedPromptPlan = PromptPlanFile & {
+  source: string;
+  sourceRelative: string;
+  sha256: string;
+};
+
+export type PlanSelectionEvidence = {
+  mode: 'enabled-packs' | 'context-packs' | 'plan-file';
+  source: string | null;
+  sha256: string | null;
+  dependency_policy: DependencyPolicy | null;
+  requested_packs: string[];
+  resolved_packs: string[];
+};
+
+export type EligibilityCheck = {
+  name: string;
+  passed: boolean;
+  detail: string;
+};
+
+export type EligibilityReport = {
+  pack: string;
+  eligible: boolean;
+  dependency_closure: string[];
+  checks: EligibilityCheck[];
 };
 
 export type LoadedDocument = {
@@ -202,4 +240,5 @@ export type PackPlanNode = {
   dependencies: string[];
   inheritance: string[];
   phases: Phase[];
+  selectionReason: 'enabled' | 'context' | 'requested' | 'dependency';
 };

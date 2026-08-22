@@ -45,6 +45,62 @@ pnpm exec vigilio-prompt plan --project-root . --phases propose,apply,review
 pnpm exec vigilio-prompt build-all --project-root . --plan-id full-project --phases propose,apply,review
 ```
 
+### Batch eligibility and versioned plans
+
+`execution.enabled` is stable batch eligibility; it is not sprint selection or implementation
+status. Keep global, module and template context packs disabled. Before selecting a use case or
+workflow, explain its eligibility and preflight its transitive dependency closure:
+
+```bash
+pnpm exec vigilio-prompt check-eligibility --project-root . --pack reconciliation.manual-match --phases propose,apply,review
+```
+
+The command exits non-zero and prints machine-readable checks when the pack is disabled, inactive,
+unscoped, lacks quality controls, has an invalid dependency closure, or cannot resolve its required
+documents, canonical references, target profile or requested phases. It never modifies a manifest.
+Implementation-blocking decisions must be structured instead of hidden in comments:
+
+```yaml
+execution:
+  enabled: false
+  blocking_decisions:
+    - target application is not selected
+```
+
+Clear the decisions and enable the pack only through a reviewed change. `build-all` fails closed if
+an enabled pack still declares any `blocking_decisions`.
+
+Keep temporary cohort selection in a versioned plan instead of toggling canonical pack eligibility
+for each sprint:
+
+```yaml
+# docs/plans/first-vertical-slice.yaml
+schema_version: 1
+id: first-vertical-slice
+dependency_policy: include-transitive
+packs:
+  - imports.upload-source-file
+  - transactions.transactions-store
+  - reconciliation.manual-match
+```
+
+`include-transitive` automatically includes execution-enabled dependencies. Use
+`require-explicit` when every transitive dependency must be named in `packs`. Both policies fail
+closed on missing, inactive, disabled or cyclic dependencies.
+
+```bash
+# Preflight without writing generated artifacts
+pnpm exec vigilio-prompt plan --project-root . --plan-file docs/plans/first-vertical-slice.yaml --phases propose,apply,review
+
+# Generate only the selected cohort and its validated dependency closure
+pnpm exec vigilio-prompt build-all --project-root . --plan-file docs/plans/first-vertical-slice.yaml --phases propose,apply,review
+```
+
+The plan file must stay inside the project root. Its `id` owns the output directory; passing a
+different `--plan-id` fails. `--plan-file` and `--include-context-packs` are intentionally mutually
+exclusive. The generated execution plan and every lock record the plan path, SHA-256, dependency
+policy, requested packs, resolved packs and each pack's selection reason.
+
 ### Prompt-pack schema v2
 
 Schema v2 separates always-active skills, conditional skills, validation gates and gates that must

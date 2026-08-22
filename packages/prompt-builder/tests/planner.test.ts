@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'vitest';
 import { buildAll } from '../src/build-all.js';
+import { checkPackEligibility } from '../src/eligibility.js';
 import { createProjectPlan } from '../src/planner.js';
 
 async function write(root: string, relative: string, content: string) {
@@ -269,6 +270,194 @@ describe('planner', () => {
       await assert.rejects(
         () => createProjectPlan({ projectRoot: root, phases: ['apply'] }),
         /Circular execution dependency/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('selects a versioned cohort and includes its transitive dependency closure', async () => {
+    const root = await createFixture();
+    try {
+      await write(
+        root,
+        'docs/plans/order-flow.yaml',
+        `
+schema_version: 1
+id: order-flow
+packs: [orders.orders-store]
+dependency_policy: include-transitive
+`,
+      );
+      const result = await buildAll({
+        projectRoot: root,
+        phases: ['apply'],
+        tokenBudget: 60_000,
+        planFile: 'docs/plans/order-flow.yaml',
+      });
+      assert.equal(result.executionPlan.plan_id, 'order-flow');
+      assert.equal(result.executionPlan.pack_count, 3);
+      assert.deepEqual(result.executionPlan.selection.requested_packs, ['orders.orders-store']);
+      assert.deepEqual(result.executionPlan.selection.resolved_packs, [
+        'identity.users-store',
+        'catalog.products-store',
+        'orders.orders-store',
+      ]);
+      assert.match(result.executionPlan.selection.sha256 ?? '', /^[a-f0-9]{64}$/);
+      assert.deepEqual(
+        result.executionPlan.packs.map((pack) => [pack.id, pack.selectionReason]),
+        [
+          ['identity.users-store', 'dependency'],
+          ['catalog.products-store', 'dependency'],
+          ['orders.orders-store', 'requested'],
+        ],
+      );
+      const generated = JSON.parse(
+        await readFile(path.join(result.outputDirectory, 'execution-plan.json'), 'utf8'),
+      );
+      const firstLock = JSON.parse(await readFile(generated.steps[0].lockfile, 'utf8'));
+      assert.equal(firstLock.plan_selection.source, 'docs/plans/order-flow.yaml');
+      assert.equal(firstLock.plan_selection.pack_selection_reason, 'dependency');
+      assert.deepEqual(firstLock.plan_selection.requested_packs, ['orders.orders-store']);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  it('fails closed when an explicit plan omits a transitive dependency', async () => {
+    const root = await createFixture();
+    try {
+      await write(
+        root,
+        'docs/plans/order-flow.yaml',
+        `
+schema_version: 1
+id: order-flow
+packs: [orders.orders-store]
+dependency_policy: require-explicit
+`,
+      );
+      await assert.rejects(
+        () =>
+          buildAll({
+            projectRoot: root,
+            phases: ['apply'],
+            tokenBudget: 60_000,
+            planFile: 'docs/plans/order-flow.yaml',
+            dryRun: true,
+          }),
+        /Prompt plan omits required dependency: orders\.orders-store -> identity\.users-store/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects plan files that resolve outside the consumer project', async () => {
+    const root = await createFixture();
+    const outside = await mkdtemp(path.join(os.tmpdir(), 'prompt-plan-outside-'));
+    try {
+      await write(
+        outside,
+        'outside.yaml',
+        `
+schema_version: 1
+id: outside-plan
+packs: [identity.users-store]
+dependency_policy: include-transitive
+`,
+      );
+      await assert.rejects(
+        () =>
+          buildAll({
+            projectRoot: root,
+            phases: ['apply'],
+            tokenBudget: 60_000,
+            planFile: path.join(outside, 'outside.yaml'),
+            dryRun: true,
+          }),
+        /Prompt plan escapes project root/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('explains batch eligibility and validates dependency preflight controls', async () => {
+    const root = await createFixture();
+    try {
+      const report = await checkPackEligibility({
+        projectRoot: root,
+        packId: 'orders.orders-store',
+        phases: ['propose', 'apply', 'review'],
+      });
+      assert.equal(report.eligible, true);
+      assert.deepEqual(report.dependency_closure, [
+        'identity.users-store',
+        'catalog.products-store',
+        'orders.orders-store',
+      ]);
+      assert.equal(
+        report.checks.every((item) => item.passed),
+        true,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  it('reports execution.enabled false without mutating the pack', async () => {
+    const root = await createFixture();
+    try {
+      const registryPath = path.join(root, 'docs/rules/registry.yaml');
+      const registry = await readFile(registryPath, 'utf8');
+      await writeFile(
+        registryPath,
+        registry.replace(
+          'execution:\n      order: 40',
+          'execution:\n      enabled: false\n      order: 40',
+        ),
+      );
+      const report = await checkPackEligibility({
+        projectRoot: root,
+        packId: 'orders.orders-store',
+        phases: ['apply'],
+      });
+      assert.equal(report.eligible, false);
+      assert.equal(
+        report.checks.find((item) => item.name === 'execution_enabled')?.detail,
+        'execution.enabled is false',
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('fails closed when an enabled pack declares structured blocking decisions', async () => {
+    const root = await createFixture();
+    try {
+      const manifestPath = path.join(
+        root,
+        'docs/rules/01-modules/orders/orders-store/prompt-pack.yaml',
+      );
+      const manifest = await readFile(manifestPath, 'utf8');
+      await writeFile(
+        manifestPath,
+        manifest.replace(
+          'documents:',
+          'execution:\n  enabled: true\n  blocking_decisions: [target transport is not selected]\ndocuments:',
+        ),
+      );
+      await assert.rejects(
+        () =>
+          buildAll({
+            projectRoot: root,
+            phases: ['apply'],
+            tokenBudget: 60_000,
+            dryRun: true,
+          }),
+        /Executable pack has unresolved blocking decisions: orders\.orders-store/,
       );
     } finally {
       await rm(root, { recursive: true, force: true });

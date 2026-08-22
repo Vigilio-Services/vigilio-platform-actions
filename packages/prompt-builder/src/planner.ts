@@ -1,7 +1,7 @@
 import { isExecutable, resolveDefaultPhases } from './pack-metadata.js';
 import { readRegistry } from './registry.js';
 import { loadPack } from './resolver.js';
-import type { PackPlanNode, Phase, PromptPack, RegistryEntry } from './types.js';
+import type { DependencyPolicy, PackPlanNode, Phase, PromptPack, RegistryEntry } from './types.js';
 
 type Candidate = {
   id: string;
@@ -11,17 +11,76 @@ type Candidate = {
   order: number;
 };
 
+type LoadedCandidate = {
+  id: string;
+  entry: RegistryEntry;
+  loaded: Awaited<ReturnType<typeof loadPack>>;
+};
+
 function unique(values: string[]) {
   return [...new Set(values)];
+}
+
+function dependenciesOf(item: LoadedCandidate) {
+  return unique([...(item.loaded.manifest.depends_on ?? []), ...(item.entry.depends_on ?? [])]);
+}
+
+function resolveSelectedIds(
+  loaded: LoadedCandidate[],
+  selection: { packs: string[]; dependencyPolicy: DependencyPolicy },
+) {
+  const byId = new Map(loaded.map((item) => [item.id, item]));
+  const requested = new Set(selection.packs);
+  const selected = new Set(selection.packs);
+  const pending = [...selection.packs];
+
+  while (pending.length > 0) {
+    const id = pending.shift();
+    if (!id) continue;
+    const item = byId.get(id);
+    if (!item) throw new Error(`Prompt plan references unknown pack: ${id}`);
+    if (item.loaded.manifest.status !== 'active') {
+      throw new Error(`Prompt plan pack is not active: ${id}`);
+    }
+    if (!isExecutable(item.loaded.manifest, item.entry.execution?.enabled)) {
+      throw new Error(`Prompt plan pack is not execution-enabled: ${id}`);
+    }
+    const blockers = item.loaded.manifest.execution?.blocking_decisions ?? [];
+    if (blockers.length > 0) {
+      throw new Error(
+        `Prompt plan pack has unresolved blocking decisions: ${id} -> ${blockers.join(', ')}`,
+      );
+    }
+
+    for (const dependency of dependenciesOf(item)) {
+      if (selection.dependencyPolicy === 'require-explicit' && !requested.has(dependency)) {
+        throw new Error(`Prompt plan omits required dependency: ${id} -> ${dependency}`);
+      }
+      if (!selected.has(dependency)) {
+        selected.add(dependency);
+        pending.push(dependency);
+      }
+    }
+  }
+  return { requested, selected };
 }
 
 export async function createProjectPlan(input: {
   projectRoot: string;
   phases: Phase[];
   includeContextPacks?: boolean | undefined;
+  selection?:
+    | {
+        packs: string[];
+        dependencyPolicy: DependencyPolicy;
+      }
+    | undefined;
 }) {
+  if (input.selection && input.includeContextPacks) {
+    throw new Error('--plan-file cannot be combined with --include-context-packs');
+  }
   const registry = await readRegistry(input.projectRoot);
-  const loaded = await Promise.all(
+  const loaded: LoadedCandidate[] = await Promise.all(
     Object.entries(registry.packs).map(async ([id, entry]) => ({
       id,
       entry,
@@ -29,21 +88,22 @@ export async function createProjectPlan(input: {
     })),
   );
 
+  const selected = input.selection ? resolveSelectedIds(loaded, input.selection) : undefined;
+
   const candidates: Candidate[] = loaded
     .filter((item) => item.loaded.manifest.status === 'active')
     .filter(
       (item) =>
-        input.includeContextPacks ||
-        isExecutable(item.loaded.manifest, item.entry.execution?.enabled),
+        selected?.selected.has(item.id) ||
+        (!selected &&
+          (input.includeContextPacks ||
+            isExecutable(item.loaded.manifest, item.entry.execution?.enabled))),
     )
     .map((item) => ({
       id: item.id,
       manifest: item.loaded.manifest,
       registry: item.entry,
-      dependencies: unique([
-        ...(item.loaded.manifest.depends_on ?? []),
-        ...(item.entry.depends_on ?? []),
-      ]),
+      dependencies: dependenciesOf(item),
       order:
         item.entry.execution?.order ??
         item.loaded.manifest.execution?.order ??
@@ -59,6 +119,12 @@ export async function createProjectPlan(input: {
   );
   const executableIds = new Set(candidates.map((candidate) => candidate.id));
   for (const candidate of candidates) {
+    const blockers = candidate.manifest.execution?.blocking_decisions ?? [];
+    if (blockers.length > 0) {
+      throw new Error(
+        `Executable pack has unresolved blocking decisions: ${candidate.id} -> ${blockers.join(', ')}`,
+      );
+    }
     for (const dependency of candidate.dependencies) {
       if (!activeIds.has(dependency)) {
         throw new Error(`Missing or inactive dependency: ${candidate.id} -> ${dependency}`);
@@ -114,14 +180,27 @@ export async function createProjectPlan(input: {
     throw new Error(`Circular execution dependency detected: ${blocked.join(' -> ')}`);
   }
 
-  return ordered.map(
-    (candidate): PackPlanNode => ({
+  return ordered.map((candidate): PackPlanNode => {
+    const phases = resolveDefaultPhases(candidate.manifest, input.phases);
+    if (phases.length === 0) {
+      throw new Error(
+        `Prompt pack has no compatible requested phases: ${candidate.id} (${input.phases.join(', ')})`,
+      );
+    }
+    return {
       id: candidate.id,
       version: candidate.manifest.version,
       level: levels.get(candidate.id) ?? 0,
       dependencies: candidate.dependencies,
       inheritance: candidate.manifest.inherits ?? [],
-      phases: resolveDefaultPhases(candidate.manifest, input.phases),
-    }),
-  );
+      phases,
+      selectionReason: selected
+        ? selected.requested.has(candidate.id)
+          ? 'requested'
+          : 'dependency'
+        : input.includeContextPacks
+          ? 'context'
+          : 'enabled',
+    };
+  });
 }
