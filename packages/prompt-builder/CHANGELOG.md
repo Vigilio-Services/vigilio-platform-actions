@@ -1,5 +1,13 @@
 # @vigilioyonatan/prompt-builder
 
+## 0.5.0
+
+### Minor Changes
+
+- 53caa90: Add versioned cohort plans, fail-closed transitive dependency and structured blocker validation,
+  batch eligibility explanations, and reproducible plan evidence in execution plans and prompt
+  lockfiles while preserving the existing enabled-pack build-all behavior.
+
 ## 0.4.0
 
 ### Minor Changes
