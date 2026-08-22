@@ -4,6 +4,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildAll } from './build-all.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
+import { validateCanonicalReferences } from './canonical-reference.js';
 import { migratePromptPacks } from './migrator.js';
 import { PHASES, type Phase } from './types.js';
 
@@ -41,6 +42,7 @@ Commands:
   plan        Validate and display the complete execution plan without writing output
   build-all   Generate the ordered project prompt set and execution plan
   migrate     Convert prompt packs to schema v2 (dry-run unless --write)
+  validate-references  Validate canonical OpenSpec -> docs/rules references
 
 Options:
   --pack <id>                    Prompt pack identifier
@@ -139,6 +141,22 @@ if (command === 'migrate') {
         changed: result.changed.length,
         written: result.written,
         backup_directory: backupRoot ?? null,
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (command === 'validate-references') {
+  const references = await validateCanonicalReferences(projectRoot);
+  console.log(
+    JSON.stringify(
+      {
+        authority: 'docs-rules',
+        references: references.length,
+        valid: true,
       },
       null,
       2,

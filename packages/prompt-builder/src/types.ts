@@ -137,6 +137,34 @@ export type LoadedDocument = {
 
 export type OpenSpecContext = Record<string, string>;
 
+export type CanonicalReferenceFile = {
+  schema_version: 1;
+  authority: 'docs-rules';
+  mode: 'reference-only';
+  pack: string;
+  pack_version: number;
+};
+
+export type ResolvedCanonicalReference = CanonicalReferenceFile & {
+  kind: 'capability' | 'change';
+  subject: string;
+  source: string;
+  content: string;
+};
+
+export type CanonicalAuthority = {
+  type: 'docs-rules';
+  rulesRoot: string;
+  registrySource: string;
+  registryContent: string;
+};
+
+export type OpenSpecResolution = {
+  context: OpenSpecContext;
+  canonicalReferences: ResolvedCanonicalReference[];
+  canonicalAuthority?: CanonicalAuthority | undefined;
+};
+
 export type BuildRequest = {
   packId: string;
   change?: string | undefined;
@@ -153,6 +181,8 @@ export type PreparedPrompt = {
   prompt: string;
   documents: LoadedDocument[];
   openspec: OpenSpecContext;
+  canonicalReferences: ResolvedCanonicalReference[];
+  canonicalAuthority?: CanonicalAuthority | undefined;
   skills: string[];
   qualityGates: string[];
   activationGates: string[];

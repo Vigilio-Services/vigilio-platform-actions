@@ -99,6 +99,43 @@ Consumer repositories may expose project-specific aliases such as `context:build
 
 The generated Markdown is agent-neutral. Vigilio currently provisions synchronized skills for Codex and OpenCode; another AI coding agent can consume the generated prompts without being executed by this package.
 
+## Canonical docs/rules authority
+
+Projects that keep business and engineering truth in `docs/rules` can make OpenSpec a thin,
+versioned lifecycle/reference layer instead of a second manually maintained specification. Add a
+strict reference beside a capability or change:
+
+```text
+openspec/specs/<capability>/canonical-reference.yaml
+openspec/changes/<change>/canonical-reference.yaml
+```
+
+```yaml
+schema_version: 1
+authority: docs-rules
+mode: reference-only
+pack: settlements.recalculate-settlement
+pack_version: 3
+```
+
+When the file exists, Prompt Builder validates that the referenced pack is registered, belongs to
+the resolved inheritance and has the exact declared version. The corresponding local `spec.md` or
+delta spec is not inlined; canonical documents are resolved from the pack. Change lifecycle files
+(`proposal.md`, `design.md`, `tasks.md`) remain local and may cite stable requirement IDs without
+copying their bodies.
+
+Validate all active capability/change references in CI (historical OpenSpec archives remain immutable
+and are intentionally not revalidated against the current pack version):
+
+```bash
+pnpm exec vigilio-prompt validate-references --project-root .
+```
+
+The generated lock records the rules registry hash, every canonical-reference hash, pack version
+and all resolved document hashes. `generated/` and `.prompt-builder-backup/` remain derived
+artifacts and must never become manually edited sources of truth. Projects without canonical
+reference files retain the existing OpenSpec content behavior for backward compatibility.
+
 ## Ordering contract
 
 - `inherits` selects stable context and does not declare implementation completion.
@@ -150,8 +187,8 @@ generated/prompts/full-project/
 3. `depends_on` DAG validation and topological ordering
 4. inheritance
 5. required and optional documents
-6. OpenSpec current capability specs
-7. active change proposal, design, tasks and delta specs
+6. canonical OpenSpec references to `docs/rules`, or legacy local capability specs when no reference exists
+7. active change reference plus proposal/design/tasks, or legacy delta specs when no reference exists
 8. skills, required quality gates, activation gates and activation requirements
 9. target profile + contract owner/package/consumer gate
 10. allowed and forbidden scopes, including protected current-pair paths

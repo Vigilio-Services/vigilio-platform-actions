@@ -35,11 +35,14 @@ export async function preparePrompt(input: {
   const target = loaded.at(-1)?.manifest;
   if (!target) throw new Error(`Unable to resolve target pack: ${input.packId}`);
 
-  const openspec = await readOpenSpecContext({
+  const openspecResolution = await readOpenSpecContext({
     projectRoot: input.projectRoot,
     capabilities: resolveCapabilities(manifests),
     change: input.change,
+    resolvedPacks: new Map(manifests.map((manifest) => [manifest.id, manifest.version])),
+    targetPack: input.packId,
   });
+  const openspec = openspecResolution.context;
   const template = await loadTemplate(input.phase);
   const budgeted = enforceBudget({ documents, openspec, template, budget: input.tokenBudget });
   const skills = resolveSkills(manifests, budgeted.documents, input.conditionContext);
@@ -80,6 +83,8 @@ export async function preparePrompt(input: {
     prompt,
     documents: budgeted.documents,
     openspec,
+    canonicalReferences: openspecResolution.canonicalReferences,
+    canonicalAuthority: openspecResolution.canonicalAuthority,
     skills,
     qualityGates,
     activationGates,
