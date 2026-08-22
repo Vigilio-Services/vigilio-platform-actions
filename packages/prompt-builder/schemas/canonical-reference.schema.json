@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vigilio.dev/schemas/canonical-reference.v1.schema.json",
+  "title": "Vigilio canonical OpenSpec reference v1",
+  "type": "object",
+  "required": ["schema_version", "authority", "mode", "pack", "pack_version"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "authority": { "const": "docs-rules" },
+    "mode": { "const": "reference-only" },
+    "pack": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"
+    },
+    "pack_version": { "type": "integer", "minimum": 1 }
+  },
+  "additionalProperties": false
+}

@@ -41,6 +41,26 @@ export async function writeLockfile(input: {
     openspec: Object.fromEntries(
       Object.entries(input.prepared.openspec).map(([k, v]) => [k, sha256(v)]),
     ),
+    canonical_authority: input.prepared.canonicalAuthority
+      ? {
+          type: input.prepared.canonicalAuthority.type,
+          rules_root: input.prepared.canonicalAuthority.rulesRoot,
+          registry: {
+            source: input.prepared.canonicalAuthority.registrySource,
+            sha256: sha256(input.prepared.canonicalAuthority.registryContent),
+          },
+        }
+      : null,
+    canonical_references: input.prepared.canonicalReferences.map((reference) => ({
+      kind: reference.kind,
+      subject: reference.subject,
+      source: reference.source,
+      authority: reference.authority,
+      mode: reference.mode,
+      pack: reference.pack,
+      pack_version: reference.pack_version,
+      sha256: sha256(reference.content),
+    })),
   };
   await writeFile(`${input.outputBase}.lock.json`, JSON.stringify(payload, null, 2));
 }
