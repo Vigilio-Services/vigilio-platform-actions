@@ -1,5 +1,13 @@
 # @vigilioyonatan/prompt-builder
 
+## 0.4.0
+
+### Minor Changes
+
+- a4c4339: Add fail-closed canonical OpenSpec references to versioned docs/rules prompt packs, explicit lock
+  evidence, path-traversal protection and a CI validation command while preserving legacy OpenSpec
+  content resolution.
+
 ## 0.3.0
 
 ### Minor Changes
