@@ -1,8 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
+import { readPromptPlan } from './plan-file.js';
 import { createProjectPlan } from './planner.js';
-import type { ConditionContext, Phase, PreparedPrompt } from './types.js';
+import type {
+  ConditionContext,
+  PackPlanNode,
+  Phase,
+  PlanSelectionEvidence,
+  PreparedPrompt,
+} from './types.js';
 
 function safeSegment(value: string) {
   const safe = value
@@ -19,6 +26,7 @@ type PreparedStep = {
   pack: string;
   phase: Phase;
   dependencies: string[];
+  selectionReason: PackPlanNode['selectionReason'];
   previousPhaseSequence?: number | undefined;
   outputBase: string;
   prepared: PreparedPrompt;
@@ -29,13 +37,20 @@ export async function buildAll(input: {
   phases: Phase[];
   change?: string | undefined;
   tokenBudget: number;
-  planId: string;
+  planId?: string | undefined;
+  planFile?: string | undefined;
   outputDirectory?: string | undefined;
   includeContextPacks?: boolean | undefined;
   dryRun?: boolean | undefined;
   conditionContext?: ConditionContext | undefined;
 }) {
-  const planId = safeSegment(input.planId);
+  const promptPlan = input.planFile
+    ? await readPromptPlan(input.projectRoot, input.planFile)
+    : undefined;
+  if (input.planId && promptPlan && input.planId !== promptPlan.id) {
+    throw new Error(`--plan-id ${input.planId} does not match prompt plan id ${promptPlan.id}`);
+  }
+  const planId = safeSegment(input.planId ?? promptPlan?.id ?? 'full-project');
   const outputDirectory = input.outputDirectory
     ? path.resolve(input.projectRoot, input.outputDirectory)
     : path.resolve(input.projectRoot, 'generated/prompts', planId);
@@ -43,7 +58,21 @@ export async function buildAll(input: {
     projectRoot: input.projectRoot,
     phases: input.phases,
     includeContextPacks: input.includeContextPacks,
+    selection: promptPlan
+      ? {
+          packs: promptPlan.packs,
+          dependencyPolicy: promptPlan.dependency_policy,
+        }
+      : undefined,
   });
+  const planSelection: PlanSelectionEvidence = {
+    mode: promptPlan ? 'plan-file' : input.includeContextPacks ? 'context-packs' : 'enabled-packs',
+    source: promptPlan?.sourceRelative ?? null,
+    sha256: promptPlan?.sha256 ?? null,
+    dependency_policy: promptPlan?.dependency_policy ?? null,
+    requested_packs: promptPlan?.packs ?? packs.map((pack) => pack.id),
+    resolved_packs: packs.map((pack) => pack.id),
+  };
 
   const steps: PreparedStep[] = [];
   let sequence = 1;
@@ -67,6 +96,7 @@ export async function buildAll(input: {
         pack: pack.id,
         phase,
         dependencies: pack.dependencies,
+        selectionReason: pack.selectionReason,
         previousPhaseSequence,
         outputBase,
         prepared,
@@ -84,6 +114,7 @@ export async function buildAll(input: {
     generated_at: new Date().toISOString(),
     prompt_count: steps.length,
     pack_count: packs.length,
+    selection: planSelection,
     target_profiles: [
       ...new Map(
         steps.flatMap((step) =>
@@ -103,6 +134,7 @@ export async function buildAll(input: {
       sequence: step.sequence,
       dependency_level: step.level,
       pack: step.pack,
+      selection_reason: step.selectionReason,
       phase: step.phase,
       depends_on: step.dependencies,
       depends_on_previous_phase_step: step.previousPhaseSequence ?? null,
@@ -127,6 +159,8 @@ export async function buildAll(input: {
         planId,
         sequence: step.sequence,
         level: step.level,
+        planSelection,
+        selectionReason: step.selectionReason,
       });
     }
     await writeFile(

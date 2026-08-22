@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { buildAll } from './build-all.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
 import { validateCanonicalReferences } from './canonical-reference.js';
+import { checkPackEligibility } from './eligibility.js';
 import { migratePromptPacks } from './migrator.js';
 import { PHASES, type Phase } from './types.js';
 
@@ -18,7 +19,8 @@ const { positionals, values } = parseArgs({
     'token-budget': { type: 'string', default: '60000' },
     'project-root': { type: 'string', default: process.cwd() },
     'output-dir': { type: 'string' },
-    'plan-id': { type: 'string', default: 'full-project' },
+    'plan-id': { type: 'string' },
+    'plan-file': { type: 'string' },
     'rules-root': { type: 'string' },
     'backup-dir': { type: 'string' },
     'include-context-packs': { type: 'boolean', default: false },
@@ -41,18 +43,20 @@ Commands:
   validate    Validate one prompt pack without writing output
   plan        Validate and display the complete execution plan without writing output
   build-all   Generate the ordered project prompt set and execution plan
+  check-eligibility  Explain whether a pack and its dependencies are batch-ready
   migrate     Convert prompt packs to schema v2 (dry-run unless --write)
   validate-references  Validate canonical OpenSpec -> docs/rules references
 
 Options:
   --pack <id>                    Prompt pack identifier
   --change <id>                  Active OpenSpec change identifier
-  --phase <phase>                propose, apply, or review (default: apply)
-  --phases <list>                Comma-separated phases for plan/build-all
+  --phase <phase>                explore, propose, apply, review, or fix (default: apply)
+  --phases <list>                Comma-separated phases for eligibility/plan/build-all
   --token-budget <number>        Maximum estimated tokens (default: 60000)
   --project-root <path>          Consumer project root (default: current directory)
   --output-dir <path>            Generated prompt directory
-  --plan-id <id>                 Execution plan identifier (default: full-project)
+  --plan-id <id>                 Execution plan identifier (default: plan file id/full-project)
+  --plan-file <path>             Versioned cohort selecting packs for plan/build-all
   --rules-root <path>            Rules directory (default: docs/rules)
   --backup-dir <path>            Backup directory used by migrate --write
   --include-context-packs        Include non-executable context packs
@@ -165,13 +169,27 @@ if (command === 'validate-references') {
   process.exit(0);
 }
 
+if (command === 'check-eligibility') {
+  if (!values.pack) throw new Error('--pack is required for check-eligibility');
+  const report = await checkPackEligibility({
+    projectRoot,
+    packId: values.pack,
+    phases: parsePhases(values.phases),
+    change: values.change,
+    conditionContext,
+  });
+  console.log(JSON.stringify(report, null, 2));
+  process.exit(report.eligible ? 0 : 1);
+}
+
 if (command === 'build-all' || command === 'plan') {
   const result = await buildAll({
     projectRoot,
     phases: parsePhases(values.phases),
     change: values.change,
     tokenBudget,
-    planId: values['plan-id'] ?? 'full-project',
+    planId: values['plan-id'],
+    planFile: values['plan-file'],
     outputDirectory: values['output-dir'],
     includeContextPacks: values['include-context-packs'],
     dryRun: command === 'plan' || values['dry-run'],
@@ -183,6 +201,8 @@ if (command === 'build-all' || command === 'plan') {
         output_directory: result.outputDirectory,
         packs: result.executionPlan.pack_count,
         prompts: result.executionPlan.prompt_count,
+        plan_id: result.executionPlan.plan_id,
+        selection: result.executionPlan.selection,
         dry_run: command === 'plan' || values['dry-run'],
       },
       null,

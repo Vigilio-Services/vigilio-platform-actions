@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { PreparedPrompt } from './types.js';
+import type { PackPlanNode, PlanSelectionEvidence, PreparedPrompt } from './types.js';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -11,6 +11,8 @@ export async function writeLockfile(input: {
   planId?: string | undefined;
   sequence?: number | undefined;
   level?: number | undefined;
+  planSelection?: PlanSelectionEvidence | undefined;
+  selectionReason?: PackPlanNode['selectionReason'] | undefined;
 }) {
   await mkdir(path.dirname(input.outputBase), { recursive: true });
   const payload = {
@@ -22,6 +24,12 @@ export async function writeLockfile(input: {
     plan_id: input.planId ?? null,
     sequence: input.sequence ?? null,
     dependency_level: input.level ?? null,
+    plan_selection: input.planSelection
+      ? {
+          ...input.planSelection,
+          pack_selection_reason: input.selectionReason ?? null,
+        }
+      : null,
     generated_at: new Date().toISOString(),
     estimated_tokens: input.prepared.estimatedTokens,
     inheritance: input.prepared.inheritance,

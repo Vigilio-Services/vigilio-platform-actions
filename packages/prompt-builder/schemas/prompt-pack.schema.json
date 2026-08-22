@@ -32,7 +32,8 @@
           "items": { "$ref": "#/$defs/phase" },
           "uniqueItems": true,
           "minItems": 1
-        }
+        },
+        "blocking_decisions": { "$ref": "#/$defs/stringList" }
       },
       "additionalProperties": false
     },

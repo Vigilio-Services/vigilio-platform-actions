@@ -2,7 +2,7 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import type { CanonicalReferenceFile, PromptPack } from './types.js';
+import type { CanonicalReferenceFile, PromptPack, PromptPlanFile } from './types.js';
 
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,6 +41,15 @@ export async function validateCanonicalReferenceShape(
     value: reference,
     schemaFile: 'canonical-reference.schema.json',
     label: 'canonical OpenSpec reference',
+    source,
+  });
+}
+
+export async function validatePromptPlanShape(plan: PromptPlanFile, source = 'prompt-plan.yaml') {
+  await validateShape({
+    value: plan,
+    schemaFile: 'prompt-plan.schema.json',
+    label: 'prompt plan',
     source,
   });
 }
