@@ -1,5 +1,13 @@
 # @vigilioyonatan/prompt-builder
 
+## 0.6.0
+
+### Minor Changes
+
+- 6b80239: Add non-destructive greenfield/migration project discovery, machine-checked human decision closure,
+  execution-control preflight, controlled factory baselines, portable prompt locks and stale-lock
+  verification, with secure transitive dependency resolution.
+
 ## 0.5.0
 
 ### Minor Changes
