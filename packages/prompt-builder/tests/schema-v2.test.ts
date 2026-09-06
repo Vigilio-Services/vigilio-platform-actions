@@ -132,4 +132,20 @@ quality_gates: [lint]
     invalid.skills = { primary: ['valid'], unexpected: ['ignored'] } as never;
     await assert.rejects(() => validatePackShape(invalid, '/rules/broken.yaml'), /broken\.yaml/);
   });
+
+  it('rejects an explicitly enabled v2 pack without execution controls', async () => {
+    await assert.rejects(() =>
+      validatePackShape(
+        {
+          schema_version: 2,
+          id: 'orders.submit',
+          version: 1,
+          status: 'active',
+          kind: 'use-case',
+          execution: { enabled: true },
+        },
+        'enabled-without-controls.yaml',
+      ),
+    );
+  });
 });

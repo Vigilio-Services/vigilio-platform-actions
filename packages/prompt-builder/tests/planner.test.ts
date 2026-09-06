@@ -86,6 +86,18 @@ packs:
   );
   await write(
     root,
+    'docs/rules/answers.md',
+    `# Human Decision Register
+
+## Q-001 — Is the fixture blueprint approved?
+
+- Estado: ANSWERED
+- Bloquea:
+  - "*"
+`,
+  );
+  await write(
+    root,
     'docs/rules/00-global/prompt-pack.yaml',
     `
 id: global.core
@@ -205,7 +217,7 @@ describe('planner', () => {
       assert.equal(plan.steps[1].depends_on_previous_phase_step, 1);
       assert.equal(plan.steps[9].pack, 'orders.orders-store');
       assert.equal(plan.steps[9].execution_status, 'BLOCKED_BY_DEPENDENCIES');
-      const firstPrompt = await readFile(plan.steps[0].prompt, 'utf8');
+      const firstPrompt = await readFile(path.resolve(root, plan.steps[0].prompt), 'utf8');
       assert.match(firstPrompt, /identity\.users-store frontend pages/);
       assert.match(firstPrompt, /web-mfe-build-feature/);
       assert.match(firstPrompt, /Gates required before execution activation/);
@@ -216,7 +228,9 @@ describe('planner', () => {
       assert.match(firstPrompt, /apps\/bus-impl-v2\/src\/\*\*/);
       assert.match(firstPrompt, /apps\/web-mfe-v2\/apps\/salud\/backoffice\/src\/\*\*/);
       assert.match(firstPrompt, /apps\/web-mfe\/\*\*/);
-      const firstLock = JSON.parse(await readFile(plan.steps[0].lockfile, 'utf8'));
+      const firstLock = JSON.parse(
+        await readFile(path.resolve(root, plan.steps[0].lockfile), 'utf8'),
+      );
       assert.equal(firstLock.target_profile.id, 'k8s-v2');
       assert.equal(firstLock.target_profile.materialized.frontend, true);
       assert.deepEqual(firstLock.activation_gates, ['build', 'security']);
@@ -315,7 +329,9 @@ dependency_policy: include-transitive
       const generated = JSON.parse(
         await readFile(path.join(result.outputDirectory, 'execution-plan.json'), 'utf8'),
       );
-      const firstLock = JSON.parse(await readFile(generated.steps[0].lockfile, 'utf8'));
+      const firstLock = JSON.parse(
+        await readFile(path.resolve(root, generated.steps[0].lockfile), 'utf8'),
+      );
       assert.equal(firstLock.plan_selection.source, 'docs/plans/order-flow.yaml');
       assert.equal(firstLock.plan_selection.pack_selection_reason, 'dependency');
       assert.deepEqual(firstLock.plan_selection.requested_packs, ['orders.orders-store']);
@@ -458,6 +474,36 @@ dependency_policy: include-transitive
             dryRun: true,
           }),
         /Executable pack has unresolved blocking decisions: orders\.orders-store/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('blocks implementation prompt publication when a scoped human decision is open', async () => {
+    const root = await createFixture();
+    try {
+      await write(
+        root,
+        'docs/rules/answers.md',
+        `# Human Decision Register
+
+## Q-009 — Which order approval policy applies?
+
+- Estado: OPEN
+- Bloquea:
+  - orders.orders-store
+`,
+      );
+      await assert.rejects(
+        () =>
+          buildAll({
+            projectRoot: root,
+            phases: ['propose', 'apply', 'review'],
+            tokenBudget: 60_000,
+            dryRun: true,
+          }),
+        /BLOCKED_BEFORE_PUBLICATION.*Q-009/,
       );
     } finally {
       await rm(root, { recursive: true, force: true });

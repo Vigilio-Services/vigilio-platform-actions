@@ -17,8 +17,20 @@ scripts/
 packages/devsecops-governance/
   paquete npm TypeScript con CLI reusable
 
+packages/devsecops-evidence/
+  DORA, SLSA y evidencia operacional verificable
+
+packages/node-nest-tooling/
+  tooling reusable para backends Node/Nest
+
 packages/web-mfe-tooling/
   tooling browser-safe reusable para consumidores Web MFE
+
+packages/prompt-builder/
+  discovery, decisiones humanas, DAG y compilacion determinista de prompts
+
+packages/vigilio-skills/
+  distribucion y sincronizacion verificable de skills
 
 docs/
   reglas de consumo, versionado y seguridad

@@ -27,6 +27,60 @@ pnpm --filter @vigilioyonatan/prompt-builder build
 node packages/prompt-builder/dist/cli.js --help
 ```
 
+## Start a project from an idea or migration inventory
+
+Prompt Builder keeps product discovery separate from implementation. `init-project` creates the
+first discovery prompt and the minimum non-destructive control files. Existing human-authored files
+are never overwritten.
+
+```bash
+# Greenfield
+pnpm exec vigilio-prompt init-project \
+  --project-root . \
+  --mode greenfield \
+  --architecture master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md
+
+# Migration; optionally provide an existing brief
+pnpm exec vigilio-prompt init-project \
+  --project-root . \
+  --mode migration \
+  --brief-file docs/input/existing-system.md \
+  --architecture master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md
+```
+
+The command creates, when missing:
+
+- `docs/rules/project-brief.md`;
+- `docs/rules/answers.md` with a global `Q-000` discovery approval gate;
+- `docs/rules/registry.yaml` as an empty, explicit registry;
+- `docs/rules/factory-baseline.yaml` with the architecture source and SHA-256;
+- `generated/prompts/bootstrap/0000-project-discovery.md` plus its lock.
+
+Rerunning initialization is idempotent. If the architecture file or project mode changes, the
+command fails with `FACTORY_BASELINE_MISMATCH` instead of silently accepting a new foundation.
+After reviewing the impact, make the baseline change explicit:
+
+```bash
+pnpm exec vigilio-prompt init-project --project-root . --mode migration \
+  --architecture master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md \
+  --refresh-baseline
+```
+
+The discovery agent inspects the idea or existing system, records only material human decisions,
+and creates the approved blueprint/packs. It must not implement application code during discovery.
+
+Before implementation planning, validate decision closure:
+
+```bash
+pnpm exec vigilio-prompt validate-decisions --project-root .
+pnpm exec vigilio-prompt validate-decisions --project-root . --pack settlements.close
+```
+
+`APPLY`, `REVIEW` and `FIX` generation fails with `BLOCKED_BEFORE_PUBLICATION` when
+`docs/rules/answers.md` is missing or a relevant `Q-*` remains `OPEN`. `EXPLORE` and `PROPOSE` stay
+available to resolve those decisions. Approved answers remain as provenance and must be synchronized
+into their canonical `docs/rules/**` owners.
+
 ## Commands
 
 Run from the project root and pass `--project-root` explicitly when the current directory is not the project root.
@@ -235,6 +289,24 @@ generated/prompts/full-project/
 ```
 
 `execution-plan.json` records dependency levels, ordered steps and whether each execution is `READY`, `BLOCKED_BY_PREVIOUS_PHASE` or `BLOCKED_BY_DEPENDENCIES`. Generating prompts does not mark implementation or quality gates as passed.
+
+Enabled execution packs must have at least one implementation path and one required/activation
+quality gate. `build-all` enforces the same controls exposed by `check-eligibility`; it will not
+publish an implementation batch that only looks valid at the schema level.
+
+Before handing a generated prompt to an agent, verify that its prompt, phase template, technical
+factory baseline, documents, canonical references, registry, plan and builder version have not
+changed:
+
+```bash
+pnpm exec vigilio-prompt verify-lock \
+  --project-root . \
+  --lock-file generated/prompts/full-project/0001-identity.users-store.propose.lock.json
+```
+
+New lockfiles use project-relative source paths and record the prompt hash, template hash and builder
+version. A failed verification means the prompt is stale and must be regenerated; it must never be
+executed as evidence.
 
 ## Resolution
 

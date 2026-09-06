@@ -1,4 +1,6 @@
+import { evaluateDecisionReadiness } from './answers.js';
 import { preparePrompt } from './builder.js';
+import { hasImplementationPath } from './execution-controls.js';
 import { isExecutable } from './pack-metadata.js';
 import { createProjectPlan } from './planner.js';
 import { readRegistry } from './registry.js';
@@ -11,18 +13,6 @@ function detail(error: unknown) {
 
 function check(name: string, passed: boolean, message: string): EligibilityCheck {
   return { name, passed, detail: message };
-}
-
-function hasImplementationPath(paths: string[]) {
-  return paths.some((value) => {
-    const normalized = (value.includes(':') ? value.slice(value.indexOf(':') + 1) : value)
-      .trim()
-      .replaceAll('\\', '/')
-      .replace(/^\.\//, '');
-    return !['docs/', 'generated/', 'openspec/', '.prompt-builder-backup/'].some((prefix) =>
-      normalized.startsWith(prefix),
-    );
-  });
 }
 
 export async function checkPackEligibility(input: {
@@ -100,6 +90,31 @@ export async function checkPackEligibility(input: {
   } catch (error) {
     checks.push(check('dependency_closure', false, detail(error)));
     return { pack: input.packId, eligible: false, dependency_closure: [], checks };
+  }
+
+  const decisionReadiness = await evaluateDecisionReadiness({
+    projectRoot: input.projectRoot,
+    packIds: plan.map((node) => node.id),
+    phases: input.phases,
+  });
+  checks.push(
+    check(
+      'human_decisions',
+      decisionReadiness.ready,
+      decisionReadiness.ready
+        ? 'All material human decisions for the requested phases are resolved'
+        : decisionReadiness.source
+          ? `Unresolved: ${decisionReadiness.blockers.map((item) => item.id).join(', ')}`
+          : 'docs/rules/answers.md is required for APPLY/REVIEW/FIX',
+    ),
+  );
+  if (!decisionReadiness.ready) {
+    return {
+      pack: input.packId,
+      eligible: false,
+      dependency_closure: plan.map((node) => node.id),
+      checks,
+    };
   }
 
   let promptPreflightPassed = true;

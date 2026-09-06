@@ -2,11 +2,19 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import {
+  assertDecisionReadiness,
+  evaluateDecisionReadiness,
+  requiresDecisionClosure,
+} from './answers.js';
 import { buildAll } from './build-all.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
 import { validateCanonicalReferences } from './canonical-reference.js';
 import { checkPackEligibility } from './eligibility.js';
+import { assertPreparedExecutionControls } from './execution-controls.js';
+import { verifyPromptLock } from './lock-verifier.js';
 import { migratePromptPacks } from './migrator.js';
+import { initializeProject, type ProjectMode } from './project-init.js';
 import { PHASES, type Phase } from './types.js';
 
 const { positionals, values } = parseArgs({
@@ -23,6 +31,11 @@ const { positionals, values } = parseArgs({
     'plan-file': { type: 'string' },
     'rules-root': { type: 'string' },
     'backup-dir': { type: 'string' },
+    architecture: { type: 'string' },
+    mode: { type: 'string' },
+    'brief-file': { type: 'string' },
+    'lock-file': { type: 'string' },
+    'refresh-baseline': { type: 'boolean', default: false },
     'include-context-packs': { type: 'boolean', default: false },
     'changed-path': { type: 'string', multiple: true },
     condition: { type: 'string', multiple: true },
@@ -46,6 +59,9 @@ Commands:
   check-eligibility  Explain whether a pack and its dependencies are batch-ready
   migrate     Convert prompt packs to schema v2 (dry-run unless --write)
   validate-references  Validate canonical OpenSpec -> docs/rules references
+  init-project Scaffold discovery/decision inputs and generate the first project prompt
+  validate-decisions  Fail when material human decisions remain open
+  verify-lock Validate prompt/template/source hashes immediately before execution
 
 Options:
   --pack <id>                    Prompt pack identifier
@@ -59,6 +75,11 @@ Options:
   --plan-file <path>             Versioned cohort selecting packs for plan/build-all
   --rules-root <path>            Rules directory (default: docs/rules)
   --backup-dir <path>            Backup directory used by migrate --write
+  --architecture <path>          Factory architecture master used by init-project
+  --mode <mode>                   greenfield or migration (default: greenfield)
+  --brief-file <path>             Existing project brief used by init-project
+  --lock-file <path>              Prompt lock checked by verify-lock
+  --refresh-baseline              Accept a reviewed architecture/mode baseline change
   --include-context-packs        Include non-executable context packs
   --changed-path <path>          Changed path used by conditional rules (repeatable)
   --condition <name=boolean>     Predicate value used by conditional rules (repeatable)
@@ -119,6 +140,62 @@ const conditionContext = {
   changedPaths: values['changed-path'],
   predicates: parseConditions(values.condition),
 };
+
+function parseProjectMode(value: string | undefined): ProjectMode {
+  const mode = value ?? 'greenfield';
+  if (mode !== 'greenfield' && mode !== 'migration') {
+    throw new Error(`Unsupported project mode: ${mode}`);
+  }
+  return mode;
+}
+
+if (command === 'init-project') {
+  const result = await initializeProject({
+    projectRoot,
+    architectureFile:
+      values.architecture ??
+      'master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md',
+    mode: parseProjectMode(values.mode),
+    briefFile: values['brief-file'],
+    outputDirectory: values['output-dir'],
+    refreshBaseline: values['refresh-baseline'],
+  });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
+
+if (command === 'validate-decisions') {
+  const readiness = await evaluateDecisionReadiness({
+    projectRoot,
+    packIds: [values.pack ?? '*'],
+    phases: ['apply'],
+    requireRegister: true,
+  });
+  console.log(
+    JSON.stringify(
+      {
+        source: readiness.source,
+        ready: readiness.ready,
+        questions: readiness.questions.length,
+        unresolved: readiness.blockers.map((question) => ({
+          id: question.id,
+          title: question.title,
+          blocks: question.blocks,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(readiness.ready ? 0 : 1);
+}
+
+if (command === 'verify-lock') {
+  if (!values['lock-file']) throw new Error('--lock-file is required for verify-lock');
+  const report = await verifyPromptLock({ projectRoot, lockFile: values['lock-file'] });
+  console.log(JSON.stringify(report, null, 2));
+  process.exit(report.valid ? 0 : 1);
+}
 
 if (command === 'migrate') {
   if (values.write && values['dry-run']) {
@@ -214,6 +291,12 @@ if (command === 'build-all' || command === 'plan') {
 
 if (!values.pack) throw new Error('--pack is required');
 const phase = parsePhase(values.phase);
+const decisionReadiness = await evaluateDecisionReadiness({
+  projectRoot,
+  packIds: [values.pack],
+  phases: [phase],
+});
+assertDecisionReadiness(decisionReadiness);
 const prepared = await preparePrompt({
   projectRoot,
   packId: values.pack,
@@ -222,6 +305,14 @@ const prepared = await preparePrompt({
   tokenBudget,
   conditionContext,
 });
+if (requiresDecisionClosure([phase])) {
+  assertPreparedExecutionControls({
+    packId: values.pack,
+    allowedPaths: prepared.allowedPaths,
+    qualityGates: prepared.qualityGates,
+    activationGates: prepared.activationGates,
+  });
+}
 
 if (command === 'validate') {
   console.log(`OK: ${values.pack}`);

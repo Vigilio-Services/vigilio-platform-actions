@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { assertDecisionReadiness, evaluateDecisionReadiness } from './answers.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
+import { assertPreparedExecutionControls } from './execution-controls.js';
 import { readPromptPlan } from './plan-file.js';
 import { createProjectPlan } from './planner.js';
 import type {
@@ -43,6 +45,7 @@ export async function buildAll(input: {
   includeContextPacks?: boolean | undefined;
   dryRun?: boolean | undefined;
   conditionContext?: ConditionContext | undefined;
+  requireAnswers?: boolean | undefined;
 }) {
   const promptPlan = input.planFile
     ? await readPromptPlan(input.projectRoot, input.planFile)
@@ -73,6 +76,13 @@ export async function buildAll(input: {
     requested_packs: promptPlan?.packs ?? packs.map((pack) => pack.id),
     resolved_packs: packs.map((pack) => pack.id),
   };
+  const decisionReadiness = await evaluateDecisionReadiness({
+    projectRoot: input.projectRoot,
+    packIds: packs.map((pack) => pack.id),
+    phases: input.phases,
+    requireRegister: input.requireAnswers,
+  });
+  assertDecisionReadiness(decisionReadiness);
 
   const steps: PreparedStep[] = [];
   let sequence = 1;
@@ -90,6 +100,14 @@ export async function buildAll(input: {
         dependencies: pack.dependencies,
         conditionContext: input.conditionContext,
       });
+      if (pack.selectionReason !== 'context') {
+        assertPreparedExecutionControls({
+          packId: pack.id,
+          allowedPaths: prepared.allowedPaths,
+          qualityGates: prepared.qualityGates,
+          activationGates: prepared.activationGates,
+        });
+      }
       steps.push({
         sequence,
         level: pack.level,
@@ -107,7 +125,7 @@ export async function buildAll(input: {
   }
 
   const executionPlan = {
-    schema_version: 1,
+    schema_version: 2,
     plan_id: planId,
     change: input.change ?? null,
     phases: input.phases,
@@ -115,6 +133,15 @@ export async function buildAll(input: {
     prompt_count: steps.length,
     pack_count: packs.length,
     selection: planSelection,
+    decision_readiness: {
+      source: decisionReadiness.source
+        ? path.relative(input.projectRoot, decisionReadiness.source).replaceAll(path.sep, '/')
+        : null,
+      required: decisionReadiness.required,
+      question_count: decisionReadiness.questions.length,
+      unresolved: decisionReadiness.blockers.map((question) => question.id),
+      ready: decisionReadiness.ready,
+    },
     target_profiles: [
       ...new Map(
         steps.flatMap((step) =>
@@ -138,8 +165,10 @@ export async function buildAll(input: {
       phase: step.phase,
       depends_on: step.dependencies,
       depends_on_previous_phase_step: step.previousPhaseSequence ?? null,
-      prompt: `${step.outputBase}.md`,
-      lockfile: `${step.outputBase}.lock.json`,
+      prompt: path.relative(input.projectRoot, `${step.outputBase}.md`).replaceAll(path.sep, '/'),
+      lockfile: path
+        .relative(input.projectRoot, `${step.outputBase}.lock.json`)
+        .replaceAll(path.sep, '/'),
       prompt_status: input.dryRun ? 'VALIDATED' : 'GENERATED',
       execution_status:
         step.previousPhaseSequence !== undefined
