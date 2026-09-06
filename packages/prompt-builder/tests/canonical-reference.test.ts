@@ -5,6 +5,8 @@ import path from 'node:path';
 import { describe, it } from 'vitest';
 import { preparePrompt, writePreparedPrompt } from '../src/builder.js';
 import { validateCanonicalReferences } from '../src/canonical-reference.js';
+import { verifyPromptLock } from '../src/lock-verifier.js';
+import { initializeProject } from '../src/project-init.js';
 
 async function write(root: string, relative: string, content: string) {
   const target = path.join(root, relative);
@@ -98,6 +100,12 @@ pack_version: 3
     'openspec/changes/recalculate-august/specs/settlement-recalculation/spec.md',
     'DUPLICATED LOCAL DELTA MUST NOT BE INLINED.\n',
   );
+  await write(root, 'factory-master.md', '# Factory architecture\n');
+  await initializeProject({
+    projectRoot: root,
+    architectureFile: 'factory-master.md',
+    mode: 'migration',
+  });
   return root;
 }
 
@@ -143,6 +151,41 @@ pack_version: 1
       assert.equal(lock.canonical_references[0].pack_version, 3);
       assert.match(lock.canonical_authority.registry.sha256, /^[a-f0-9]{64}$/);
       assert.match(lock.canonical_references[0].sha256, /^[a-f0-9]{64}$/);
+      assert.match(lock.prompt_sha256, /^[a-f0-9]{64}$/);
+      assert.match(lock.template_sha256, /^[a-f0-9]{64}$/);
+      assert.equal(lock.factory_baseline.architecture.source, 'factory-master.md');
+      assert.equal(path.isAbsolute(lock.documents[0].source), false);
+
+      const verified = await verifyPromptLock({
+        projectRoot: root,
+        lockFile: `${outputBase}.lock.json`,
+      });
+      assert.equal(verified.valid, true);
+
+      await write(root, 'factory-master.md', '# Factory architecture changed\n');
+      const architectureStale = await verifyPromptLock({
+        projectRoot: root,
+        lockFile: `${outputBase}.lock.json`,
+      });
+      assert.equal(architectureStale.valid, false);
+      assert.ok(
+        architectureStale.checks.some(
+          (check) => check.name === 'factory_architecture' && !check.passed,
+        ),
+      );
+      await write(root, 'factory-master.md', '# Factory architecture\n');
+
+      await write(
+        root,
+        'docs/rules/01-modules/settlements/recalculate-settlement/business.md',
+        'Changed after prompt generation.\n',
+      );
+      const stale = await verifyPromptLock({
+        projectRoot: root,
+        lockFile: `${outputBase}.lock.json`,
+      });
+      assert.equal(stale.valid, false);
+      assert.ok(stale.checks.some((check) => check.name.startsWith('document:') && !check.passed));
     } finally {
       await rm(root, { recursive: true, force: true });
     }

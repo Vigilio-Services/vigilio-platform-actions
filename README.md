@@ -16,6 +16,7 @@ Biome, pnpm y los defaults de workflows diverjan de esa fuente.
 actions/                           composite actions
 packages/devsecops-governance/     governance TypeScript compilado
 packages/devsecops-evidence/       DORA, SLSA y evidencia TypeScript compilado
+packages/prompt-builder/           discovery, planes y prompts deterministas para agentes
 packages/node-nest-tooling/        tooling Node/Nest TypeScript compilado
 packages/web-mfe-tooling/          tooling Web MFE TypeScript compilado
 packages/vigilio-skills/           sincronizador de skills TypeScript compilado
@@ -146,7 +147,7 @@ pnpm test
 # Compila todos los paquetes del monorepo de forma recursiva y en paralelo
 pnpm build
 
-# Empaqueta los tres paquetes, los instala sin lifecycle scripts y prueba sus CLIs
+# Empaqueta los seis paquetes, los instala sin lifecycle scripts y prueba sus CLIs
 pnpm test:packages
 
 # Genera los archivos para publicar una nueva versión (Changesets)

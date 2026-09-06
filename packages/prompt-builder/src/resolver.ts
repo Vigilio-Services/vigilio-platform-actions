@@ -68,13 +68,21 @@ export async function resolveDocuments(packIds: string[], projectRoot: string) {
     for (const rel of required) {
       const full = path.resolve(directory, rel);
       await assertFileExists(full, `Required document for ${id}`);
-      docs.push({ source: full, content: await readFile(full, 'utf8'), required: true });
+      docs.push({
+        source: path.relative(projectRoot, full).replaceAll(path.sep, '/'),
+        content: await readFile(full, 'utf8'),
+        required: true,
+      });
     }
 
     for (const rel of optional) {
       const full = path.resolve(directory, rel);
       try {
-        docs.push({ source: full, content: await readFile(full, 'utf8'), required: false });
+        docs.push({
+          source: path.relative(projectRoot, full).replaceAll(path.sep, '/'),
+          content: await readFile(full, 'utf8'),
+          required: false,
+        });
       } catch {
         // Optional means absence is valid.
       }

@@ -81,12 +81,62 @@
     "activation_requirements": { "$ref": "#/$defs/stringList" },
     "documentation_sync": { "$ref": "#/$defs/stringList" }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["execution"],
+        "properties": {
+          "execution": {
+            "type": "object",
+            "required": ["enabled"],
+            "properties": { "enabled": { "const": true } }
+          }
+        }
+      },
+      "then": {
+        "required": ["documents", "scope", "quality_gates"],
+        "properties": {
+          "documents": {
+            "type": "object",
+            "required": ["required"],
+            "properties": { "required": { "$ref": "#/$defs/nonEmptyStringList" } }
+          },
+          "scope": {
+            "type": "object",
+            "required": ["allowed_paths"],
+            "properties": { "allowed_paths": { "$ref": "#/$defs/nonEmptyStringList" } }
+          },
+          "quality_gates": {
+            "type": "object",
+            "anyOf": [
+              {
+                "required": ["required"],
+                "properties": { "required": { "$ref": "#/$defs/nonEmptyStringList" } }
+              },
+              {
+                "required": ["activation_required"],
+                "properties": {
+                  "activation_required": { "$ref": "#/$defs/nonEmptyStringList" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "phase": { "enum": ["explore", "propose", "apply", "review", "fix"] },
     "stringList": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "uniqueItems": true
+    },
+    "nonEmptyStringList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "minItems": 1
     },
     "scope": {
       "type": "object",

@@ -211,6 +211,8 @@ export type BuildRequest = {
 };
 
 export type PreparedPrompt = {
+  projectRoot: string;
+  factoryBaseline?: FactoryBaseline | undefined;
   packId: string;
   schemaVersion: 2;
   packVersion: number;
@@ -231,6 +233,7 @@ export type PreparedPrompt = {
   dependencies: string[];
   targetProfile?: ResolvedTargetProfile | undefined;
   estimatedTokens: number;
+  templateSha256: string;
 };
 
 export type PackPlanNode = {
@@ -242,3 +245,5 @@ export type PackPlanNode = {
   phases: Phase[];
   selectionReason: 'enabled' | 'context' | 'requested' | 'dependency';
 };
+
+import type { FactoryBaseline } from './factory-baseline.js';

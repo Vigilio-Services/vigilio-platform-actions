@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assemble, loadTemplate } from './assembler.js';
+import { validateFactoryBaseline } from './factory-baseline.js';
 import { writeLockfile } from './lockfile.js';
 import { readOpenSpecContext } from './openspec-reader.js';
 import {
@@ -24,6 +26,10 @@ import type {
 } from './types.js';
 import { validateBudget } from './validator.js';
 
+function sha256(content: string) {
+  return createHash('sha256').update(content).digest('hex');
+}
+
 export async function preparePrompt(input: {
   projectRoot: string;
   packId: string;
@@ -34,6 +40,7 @@ export async function preparePrompt(input: {
   conditionContext?: ConditionContext | undefined;
 }): Promise<PreparedPrompt> {
   validateBudget(input.tokenBudget);
+  const factoryBaseline = await validateFactoryBaseline(input.projectRoot);
   const inheritance = await resolveInheritance(input.packId, input.projectRoot);
   const loaded = await Promise.all(inheritance.map((id) => loadPack(id, input.projectRoot)));
   const documents = await resolveDocuments(inheritance, input.projectRoot);
@@ -81,6 +88,8 @@ export async function preparePrompt(input: {
   });
 
   return {
+    projectRoot: input.projectRoot,
+    factoryBaseline: factoryBaseline ?? undefined,
     packId: input.packId,
     schemaVersion: target.schema_version,
     packVersion: target.version,
@@ -101,6 +110,7 @@ export async function preparePrompt(input: {
     dependencies,
     targetProfile,
     estimatedTokens: budgeted.estimatedTokens,
+    templateSha256: sha256(template),
   };
 }
 
