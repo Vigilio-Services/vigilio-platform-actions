@@ -5,6 +5,13 @@ description: Review Expo and React Native security, secrets, permissions, deep l
 
 # Mobile MFE Security And Delivery
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Treat the shipped client as public and make every promotion attributable and reversible.
 
 ## Workflow

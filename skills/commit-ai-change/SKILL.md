@@ -1,11 +1,18 @@
 ---
 name: commit-ai-change
-description: Finaliza un prompt autorizado en uno o varios repositorios Git: resuelve prompt_slug, ticket y rama AI, calcula consumidores afectados con Code Intelligence, ejecuta lint/typecheck/tests/E2E selectivos sin omitir gates obligatorios, stagea solo archivos del scope y crea commits verificables sin push. Usar cuando el usuario o Execution Runner pida cerrar, preparar o commitear un prompt terminado.
+description: "Finaliza un prompt autorizado en uno o varios repositorios Git: resuelve prompt_slug, ticket y rama AI, calcula consumidores afectados con Code Intelligence, ejecuta lint/typecheck/tests/E2E selectivos sin omitir gates obligatorios, stagea solo archivos del scope y crea commits verificables sin push. Usar cuando el usuario o Execution Runner pida cerrar, preparar o commitear un prompt terminado."
 ---
 
 <skill-content>
 
 # Commit AI Change
+
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
 
 Crear el commit solo con autorización explícita del usuario o un plan de ejecución que tenga
 `commit.enabled: true`. No convertir una tarea de revisión o diagnóstico en una mutación Git.

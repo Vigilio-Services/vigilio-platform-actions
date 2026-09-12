@@ -7,6 +7,13 @@ description: Implementa y revisa features frontend productivas en web-mfe con Pr
 
 # Construir Features Web MFE
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. Leer `AGENTS.md` y una feature vecina antes de editar.
 
 ## Flujo obligatorio

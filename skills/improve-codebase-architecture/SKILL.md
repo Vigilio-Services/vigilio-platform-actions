@@ -5,6 +5,13 @@ description: Escanea deuda arquitectónica con foco en módulos shallow, localit
 
 # Improve Codebase Architecture — Vigilio senior mode
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Escanea el codebase buscando oportunidades de profundización (shallow → deep modules), presenta un HTML report visual con diagramas before/after, luego hace `/grilling` para refinar la elegida.
 
 ## Vocabulario arquitectónico

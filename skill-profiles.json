@@ -8,6 +8,7 @@
       "diagnosing-bugs",
       "grill-me",
       "improve-codebase-architecture",
+      "review-code-change",
       "token-context-compression"
     ],
     "node-nest": [

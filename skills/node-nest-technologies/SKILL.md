@@ -7,6 +7,13 @@ description: Verifica APIs y arquitectura backend 2026 para Node.js 24, NestJS 1
 
 # Tecnologias Node/Nest 2026
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Usar junto con `$shared-technologies`. La evidencia ejecutable del backend y plataforma prevalece.
 
 ## Flujo obligatorio

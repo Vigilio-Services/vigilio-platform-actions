@@ -7,6 +7,13 @@ description: Endurece seguridad browser, configuracion, supply chain, CI/CD y de
 
 # Seguridad Y Delivery Web MFE
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Todo codigo enviado al navegador es publico. Ninguna variable, bundle, source map o runtime config puede contener secretos.
 
 ## Flujo obligatorio

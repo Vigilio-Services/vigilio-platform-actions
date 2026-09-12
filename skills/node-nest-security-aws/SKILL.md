@@ -7,6 +7,13 @@ description: "Implementa y revisa seguridad runtime y AWS en backends Node/Nest 
 
 # Seguridad Y AWS En Node/Nest
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Priorizar guards, config runtime, CDK sintetizado, workflows y tests sobre afirmaciones documentales. Si una proteccion solo aparece en `docs/`, tratarla como brecha pendiente.
 
 ## Runtime Seguro
