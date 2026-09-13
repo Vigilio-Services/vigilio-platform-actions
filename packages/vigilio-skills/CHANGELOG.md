@@ -1,5 +1,11 @@
 # @vigilioyonatan/vigilio-skills
 
+## 0.6.1
+
+### Patch Changes
+
+- f58e911: Require canonical Vigilio Docs sources for shared, backend, and web technology skills.
+
 ## 0.6.0
 
 ### Minor Changes
