@@ -102,7 +102,13 @@ jobs:
   attest:
     name: Attest Published Packages
     needs: publish
-    if: ${{ needs.publish.outputs.published == 'true' }}
+    # GitHub cannot persist attestations for user-owned private repositories.
+    # Public repositories attest by default. Private repositories may opt in only
+    # after their GitHub plan supports it by setting this repository variable.
+    if: >-
+      needs.publish.outputs.published == 'true' &&
+      (github.event.repository.visibility == 'public' ||
+      vars.PACKAGE_ATTESTATIONS_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -125,3 +131,26 @@ jobs:
         with:
           subject-path: reports/packages/*.tgz
           sbom-path: reports/platform-packages.cdx.json
+
+  report-attestation-unavailable:
+    name: Record attestation availability
+    needs: publish
+    if: >-
+      needs.publish.outputs.published == 'true' &&
+      github.event.repository.visibility != 'public' &&
+      vars.PACKAGE_ATTESTATIONS_ENABLED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Record GitHub attestation limitation
+        run: |
+          echo "::warning::Package attestations are disabled for this private repository. Enable PACKAGE_ATTESTATIONS_ENABLED only after GitHub confirms support for this repository."
+          {
+            echo '## Package provenance availability'
+            echo
+            echo 'GitHub does not persist attestations for this private repository by default.'
+            echo 'The package was published and release evidence was retained.'
+            echo 'Public repositories attest automatically.'
+            echo 'Set PACKAGE_ATTESTATIONS_ENABLED=true only when this private repository supports GitHub artifact attestations.'
+          } >> "$GITHUB_STEP_SUMMARY"
