@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codebase Context Efficiency"
+  short_description: "Save tokens without losing code evidence"
+  default_prompt: "Use $codebase-context-efficiency to inspect this codebase with minimal context and complete evidence."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kubernetes EKS Delivery"
+  short_description: "Ship safely with Helm, GitOps, and rollouts"
+  default_prompt: "Use $kubernetes-eks-delivery to validate EKS delivery, migration, scaling, and rollback."

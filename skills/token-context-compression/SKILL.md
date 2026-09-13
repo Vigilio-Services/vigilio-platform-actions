@@ -1,20 +1,23 @@
 ---
 name: token-context-compression
-description: Comprime codigo, logs y texto antes de procesarlos para reducir ruido de contexto. Usar con outputs extensos de CI, CloudWatch, Lambda o archivos grandes; conservar siempre una copia original.
+description: Comprime logs repetitivos y texto exploratorio para reducir ruido. Usar con CI, CloudWatch o Lambda; nunca usar contenido comprimido como única evidencia de contratos, seguridad o revisiones sensibles.
 ---
 
 <skill-content>
 
 # TokenShrink — Limpieza de Contexto
 
-Antes de analizar archivos grandes (logs, output de herramientas, codigo extenso), usa el script `scripts/compress.ts` de este skill para limpiar el texto.
+Usa primero `codebase-context-efficiency` para limitar el alcance.
+
+Usa este compresor solamente sobre una copia.
+
+Conserva siempre el contenido original.
 
 ## Cuando Usarlo
 
-- Cuando un archivo tiene mas de 200 lineas
 - Cuando recibes output de AWS CloudWatch o Lambda
 - Cuando necesitas analizar logs de CI/CD
-- Cuando un archivo tiene muchos comentarios irrelevantes
+- Cuando el output contiene líneas repetidas
 
 ## Como Usarlo
 
@@ -25,6 +28,10 @@ npx tsx .opencode/skills/token-context-compression/scripts/compress.ts <ruta-del
 ```
 
 El script imprime el contenido comprimido a stdout. Usalo para reducir el contexto antes de procesar.
+
+Compara cualquier hallazgo con el contenido original.
+
+No comprimas schemas, migraciones, policies, contratos o errores únicos.
 
 ## Que Elimina
 

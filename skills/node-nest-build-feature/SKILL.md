@@ -28,6 +28,8 @@ Priorizar `src/` y tests ejecutables sobre `docs/`. Usar documentos para decisio
 8. Consumir DTOs y pipes desde `infrastructure/http/controllers/`.
 9. Registrar controller y providers en `{feature}.module.ts`.
 10. Invocar `node-nest-testing` para cubrir el cambio por capas.
+11. Invocar `node-nest-realtime` cuando existan WebSocket, Socket.IO o SSE.
+12. Invocar `node-nest-async-workers` cuando existan outbox, SNS, SQS o DLQ.
 
 ## Contratos
 
@@ -40,6 +42,10 @@ Priorizar `src/` y tests ejecutables sobre `docs/`. Usar documentos para decisio
 - Retornar `ResponseDto` desde services; usar `DocDto` solo como adapter NestJS/OpenAPI.
 - Reutilizar `querySchema`, `createPaginatorSchema` y `timestampSchema`.
 - Mantener dinero y decimales regulatorios como string exacto, nunca `number`.
+- Colocar tipos propios en `types/` dentro de la feature y capa propietaria.
+- Colocar constantes propias en `constants/` dentro de la feature y capa propietaria.
+- No declarar tipos o constantes arriba de controllers, gateways, handlers o services.
+- Mantener tipos inferidos junto al schema propietario; no duplicarlos en `types/`.
 
 ## Controllers Y Services
 

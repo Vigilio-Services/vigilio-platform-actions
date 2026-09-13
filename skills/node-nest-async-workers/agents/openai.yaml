@@ -1,0 +1,4 @@
+interface:
+  display_name: "Node Nest Async Workers"
+  short_description: "Build reliable outbox, SNS, SQS, and DLQ"
+  default_prompt: "Use $node-nest-async-workers to design reliable asynchronous processing and recovery."

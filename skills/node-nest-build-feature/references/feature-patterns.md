@@ -15,10 +15,12 @@
 ```text
 src/{feature}/
 |-- application/
+|   |-- constants/
 |   |-- dtos/
 |   |-- repositories/
 |   |-- schemas/
-|   `-- service/
+|   |-- service/
+|   `-- types/
 |-- infrastructure/
 |   |-- http/controllers/
 |   `-- persistence/drizzle/
@@ -26,6 +28,30 @@ src/{feature}/
 ```
 
 Agregar `domain/` solamente cuando existan value objects, transiciones, invariantes o comportamiento independiente de HTTP y DB.
+
+## Tipos Y Constantes
+
+Bien:
+
+```ts
+// application/types/product-filter.type.ts
+export type ProductFilter = { status?: ProductStatus };
+
+// application/constants/product-limit.constant.ts
+export const PRODUCT_PAGE_LIMIT = 100;
+```
+
+Mal:
+
+```ts
+type ProductFilter = { status?: string };
+const LIMIT = 100;
+export class ProductController {}
+```
+
+No muevas tipos inferidos lejos del schema propietario.
+
+Evita `types/index.ts` y `constants/index.ts` globales.
 
 ## Descubrimiento Del Proyecto
 

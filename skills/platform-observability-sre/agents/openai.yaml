@@ -1,0 +1,4 @@
+interface:
+  display_name: "Platform Observability SRE"
+  short_description: "Design observable systems with actionable SLOs"
+  default_prompt: "Use $platform-observability-sre to define measurable signals, SLOs, alerts, and evidence."

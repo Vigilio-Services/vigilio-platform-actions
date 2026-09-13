@@ -28,6 +28,7 @@ Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. 
 8. Invocar `web-mfe-testing` y seleccionar la capa de prueba mas barata que cubra el riesgo.
 9. Invocar `web-mfe-quality` para cambios visibles, rutas publicas o impacto en bundle/render.
 10. Invocar `web-mfe-security-delivery` para runtime config, auth, uploads, headers, infraestructura o pipelines.
+11. Invocar `web-mfe-realtime` cuando existan WebSocket, Socket.IO o SSE.
 
 ## Limites de capas
 
@@ -46,6 +47,11 @@ Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. 
 - Mantener query keys estables y centralizadas por feature cuando se reutilicen.
 - No copiar schemas, tipos ni enums del backend.
 - No instalar dependencias si la plataforma actual resuelve el problema.
+- Colocar tipos propios en `types/` dentro de la feature propietaria.
+- Colocar constantes propias en `constants/` dentro de la feature propietaria.
+- No declarar tipos o constantes arriba de componentes, hooks o services.
+- Mantener props exclusivas junto al componente cuando no sean reutilizables.
+- Mantener tipos inferidos junto al schema propietario.
 
 ## Definition of Done
 
