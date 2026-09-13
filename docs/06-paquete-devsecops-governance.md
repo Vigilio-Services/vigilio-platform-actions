@@ -27,7 +27,11 @@ politica. `--trusted-gitops-actor` solo acepta identidades terminadas en `[bot]`
 
 ## Publicacion
 
-El workflow `release-package.yml` publica en GitHub Packages cuando se crea un GitHub Release o se ejecuta manualmente.
+El workflow `release-package.yml` se activa después de un `platform-actions-ci` exitoso
+originado por un `push` al branch por defecto. Changesets crea o actualiza el Release PR; al
+fusionarlo, el mismo flujo publica en GitHub Packages, genera evidencia y emite attestations.
+No consume código de PR, forks ni ejecuciones manuales: verifica el evento `push`, el branch por
+defecto y la identidad del repositorio antes de hacer checkout del SHA validado por CI.
 
 Requisitos:
 
