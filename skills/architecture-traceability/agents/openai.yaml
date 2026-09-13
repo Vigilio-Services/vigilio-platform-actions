@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Traceability"
+  short_description: "Track capabilities across docs, code, and evidence"
+  default_prompt: "Use $architecture-traceability to detect and correct architecture drift across repositories."

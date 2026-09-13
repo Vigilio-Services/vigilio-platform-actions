@@ -5,16 +5,22 @@
       "shared-technologies",
       "commit-ai-change",
       "coderabbit-compliance",
+      "codebase-context-efficiency",
       "diagnosing-bugs",
       "grill-me",
       "improve-codebase-architecture",
+      "architecture-traceability",
+      "review-code-change",
       "token-context-compression"
     ],
     "node-nest": [
       "node-nest-technologies",
       "node-nest-build-feature",
+      "node-nest-realtime",
+      "node-nest-async-workers",
       "node-nest-persistence",
       "node-nest-security-aws",
+      "platform-observability-sre",
       "node-nest-testing"
     ],
     "mobile-mfe": [
@@ -27,18 +33,28 @@
     "web-mfe": [
       "web-mfe-technologies",
       "web-mfe-build-feature",
+      "web-mfe-realtime",
       "web-mfe-contracts",
       "web-mfe-quality",
+      "platform-observability-sre",
       "web-mfe-security-delivery",
       "web-mfe-testing"
     ],
     "web-mfe-v2": [
       "web-mfe-technologies",
       "web-mfe-build-feature",
+      "web-mfe-realtime",
       "web-mfe-contracts",
       "web-mfe-quality",
+      "platform-observability-sre",
+      "kubernetes-eks-delivery",
       "web-mfe-security-delivery",
       "web-mfe-testing"
+    ],
+    "platform": [
+      "architecture-traceability",
+      "platform-observability-sre",
+      "kubernetes-eks-delivery"
     ],
     "openspec": [
       "openspec-apply-change",

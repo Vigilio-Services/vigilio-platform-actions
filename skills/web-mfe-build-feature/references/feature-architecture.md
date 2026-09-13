@@ -60,6 +60,30 @@ Promover a `libs/ui` solo cuando:
 
 No promover containers, paneles completos ni tablas atadas a un response concreto.
 
+## Tipos Y Constantes
+
+Bien:
+
+```ts
+// features/chat/types/chat-state.type.ts
+export type ChatState = 'connecting' | 'connected' | 'degraded';
+
+// features/chat/constants/chat-events.constant.ts
+export const CHAT_MESSAGE_EVENT = 'chat.message.created.v1';
+```
+
+Mal:
+
+```tsx
+type ChatState = string;
+const EVENT = 'message';
+export function ChatPanel() {}
+```
+
+Mantén props exclusivas junto al componente.
+
+Evita carpetas `types/` globales y barrels masivos.
+
 ## Query keys
 
 Usar factories pequenas cuando una feature tiene multiples operaciones:

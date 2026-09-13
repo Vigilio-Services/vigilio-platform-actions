@@ -5,6 +5,13 @@ description: Audit React Native accessibility, performance, lifecycle resilience
 
 # Mobile MFE Quality
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Evaluate quality on native constraints rather than browser metrics.
 
 ## Workflow

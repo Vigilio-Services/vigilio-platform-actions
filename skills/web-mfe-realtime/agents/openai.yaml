@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web MFE Realtime"
+  short_description: "Build resilient Socket.IO and SSE clients"
+  default_prompt: "Use $web-mfe-realtime to implement accessible realtime state with cleanup and fallback."

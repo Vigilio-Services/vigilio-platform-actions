@@ -7,6 +7,13 @@ description: Verifica compatibilidad real de TypeScript, Node.js, pnpm, Zod, Ope
 
 # Tecnologias compartidas 2026
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Usar esta skill como firewall de versiones, no como permiso de actualizacion automatica.
 
 ## Flujo obligatorio

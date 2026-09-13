@@ -1,0 +1,4 @@
+interface:
+  display_name: "Node Nest Realtime"
+  short_description: "Build secure WebSocket, Socket.IO, and SSE"
+  default_prompt: "Use $node-nest-realtime to design secure realtime delivery with contracts, scaling, and tests."

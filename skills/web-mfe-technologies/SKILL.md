@@ -7,6 +7,13 @@ description: Verifica APIs y arquitectura frontend 2026 para Preact, Vite, Tailw
 
 # Tecnologias Web MFE 2026
 
+## Lectura obligatoria de referencias
+
+Antes de actuar, leer de principio a fin cada archivo `references/*` enlazado por esta skill. Dentro
+de cada referencia aplicable, abrir y leer completas todas las fuentes canónicas enlazadas; no basta
+con leer títulos, tablas o resúmenes. Si una fuente requerida no es accesible, identificarla y no
+afirmar cumplimiento ni cerrar el gate que dependa de ella.
+
 Usar junto con `$shared-technologies`. La capability conserva el nombre estable `web-mfe-*`; el target fisico 2026 es `web-mfe-v2`.
 
 ## Flujo obligatorio

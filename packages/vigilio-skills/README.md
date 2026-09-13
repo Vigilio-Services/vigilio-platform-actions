@@ -11,6 +11,13 @@ pnpm exec vigilio-skills sync --profile core --profile node-nest --profile opens
 pnpm exec vigilio-skills check --profile core --profile node-nest --profile openspec
 ```
 
+Repositorios de plataforma usan capacidades EKS, observabilidad y trazabilidad:
+
+```bash
+pnpm exec vigilio-skills sync --profile core --profile platform --profile openspec
+pnpm exec vigilio-skills check --profile core --profile platform --profile openspec
+```
+
 Expo/React Native repositories use the isolated mobile profile:
 
 ```bash
