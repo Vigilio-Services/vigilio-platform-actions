@@ -4,6 +4,9 @@ on:
   workflow_run:
     workflows: [platform-actions-ci]
     types: [completed]
+    # Release only after CI for the protected default branch.
+    # The job also verifies the original event and repository identity.
+    branches: [main]
 
 permissions: {}
 
@@ -21,7 +24,9 @@ jobs:
     name: Publish Package
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -32,7 +37,9 @@ jobs:
     outputs:
       published: ${{ steps.changesets.outputs.published }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      # `publish` above accepts only a successful push from this repository's default branch.
+      # Use that verified SHA so a later push cannot replace the reviewed release contents.
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6; nosemgrep: yaml.github-actions.security.workflow-run-target-code-checkout.workflow-run-target-code-checkout
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
