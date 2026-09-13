@@ -44,6 +44,6 @@ Cruzar owner, package o consumer entre perfiles es `CONTRACT_OWNER_MISMATCH`. Am
 
 No cambiar dependencias, contratos ni runtime como efecto lateral de una feature.
 
-Leer [references/technology-baseline.md](references/technology-baseline.md) para la matriz compacta. Si el workspace incluye `vigilio-docs`, consultar `backend-node-nest/shared-technologies-skill-2026.md` solo en las secciones relevantes; no cargar el documento completo por defecto.
+Lee [references/technology-baseline.md](references/technology-baseline.md). Abre la fuente canónica aplicable enlazada allí antes de resolver compatibilidad.
 
 </skill-content>

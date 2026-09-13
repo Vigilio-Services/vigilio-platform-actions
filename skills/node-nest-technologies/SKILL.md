@@ -36,6 +36,6 @@ Usar junto con `$shared-technologies`. La evidencia ejecutable del backend y pla
 - No declarar OTel, cache, DLQ, SLO o circuit breaker sin adapter e instrumentacion verificables.
 - No publicar `@vigilioyonatan/bus-v2-contracts` con imports Node/Nest/Swagger o side effects backend.
 
-Leer [references/technology-baseline.md](references/technology-baseline.md). Si esta disponible `vigilio-docs/backend-node-nest/backend-technologies-skill-2026.md`, abrir solo la seccion de la tecnologia afectada.
+Lee [references/technology-baseline.md](references/technology-baseline.md). Abre la fuente canónica aplicable enlazada allí antes de decidir una tecnología.
 
 </skill-content>

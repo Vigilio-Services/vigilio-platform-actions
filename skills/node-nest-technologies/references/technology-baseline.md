@@ -1,5 +1,16 @@
 # Baseline Node/Nest 2026
 
+## Fuentes Canónicas
+
+| Necesidad | Fuente |
+|---|---|
+| Tecnologías backend | [vigilio-docs/43-backend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/43-backend-technologies-skill-2026.md) |
+| Tecnologías compartidas | [vigilio-docs/shared-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/shared-technologies-skill-2026.md) |
+| Implementación vertical | [vigilio-docs/21-golden-path](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/21-golden-path-feature.md) |
+| Operación productiva | [vigilio-docs/40-production](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/40-operacion-produccion.md) |
+
+Lee completamente cada fuente aplicable antes de decidir una versión, dependencia o runtime.
+
 | Superficie | Baseline objetivo | Evidencia obligatoria |
 |---|---|---|
 | Runtime | Node.js 24 LTS | `engines`, container y CI |

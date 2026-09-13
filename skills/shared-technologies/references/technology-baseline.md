@@ -1,5 +1,16 @@
 # Baseline compartido 2026
 
+## Fuentes Canónicas
+
+| Necesidad | Fuente |
+|---|---|
+| Compatibilidad compartida | [vigilio-docs/shared-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/shared-technologies-skill-2026.md) |
+| Contratos frontend | [vigilio-docs/1-contracts](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/1-contratos-dtos-zod-tanstack.md) |
+| Tecnologías backend | [vigilio-docs/43-backend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/43-backend-technologies-skill-2026.md) |
+| Tecnologías frontend | [vigilio-docs/18-frontend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/18-frontend-technologies-skill-2026.md) |
+
+Lee completamente cada fuente aplicable antes de resolver una compatibilidad.
+
 ## Precedencia
 
 ```text
