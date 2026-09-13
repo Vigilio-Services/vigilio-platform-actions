@@ -29,7 +29,11 @@ politica. `--trusted-gitops-actor` solo acepta identidades terminadas en `[bot]`
 
 El workflow `release-package.yml` se activa después de un `platform-actions-ci` exitoso
 originado por un `push` al branch por defecto. Changesets crea o actualiza el Release PR; al
-fusionarlo, el mismo flujo publica en GitHub Packages, genera evidencia y emite attestations.
+fusionarlo, el mismo flujo publica en GitHub Packages y genera evidencia. Los repositorios
+publicos emiten attestations automaticamente. Un repositorio privado las emite solo cuando el
+administrador habilita `PACKAGE_ATTESTATIONS_ENABLED=true` despues de confirmar que GitHub
+soporta attestations para ese repositorio. Si no esta habilitado, el workflow registra esa
+limitacion sin ocultarla ni fallar una publicacion ya completada.
 No consume código de PR, forks ni ejecuciones manuales: verifica el evento `push`, el branch por
 defecto y la identidad del repositorio antes de hacer checkout del SHA validado por CI.
 
