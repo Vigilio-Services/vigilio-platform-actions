@@ -1,5 +1,18 @@
 # @vigilioyonatan/vigilio-skills
 
+## 0.6.0
+
+### Minor Changes
+
+- 3d59c71: Add reusable realtime, asynchronous worker, observability, EKS delivery, architecture traceability,
+  and context-efficiency skills. Add focused good and bad examples, feature-owned `types/` and
+  `constants/` rules, canonical documentation references, and profile-aware distribution.
+- 3d59c71: Add the language-agnostic `review-code-change` core skill for evidence-based diff and pull-request
+  reviews aligned with canonical `docs/rules`, OpenSpec change context, execution locks and quality
+  gates. Include a runner-compatible report format and keep implementation and fix work outside the
+  review phase. Require every skill with local references to read applicable linked canonical sources
+  completely and fail closed when a required source is inaccessible.
+
 ## 0.5.0
 
 ### Minor Changes
