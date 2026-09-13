@@ -1,5 +1,16 @@
 # Baseline Web MFE 2026
 
+## Fuentes Canónicas
+
+| Necesidad | Fuente |
+|---|---|
+| Tecnologías frontend | [vigilio-docs/18-frontend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/18-frontend-technologies-skill-2026.md) |
+| Arquitectura y estado | [vigilio-docs/3-architecture](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/3-arquitectura-estructura-estado.md) |
+| BFF y contratos | [vigilio-docs/5-bff-http-auth](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/5-bff-http-runtime-auth.md) |
+| Delivery v2 | [vigilio-docs/13-aws-delivery](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/13-aws-cloudfront-cdk-finops.md) |
+
+Lee completamente cada fuente aplicable antes de decidir una API, dependencia o delivery.
+
 ## Identidad
 
 | Perfil | Target | Backend | Contrato | Estado |

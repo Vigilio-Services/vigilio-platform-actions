@@ -8,4 +8,9 @@ dist/
 !actions/jira-devops/dist/index.js
 packages/vigilio-skills/assets/
 *.log
+__pycache__/
+*.py[cod]
+.prompt-runner/
+.chatgpt_docs_automation_progress.json
+.chatgpt_docs_automation_progress.json.tmp
 .DS_Store

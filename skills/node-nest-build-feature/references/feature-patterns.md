@@ -19,8 +19,8 @@ src/{feature}/
 |   |-- dtos/
 |   |-- repositories/
 |   |-- schemas/
-|   |-- service/
-|   `-- types/
+|   |-- types/
+|   `-- services/
 |-- infrastructure/
 |   |-- http/controllers/
 |   `-- persistence/drizzle/

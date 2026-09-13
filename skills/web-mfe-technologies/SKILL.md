@@ -39,6 +39,6 @@ Usar junto con `$shared-technologies`. La capability conserva el nombre estable 
 - No usar OGL salvo necesidad explícita: máximo un canvas por página, `lazy`/`Suspense`, reduced motion, DPR limitado, cleanup async/RAF/observer/context y budget comprobado.
 - No inventar `renderer.dispose()` para OGL; el owner limpia recursos nativos y libera el contexto dedicado.
 
-Leer [references/technology-baseline.md](references/technology-baseline.md). Para detalle, abrir por encabezado la sección relevante de `vigilio-docs/frontend-web-mfe/18-frontend-technologies-skill-2026.md`.
+Lee [references/technology-baseline.md](references/technology-baseline.md). Abre la fuente canónica aplicable enlazada allí antes de decidir una tecnología.
 
 </skill-content>

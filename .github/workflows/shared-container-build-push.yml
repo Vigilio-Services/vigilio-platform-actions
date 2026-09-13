@@ -173,6 +173,19 @@ jobs:
         env:
           IMAGE_REPOSITORY: ${{ inputs.image-repository }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+      - name: Verify keyless signature before promotion
+        if: inputs.push
+        shell: bash
+        run: |
+          set -euo pipefail
+          cosign verify \
+            --certificate-oidc-issuer='https://token.actions.githubusercontent.com' \
+            --certificate-identity-regexp="$CERTIFICATE_IDENTITY_REGEXP" \
+            "${IMAGE_REPOSITORY}@${IMAGE_DIGEST}"
+        env:
+          CERTIFICATE_IDENTITY_REGEXP: '^https://github\\.com/${{ github.repository_owner }}/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_.-]+\\.yml@.+$'
+          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         if: ${{ always() && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
         with:
