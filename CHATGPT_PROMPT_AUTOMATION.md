@@ -9,6 +9,7 @@ do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
 chatgpt_docs_automation.py  -> helps materialize docs/rules targets
 vigilio-prompt 0.6.0        -> validates and compiles plan/prompts/locks
 chatgpt_prompt_queue.py     -> sends verified plan steps to the ChatGPT UI
+chatgpt_automation_lock.py  -> owns the cross-process lock for that visible UI
 prompt_templates.py         -> owns reusable, product-neutral prompt text
 prompt_builder_compat.py    -> owns the Python/CLI compatibility boundary
 ```
@@ -91,6 +92,33 @@ Then run the supervised queue:
 python platform-actions/chatgpt_prompt_queue.py \
   --project-root . \
   --prompts-dir generated/prompts/first-vertical-slice \
+  --linux --display :1 \
+  --assets platform-actions/assets \
+  --new-chat-mode each
+```
+
+For the explicit unattended mode, use `--automation` (or `--automatizacion`): a fresh
+`READY`/❤️ advances `PROPOSE → APPLY → REVIEW` and then the next dependency-ready pack. A
+`BLOCKED`/👎 always writes the blocker state/ticket and stops. The mode still validates root
+OpenSpec, decisions, dependencies and locks; it is incompatible with `--force-block` and does
+not independently prove CI/release evidence. Its state stores a separate
+`automation_ready_marker`, never an `evidence_ref`; a real quality report/run ID remains required
+for a human evidence approval.
+
+`--dry-run` is a read-only preflight: it may inspect plans, locks and dependencies, but it never
+creates progress, changes a master checklist, materializes a target, or treats the simulated heart
+marker as completion.
+
+`chatgpt_docs_automation.py --automatic-recommend-answer` is separate from queue automation:
+it may ask the model to record a recommendation for a `Q-*`, but it must leave that question
+`OPEN` until a traceable human decision is recorded. It never grants authority, changes an
+OpenSpec gate, or converts a recommendation into `ANSWERED` by itself.
+
+```bash
+python platform-actions/chatgpt_prompt_queue.py \
+  --project-root . \
+  --prompts-dir generated/prompts/first-vertical-slice \
+  --automation \
   --linux --display :1 \
   --assets platform-actions/assets \
   --new-chat-mode each

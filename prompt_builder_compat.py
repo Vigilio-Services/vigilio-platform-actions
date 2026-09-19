@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.0.
+"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.1.
 
 This module is intentionally UI-agnostic.  Both ChatGPT automation scripts use
 it so version checks, command execution, JSON parsing and execution-plan
@@ -8,15 +8,18 @@ validation have one owner.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.0"
+SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.1"
 SUPPORTED_PLAN_SCHEMA_VERSION = 2
 SUPPORTED_PHASES = ("explore", "propose", "apply", "review", "fix")
 MUTATING_PHASES = frozenset({"apply", "review", "fix"})
@@ -118,13 +121,13 @@ def _relative_artifact(project_root: Path, value: Any, *, label: str) -> Path:
     raw = Path(value)
     if raw.is_absolute():
         raise PromptBuilderCompatibilityError(
-            f"{label} must be project-relative for portable Prompt Builder 0.6.0 locks"
+            f"{label} must be project-relative for portable Prompt Builder 0.6.1 locks"
         )
     return _inside(project_root, project_root / raw, label=label)
 
 
 def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
-    """Load and strictly validate a Prompt Builder 0.6.0 execution plan."""
+    """Load and strictly validate a Prompt Builder 0.6.1 execution plan."""
 
     project_root = project_root.resolve()
     prompts_dir = _inside(project_root, prompts_dir, label="prompts directory")
@@ -256,7 +259,7 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
     steps.sort(key=lambda step: step.sequence)
     if [step.sequence for step in steps] != list(range(1, len(steps) + 1)):
         raise PromptBuilderCompatibilityError(
-            "Prompt Builder 0.6.0 execution steps must use contiguous numeric order"
+            "Prompt Builder 0.6.1 execution steps must use contiguous numeric order"
         )
 
     if raw.get("prompt_count") not in (None, len(steps)):
@@ -325,10 +328,91 @@ class PromptBuilderClient:
         self.package_manager = package_manager
         self.executable = executable
         self.timeout_seconds = timeout_seconds
+        self._command_prefix = self._resolve_command_prefix()
+
+    @staticmethod
+    def _node_major(executable: Path) -> int | None:
+        try:
+            completed = subprocess.run(
+                [str(executable), "--version"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=10,
+                shell=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        match = re.search(r"v?(\d+)\.", completed.stdout)
+        return int(match.group(1)) if completed.returncode == 0 and match else None
+
+    def _resolve_node24(self) -> Path | None:
+        candidates: list[Path] = []
+        explicit = os.environ.get("VIGILIO_NODE24_BIN")
+        if explicit:
+            candidates.append(Path(explicit))
+        discovered = shutil.which("node")
+        if discovered:
+            candidates.append(Path(discovered))
+
+        nvm_roots = {
+            value
+            for value in (
+                os.environ.get("NVM_HOME"),
+                str(Path(os.environ["LOCALAPPDATA"]) / "nvm")
+                if os.environ.get("LOCALAPPDATA")
+                else None,
+            )
+            if value
+        }
+        for nvm_root in nvm_roots:
+            root = Path(nvm_root)
+            candidates.extend(
+                sorted(root.glob("v24.*/node.exe"), reverse=True)
+                if os.name == "nt"
+                else sorted(root.glob("v24.*/bin/node"), reverse=True)
+            )
+
+        seen: set[Path] = set()
+        for candidate in candidates:
+            resolved = candidate.resolve()
+            if resolved in seen or not resolved.is_file():
+                continue
+            seen.add(resolved)
+            if self._node_major(resolved) == 24:
+                return resolved
+        return None
+
+    def _resolve_command_prefix(self) -> list[str]:
+        explicit_cli = os.environ.get("VIGILIO_PROMPT_BUILDER_CLI")
+        installed_cli = (
+            self.project_root
+            / "node_modules"
+            / "@vigilioyonatan"
+            / "prompt-builder"
+            / "dist"
+            / "cli.js"
+        )
+        cli = Path(explicit_cli).resolve() if explicit_cli else installed_cli.resolve()
+        if cli.is_file():
+            node24 = self._resolve_node24()
+            if node24 is None:
+                raise PromptBuilderCompatibilityError(
+                    "Prompt Builder requires Node.js 24. Install/select Node 24 or set "
+                    "VIGILIO_NODE24_BIN to its executable."
+                )
+            return [str(node24), str(cli)]
+
+        manager = shutil.which(self.package_manager) or self.package_manager
+        if os.name == "nt" and str(manager).lower().endswith((".cmd", ".bat")):
+            command_processor = os.environ.get("COMSPEC", "cmd.exe")
+            return [command_processor, "/d", "/s", "/c", str(manager), "exec", self.executable]
+        return [str(manager), "exec", self.executable]
 
     @property
     def command_prefix(self) -> list[str]:
-        return [self.package_manager, "exec", self.executable]
+        return list(self._command_prefix)
 
     def run(
         self,
@@ -445,13 +529,102 @@ class PromptBuilderClient:
             ],
             check=False,
         )
-        if (
-            result.returncode != 0
-            or not isinstance(report, dict)
-            or report.get("valid") is not True
-        ):
+        if isinstance(report, dict) and self._recover_windows_line_endings(lock_file, report):
+            return {
+                **report,
+                "valid": True,
+                "line_ending_normalized": True,
+            }
+        if result.returncode != 0 or not isinstance(report, dict) or report.get("valid") is not True:
             raise PromptBuilderCommandError(result.command, result.returncode or 1, result.output)
         return report
+
+    def _recover_windows_line_endings(
+        self, lock_file: Path, report: Mapping[str, Any]
+    ) -> bool:
+        """Accept only byte-identical text after CRLF -> LF normalization.
+
+        Legacy Prompt Builder 0.6.0 locks were emitted from LF content. A Windows Git
+        checkout may rewrite those same files to CRLF. This compatibility bridge
+        keeps existing plans usable until every consumer installs the patched CLI;
+        it cannot forgive any semantic/content change.
+        """
+        if report.get("valid") is True:
+            return False
+        checks = report.get("checks")
+        if not isinstance(checks, list):
+            return False
+        failed = [check for check in checks if isinstance(check, dict) and check.get("passed") is False]
+        if not failed:
+            return False
+
+        try:
+            lock = json.loads(lock_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        if not isinstance(lock, dict):
+            return False
+
+        def nested(*keys: str) -> Mapping[str, Any] | None:
+            value: Any = lock
+            for key in keys:
+                if not isinstance(value, dict):
+                    return None
+                value = value.get(key)
+            return value if isinstance(value, dict) else None
+
+        def indexed(key: str, index: int) -> Mapping[str, Any] | None:
+            values = lock.get(key)
+            if not isinstance(values, list) or index >= len(values):
+                return None
+            value = values[index]
+            return value if isinstance(value, dict) else None
+
+        prompt_entry: Mapping[str, Any] = {
+            "source": str(lock_file.with_name(lock_file.name.removesuffix(".lock.json") + ".md")),
+            "sha256": lock.get("prompt_sha256"),
+        }
+
+        for check in failed:
+            name = check.get("name")
+            entry: Mapping[str, Any] | None = None
+            if name == "prompt":
+                entry = prompt_entry
+            elif name == "factory_baseline":
+                entry = nested("factory_baseline")
+            elif name == "factory_architecture":
+                entry = nested("factory_baseline", "architecture")
+            elif name == "registry":
+                entry = nested("canonical_authority", "registry")
+            elif name == "plan":
+                entry = nested("plan_selection")
+            elif isinstance(name, str) and name.startswith("document:"):
+                try:
+                    entry = indexed("documents", int(name.partition(":")[2]))
+                except ValueError:
+                    return False
+            elif isinstance(name, str) and name.startswith("canonical_reference:"):
+                try:
+                    entry = indexed("canonical_references", int(name.partition(":")[2]))
+                except ValueError:
+                    return False
+
+            if entry is None:
+                return False
+            source = entry.get("source")
+            expected = entry.get("sha256")
+            if not isinstance(source, str) or not isinstance(expected, str):
+                return False
+            raw_path = Path(source)
+            candidate = raw_path if raw_path.is_absolute() else self.project_root / raw_path
+            try:
+                content = _inside(self.project_root, candidate, label=str(name)).read_bytes()
+            except OSError:
+                return False
+            normalized = content.replace(b"\r\n", b"\n")
+            if hashlib.sha256(normalized).hexdigest() != expected:
+                return False
+        return True
 
     def initialize_project(
         self,
