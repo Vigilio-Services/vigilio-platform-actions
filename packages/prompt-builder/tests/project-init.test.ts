@@ -46,10 +46,21 @@ describe('project inception and human decision gate', () => {
       });
       assert.ok(first.created.includes('docs/rules/project-brief.md'));
       assert.ok(first.created.includes('docs/rules/answers.md'));
+      assert.ok(first.created.includes('docs/rules/migration-inputs.yaml'));
+      assert.ok(first.created.includes('openspec/changes/migration-assessment/proposal.md'));
+      assert.equal(first.migrationChange, 'openspec/changes/migration-assessment');
       assert.equal(first.discoveryPrompt, 'generated/prompts/bootstrap/0000-project-discovery.md');
       const prompt = await readFile(path.join(root, first.discoveryPrompt), 'utf8');
       assert.match(prompt, /factory-master\.md/);
       assert.match(prompt, /Project Discovery — migration/);
+      assert.match(prompt, /READ ONLY/);
+      assert.match(prompt, /feasibility assessment/);
+      assert.match(prompt, /migration-inputs\.yaml/);
+      assert.match(prompt, /provider-neutral/);
+      assert.match(prompt, /cloud_environments/);
+      assert.match(prompt, /provider_adapters/);
+      const lock = JSON.parse(await readFile(path.join(root, first.lockfile), 'utf8'));
+      assert.equal(lock.migration.access_policy, 'READ_ONLY_DISCOVERY');
 
       const readiness = await evaluateDecisionReadiness({
         projectRoot: root,

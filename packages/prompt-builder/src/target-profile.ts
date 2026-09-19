@@ -6,7 +6,13 @@ import type {
   TargetProfile,
   TargetProfilesFile,
   TargetRepository,
+  TargetValidationMode,
 } from './types.js';
+
+type TargetValidation = {
+  materialized: boolean;
+  warnings: string[];
+};
 
 async function exists(file: string) {
   try {
@@ -47,51 +53,86 @@ async function validateBackend(input: {
   projectRoot: string;
   backend: TargetRepository;
   contractPackage: string;
-}) {
+  mode: TargetValidationMode;
+}): Promise<TargetValidation> {
+  const warnings: string[] = [];
   const root = resolveInside(input.projectRoot, input.backend.root, 'backend root');
   const materialized = await exists(root);
   if (input.backend.state === 'current' && !materialized) {
-    throw new Error(`CURRENT backend target missing: ${input.backend.root}`);
+    const message = `CURRENT backend target missing: ${input.backend.root}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
   }
-  if (!materialized) return false;
+  if (!materialized) {
+    const message = `TARGET_NOT_MATERIALIZED: backend target missing: ${input.backend.root}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
+  }
   if (!input.backend.contract_manifest) {
-    throw new Error('Current backend target requires contract_manifest');
+    const message = 'Current backend target requires contract_manifest';
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
   }
   const manifest = resolveInside(
     root,
     input.backend.contract_manifest,
     'backend contract manifest',
   );
-  if (!(await exists(manifest))) throw new Error(`Backend contract manifest missing: ${manifest}`);
+  if (!(await exists(manifest))) {
+    const message = `Backend contract manifest missing: ${manifest}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
+  }
   const actual = await readPackageName(manifest);
   if (actual !== input.contractPackage) {
-    throw new Error(
-      `CONTRACT_OWNER_MISMATCH: backend publishes ${actual ?? '<unnamed>'}, expected ${input.contractPackage}`,
-    );
+    const message =
+      `CONTRACT_OWNER_MISMATCH: backend publishes ${actual ?? '<unnamed>'}, ` +
+      `expected ${input.contractPackage}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
   }
-  return true;
+  return { materialized: true, warnings };
 }
 
 async function validateFrontend(input: {
   projectRoot: string;
   frontend: TargetRepository;
   contractPackage: string;
-}) {
+  mode: TargetValidationMode;
+}): Promise<TargetValidation> {
+  const warnings: string[] = [];
   const root = resolveInside(input.projectRoot, input.frontend.root, 'frontend root');
   const materialized = await exists(root);
   if (input.frontend.state === 'current' && !materialized) {
-    throw new Error(`CURRENT frontend target missing: ${input.frontend.root}`);
+    const message = `CURRENT frontend target missing: ${input.frontend.root}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
   }
   if (input.frontend.app_path) resolveInside(root, input.frontend.app_path, 'frontend app_path');
-  if (!materialized) return false;
+  if (!materialized) {
+    const message = `TARGET_NOT_MATERIALIZED: frontend target missing: ${input.frontend.root}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
+  }
 
   const packageManifest = resolveInside(
     root,
     input.frontend.package_manifest ?? 'package.json',
     'frontend package manifest',
   );
-  if (!(await exists(packageManifest)))
-    throw new Error(`Frontend package manifest missing: ${packageManifest}`);
+  if (!(await exists(packageManifest))) {
+    const message = `Frontend package manifest missing: ${packageManifest}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
+  }
   const packageJson = JSON.parse(await readFile(packageManifest, 'utf8')) as Record<
     string,
     unknown
@@ -101,14 +142,18 @@ async function validateFrontend(input: {
     ...((packageJson['devDependencies'] as Record<string, unknown> | undefined) ?? {}),
   };
   if (!(input.contractPackage in dependencies)) {
-    throw new Error(`CONTRACT_OWNER_MISMATCH: frontend does not declare ${input.contractPackage}`);
+    const message = `CONTRACT_OWNER_MISMATCH: frontend does not declare ${input.contractPackage}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
   }
-  return true;
+  return { materialized: true, warnings };
 }
 
 export async function resolveTargetProfile(
   projectRoot: string,
   profileId?: string,
+  options: { mode?: TargetValidationMode } = {},
 ): Promise<ResolvedTargetProfile | undefined> {
   if (!profileId) return undefined;
   const configPath = path.resolve(projectRoot, 'docs/rules/target-profiles.yaml');
@@ -139,21 +184,28 @@ export async function resolveTargetProfile(
   if (!profile.contract.package?.trim())
     throw new Error(`Invalid contract package for ${profileId}`);
 
+  const mode = options.mode ?? 'strict';
   const backend = await validateBackend({
     projectRoot,
     backend: profile.backend,
     contractPackage: profile.contract.package,
+    mode,
   });
   const frontend = await validateFrontend({
     projectRoot,
     frontend: profile.frontend,
     contractPackage: profile.contract.package,
+    mode,
   });
   return {
     id: profileId,
     ...profile,
     forbidden_paths: [...new Set(profile.forbidden_paths ?? [])],
-    materialized: { backend, frontend },
+    materialized: {
+      backend: backend.materialized,
+      frontend: frontend.materialized,
+    },
+    preflight_warnings: [...backend.warnings, ...frontend.warnings],
   };
 }
 
@@ -165,5 +217,11 @@ export function formatTargetProfile(profile?: ResolvedTargetProfile) {
     `- frontend: ${profile.frontend.repository} (${profile.frontend.state}; root=${profile.frontend.root}; app=${profile.frontend.app_path ?? 'resolved-from-existing-target'})`,
     `- contract: ${profile.contract.package} (${profile.contract.owner} -> ${profile.contract.consumer})`,
     `- materialized: backend=${profile.materialized.backend}, frontend=${profile.materialized.frontend}`,
+    ...(profile.preflight_warnings.length > 0
+      ? [
+          '- discovery warnings (record as proposal tasks; strict APPLY must resolve them):',
+          ...profile.preflight_warnings.map((warning) => `  - ${warning}`),
+        ]
+      : []),
   ].join('\n');
 }

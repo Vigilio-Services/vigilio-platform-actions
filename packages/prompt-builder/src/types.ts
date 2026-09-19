@@ -44,6 +44,8 @@ export type ConditionContext = {
 
 export type TargetState = 'current' | 'target_not_materialized';
 
+export type TargetValidationMode = 'strict' | 'discovery';
+
 export type TargetRepository = {
   repository: string;
   root: string;
@@ -75,6 +77,7 @@ export type ResolvedTargetProfile = TargetProfile & {
     backend: boolean;
     frontend: boolean;
   };
+  preflight_warnings: string[];
 };
 
 export type PromptPack = {

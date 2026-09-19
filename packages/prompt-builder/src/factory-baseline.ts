@@ -5,6 +5,10 @@ import { parse } from 'yaml';
 
 const sha256 = (content: string) => createHash('sha256').update(content).digest('hex');
 
+function matchesTextHash(content: string, expected: string) {
+  return sha256(content) === expected || sha256(content.replaceAll('\r\n', '\n')) === expected;
+}
+
 export type FactoryBaseline = {
   projectMode: 'greenfield' | 'migration';
   source: string;
@@ -64,7 +68,7 @@ export async function validateFactoryBaseline(
 
   const architecturePath = resolveInside(projectRoot, record['architecture_source']);
   const architectureContent = await readFile(architecturePath, 'utf8');
-  if (sha256(architectureContent) !== record['architecture_sha256']) {
+  if (!matchesTextHash(architectureContent, record['architecture_sha256'])) {
     throw new Error(
       'FACTORY_BASELINE_MISMATCH: technical architecture changed; review impact and run init-project with --refresh-baseline',
     );
