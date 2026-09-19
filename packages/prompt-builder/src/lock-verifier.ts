@@ -9,6 +9,14 @@ type Check = { name: string; passed: boolean; detail: string };
 
 const sha256 = (content: string) => createHash('sha256').update(content).digest('hex');
 
+// Locks are content locks, not operating-system newline locks. Existing plans may
+// have been generated on Linux and checked out on Windows with core.autocrlf.
+// Accept the exact digest first, then the canonical LF digest. No other content
+// transformation is permitted.
+function hashMatches(content: string, expected: string) {
+  return sha256(content) === expected || sha256(content.replaceAll('\r\n', '\n')) === expected;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -27,11 +35,12 @@ async function verifyFile(projectRoot: string, name: string, entry: HashEntry): 
     return { name, passed: false, detail: 'source/sha256 metadata is missing' };
   }
   try {
-    const actual = sha256(await readFile(resolveInside(projectRoot, entry.source), 'utf8'));
+    const content = await readFile(resolveInside(projectRoot, entry.source), 'utf8');
+    const matches = hashMatches(content, entry.sha256);
     return {
       name,
-      passed: actual === entry.sha256,
-      detail: actual === entry.sha256 ? entry.source : `${entry.source} hash changed`,
+      passed: matches,
+      detail: matches ? entry.source : `${entry.source} hash changed`,
     };
   } catch (error) {
     return {
@@ -59,11 +68,12 @@ export async function verifyPromptLock(input: { projectRoot: string; lockFile: s
   if (promptPath === lockPath || typeof lock['prompt_sha256'] !== 'string') {
     checks.push({ name: 'prompt', passed: false, detail: 'prompt_sha256 metadata is missing' });
   } else {
-    const actual = sha256(await readFile(promptPath, 'utf8'));
+    const content = await readFile(promptPath, 'utf8');
+    const matches = hashMatches(content, lock['prompt_sha256']);
     checks.push({
       name: 'prompt',
-      passed: actual === lock['prompt_sha256'],
-      detail: actual === lock['prompt_sha256'] ? path.basename(promptPath) : 'prompt hash changed',
+      passed: matches,
+      detail: matches ? path.basename(promptPath) : 'prompt hash changed',
     });
   }
 
@@ -71,11 +81,12 @@ export async function verifyPromptLock(input: { projectRoot: string; lockFile: s
   if (typeof phase !== 'string' || typeof lock['template_sha256'] !== 'string') {
     checks.push({ name: 'template', passed: false, detail: 'phase/template_sha256 is missing' });
   } else {
-    const actual = sha256(await loadTemplate(phase as Phase));
+    const template = await loadTemplate(phase as Phase);
+    const matches = hashMatches(template, lock['template_sha256']);
     checks.push({
       name: 'template',
-      passed: actual === lock['template_sha256'],
-      detail: actual === lock['template_sha256'] ? phase : `${phase} template hash changed`,
+      passed: matches,
+      detail: matches ? phase : `${phase} template hash changed`,
     });
   }
 

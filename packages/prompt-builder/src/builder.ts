@@ -66,10 +66,16 @@ export async function preparePrompt(input: {
   const targetProfile = await resolveTargetProfile(
     input.projectRoot,
     resolveTargetProfileId(manifests),
+    { mode: input.phase === 'explore' || input.phase === 'propose' ? 'discovery' : 'strict' },
   );
   const forbiddenPaths = [
     ...new Set([...scopes.forbidden, ...(targetProfile?.forbidden_paths ?? [])]),
   ];
+  const changeId = input.change ?? input.packId.replaceAll('.', '-');
+  const allowedPaths =
+    input.phase === 'propose'
+      ? [...new Set([...scopes.allowed, `openspec/changes/${changeId}/**`])]
+      : scopes.allowed;
   const dependencies = input.dependencies ?? target.depends_on ?? [];
   const prompt = assemble({
     template,
@@ -79,7 +85,7 @@ export async function preparePrompt(input: {
     qualityGates,
     activationGates,
     activationRequirements,
-    allowedPaths: scopes.allowed,
+    allowedPaths,
     forbiddenPaths,
     dependencies,
     targetProfile,
@@ -104,7 +110,7 @@ export async function preparePrompt(input: {
     qualityGates,
     activationGates,
     activationRequirements,
-    allowedPaths: scopes.allowed,
+    allowedPaths,
     forbiddenPaths,
     inheritance,
     dependencies,

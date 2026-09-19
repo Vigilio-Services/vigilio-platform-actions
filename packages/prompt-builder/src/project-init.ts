@@ -124,6 +124,38 @@ export async function initializeProject(input: {
   }
   const brief = await readFile(briefSource, 'utf8');
 
+  let migrationInputsSource: string | undefined;
+  let migrationInputs = 'NOT_APPLICABLE — greenfield project.';
+  let modeGuidance = [
+    '- Materialize exact target roots and contracts before implementation.',
+    '- Record unknown business/security/data decisions for human approval.',
+    '- Do not claim runtime evidence from documentation alone.',
+  ].join('\n');
+
+  if (input.mode === 'migration') {
+    const inputsFile = path.resolve(projectRoot, 'docs/rules/migration-inputs.yaml');
+    await writeIfMissing(inputsFile, await loadTemplate('migration-inputs.yaml'), created, skipped);
+    migrationInputsSource = portableRelative(projectRoot, inputsFile);
+    migrationInputs = await readFile(inputsFile, 'utf8');
+    modeGuidance = (await loadTemplate('migration-assessment.md'))
+      .replaceAll('{{MIGRATION_INPUTS_SOURCE}}', migrationInputsSource)
+      .replaceAll('{{MIGRATION_CHANGE}}', 'openspec/changes/migration-assessment');
+
+    const migrationRoot = path.resolve(projectRoot, 'openspec/changes/migration-assessment');
+    for (const [file, template] of [
+      ['proposal.md', 'migration-proposal.md'],
+      ['design.md', 'migration-design.md'],
+      ['tasks.md', 'migration-tasks.md'],
+    ] as const) {
+      await writeIfMissing(
+        path.join(migrationRoot, file),
+        await loadTemplate(template),
+        created,
+        skipped,
+      );
+    }
+  }
+
   const answersSource = path.resolve(projectRoot, 'docs/rules/answers.md');
   await writeIfMissing(
     answersSource,
@@ -147,7 +179,14 @@ export async function initializeProject(input: {
     .replaceAll('{{PROJECT_MODE}}', input.mode)
     .replaceAll('{{ARCHITECTURE_SOURCE}}', architectureRelative)
     .replaceAll('{{PROJECT_BRIEF_SOURCE}}', portableRelative(projectRoot, briefSource))
-    .replaceAll('{{PROJECT_BRIEF}}', brief);
+    .replaceAll('{{PROJECT_BRIEF}}', brief)
+    .replaceAll('{{MODE_GUIDANCE}}', modeGuidance)
+    .replaceAll(
+      '{{MIGRATION_INPUTS}}',
+      migrationInputsSource
+        ? `Source: \`${migrationInputsSource}\`\n\n\`\`\`yaml\n${migrationInputs}\n\`\`\``
+        : migrationInputs,
+    );
   await writeFile(discoveryPrompt, prompt, 'utf8');
 
   const lockfile = path.join(outputDirectory, '0000-project-discovery.lock.json');
@@ -168,6 +207,17 @@ export async function initializeProject(input: {
           source: portableRelative(projectRoot, briefSource),
           sha256: sha256(brief),
         },
+        migration:
+          input.mode === 'migration' && migrationInputsSource
+            ? {
+                inputs: {
+                  source: migrationInputsSource,
+                  sha256: sha256(migrationInputs),
+                },
+                openspec_change: 'openspec/changes/migration-assessment',
+                access_policy: 'READ_ONLY_DISCOVERY',
+              }
+            : null,
         next_gate:
           'Resolve every material Q-* in docs/rules/answers.md before generating APPLY/REVIEW/FIX prompts.',
       },
@@ -185,5 +235,8 @@ export async function initializeProject(input: {
     updated: updated.map((file) => portableRelative(projectRoot, file)),
     discoveryPrompt: portableRelative(projectRoot, discoveryPrompt),
     lockfile: portableRelative(projectRoot, lockfile),
+    migrationInputs: migrationInputsSource,
+    migrationChange:
+      input.mode === 'migration' ? 'openspec/changes/migration-assessment' : undefined,
   };
 }

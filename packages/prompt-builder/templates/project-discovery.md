@@ -12,6 +12,10 @@ Read `{{ARCHITECTURE_SOURCE}}` as the technical factory baseline. It owns code a
 
 `docs/rules/**` will become the canonical product and engineering truth for this project. OpenSpec records the temporal change lifecycle and references those canonical rules.
 
+## Mode-specific operating contract
+
+{{MODE_GUIDANCE}}
+
 ## Required workflow
 
 1. Inspect this brief and, for migration, inspect executable code/config/contracts/tests before trusting narrative documentation.
@@ -22,6 +26,10 @@ Read `{{ARCHITECTURE_SOURCE}}` as the technical factory baseline. It owns code a
 6. Produce the minimal complete blueprint: global rules, context map, modules, use cases/workflows, contracts, target profiles, tests, operations, packs and registry.
 7. Validate traceability from business rule to API/page/event/test/evidence. Keep `generated/**` derived.
 8. Only after no blocking `Q-*` remains may the factory plan and generate implementation phases.
+
+## Migration inputs
+
+{{MIGRATION_INPUTS}}
 
 ## Project brief
 

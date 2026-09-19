@@ -1,0 +1,113 @@
+schema_version: 1
+mode: migration
+project_id: REPLACE_ME
+
+# Paths are project-relative when materialized below this root. External roots require an approved
+# workspace mapping. Never put passwords, tokens, secret values or production data in this file.
+source_systems:
+  repositories: []
+  # - id: legacy-backend
+  #   path: apps/legacy-backend
+  #   remote: REQUIRED
+  #   ref: REQUIRED_IMMUTABLE_COMMIT_OR_TAG
+  #   owner: REQUIRED
+  #   role: backend
+  #   build_command: REQUIRED_OR_NOT_APPLICABLE
+  #   test_command: REQUIRED_OR_NOT_APPLICABLE
+  #   access: read_only
+  databases: []
+  # - id: legacy-primary
+  #   engine: postgresql
+  #   version: REQUIRED
+  #   environment: staging
+  #   connection_alias: LEGACY_DB_READ_ONLY
+  #   secret_ref: arn-or-secret-name-only
+  #   schemas: [public]
+  #   access: read_only
+  #   allow_bounded_masked_samples: false
+  cloud_environments: []
+  # Provider is an extensible slug, not a closed enum: aws, azure, gcp, kubernetes, vps,
+  # on_prem, openstack, vmware, oracle_cloud, digitalocean, cloudflare, saas or another
+  # registered adapter. provider_config is metadata only and must never contain secret values.
+  # - id: legacy-azure-nonprod
+  #   provider: azure
+  #   discovery_adapter: azure-resource-graph-read-only
+  #   scope: { tenant_id: "...", subscription_id: "..." }
+  #   regions: [eastus]
+  #   identity_ref: managed-identity-or-reader-role-reference
+  #   services: [aks, postgresql, storage, service_bus, key_vault, monitor]
+  #   access: read_only
+  #   provider_config: {}
+  # - id: legacy-vps
+  #   provider: vps
+  #   discovery_adapter: ssh-inventory-read-only
+  #   scope: { host_aliases: [legacy-api-1], network_zone: private }
+  #   regions: [datacenter-1]
+  #   identity_ref: ssh-certificate-or-key-reference-only
+  #   services: [systemd, docker, nginx, postgresql]
+  #   access: read_only
+  #   provider_config: { command_allowlist_profile: linux-inventory-v1 }
+  contracts:
+    http: []
+    events: []
+    packages: []
+    files: []
+
+target_systems:
+  repositories: []
+  databases: []
+  cloud_environments: []
+  contracts:
+    http: []
+    events: []
+    packages: []
+    files: []
+
+# Assess independently and order later through the verified dependency DAG.
+capabilities: []
+# - id: identity.login
+#   owner: identity
+#   priority: critical
+#   source_repository: legacy-backend
+#   target_repository: target-backend
+
+access_policy:
+  discovery: read_only
+  allowed_environments: [local, test, staging]
+  production_access: forbidden_until_human_approval
+  allow_secret_values: false
+  allow_sql_mutation: false
+  allow_cloud_mutation: false
+  allow_deploy: false
+  allow_traffic_change: false
+  allow_stored_procedure_execution: false
+
+# Adapters translate the same read-only contract into provider-native operations. Add providers
+# here without changing Prompt Builder code; every adapter requires identity verification,
+# allowlisted inventory operations, redaction and an explicit mutation denylist.
+provider_adapters: []
+# - id: azure-resource-graph-read-only
+#   provider: azure
+#   identity_check: az-account-show
+#   allowed_operations: [resource_graph_query, list, show, monitor_read]
+#   denied_operations: [create, update, delete, deploy, role_assignment, secret_value_read]
+# - id: ssh-inventory-read-only
+#   provider: vps
+#   identity_check: ssh-principal-and-host-fingerprint
+#   allowed_operations: [os_release, package_inventory, service_status, container_inventory, disk_metadata]
+#   denied_operations: [sudo, write, restart, deploy, package_install, firewall_change, secret_read]
+
+operational_constraints:
+  maintenance_window: PENDING_HUMAN_DECISION
+  rollback_rto: PENDING_HUMAN_DECISION
+  rollback_rpo: PENDING_HUMAN_DECISION
+  data_retention: PENDING_HUMAN_DECISION
+  regulatory_constraints: []
+
+evidence:
+  output_root: generated/evidence/migration-assessment
+  redact_sensitive_values: true
+  retain_raw_query_results: false
+
+known_risks: []
+human_approvals: []
