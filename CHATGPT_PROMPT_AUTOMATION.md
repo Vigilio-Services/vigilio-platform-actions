@@ -1,4 +1,4 @@
-# ChatGPT automation + Prompt Builder 0.6.0
+# ChatGPT automation + Prompt Builder 0.6.1
 
 These scripts are adapters around the published Prompt Builder contract. They
 do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
@@ -7,7 +7,7 @@ do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
 
 ```text
 chatgpt_docs_automation.py  -> helps materialize docs/rules targets
-vigilio-prompt 0.6.0        -> validates and compiles plan/prompts/locks
+vigilio-prompt 0.6.1        -> validates and compiles plan/prompts/locks
 chatgpt_prompt_queue.py     -> sends verified plan steps to the ChatGPT UI
 prompt_templates.py         -> owns reusable, product-neutral prompt text
 prompt_builder_compat.py    -> owns the Python/CLI compatibility boundary
@@ -20,17 +20,17 @@ plans.
 ## Prerequisites
 
 - Node.js 24 and pnpm.
-- `@vigilioyonatan/prompt-builder@0.6.0` installed in the consumer project.
+- `@vigilioyonatan/prompt-builder@0.6.1` installed in the consumer project.
 - Python 3.11+.
 - UI dependencies and image assets documented in `chatgpt_docs_automation.py`.
 - A project-local `.npmrc`/token that can read the private GitHub package.
 
 ```bash
-pnpm add -D @vigilioyonatan/prompt-builder@0.6.0
+pnpm add -D @vigilioyonatan/prompt-builder@0.6.1
 pnpm exec vigilio-prompt --version
 ```
 
-The second command must print `0.6.0`. Version drift fails closed by default.
+The second command must print `0.6.1`. Version drift fails closed by default.
 
 ## 1. Initialize and build documentation
 

@@ -152,5 +152,5 @@ jobs:
             echo 'GitHub does not persist attestations for this private repository by default.'
             echo 'The package was published and release evidence was retained.'
             echo 'Public repositories attest automatically.'
-            echo 'Set `PACKAGE_ATTESTATIONS_ENABLED=true` only when this private repository supports GitHub artifact attestations.'
+            echo 'Set PACKAGE_ATTESTATIONS_ENABLED=true only when this private repository supports GitHub artifact attestations.'
           } >> "$GITHUB_STEP_SUMMARY"
