@@ -29,7 +29,8 @@ python3 chatgpt_docs_automation.py \
   --assets ./chatgpt-assets \
   --send-with-enter \
   --no-new-chat  \
-  --progress-file .chatgpt_docs_automation_progress.json --verify
+  --progress-file .chatgpt_docs_automation_progress.json --verify \
+  --automatic-recommend-answer
 
 
 Run (Linux/Webtop recommended):
@@ -72,6 +73,7 @@ IMPORTANT:
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import logging
 import os
@@ -84,9 +86,11 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional, Iterable
 
+from chatgpt_automation_lock import RunLock
 from prompt_templates import (
     SUCCESS_MARKER,
     INCOMPLETE_MARKER,
+    AUTO_ANSWER_DIRECTIVE,
     _batch_paths,
     build_initial_prompt,
     build_repair_prompt,
@@ -119,7 +123,7 @@ except ImportError as exc:
 # GLOBAL CONFIGURATION — requested defaults
 # ============================================================
 
-SCRIPT_VERSION = "2026.09.12-v24-prompt-builder-0.6.0"
+SCRIPT_VERSION = "2026.09.19-v25-prompt-builder-0.6.1"
 
 NEED_VERIFY = True
 NEED_NEW_CHAT = False
@@ -1437,11 +1441,13 @@ class ChatGPTUIDriver:
         os_mode: str,
         dry_run: bool = False,
         send_with_enter: bool = False,
+        auto_answer: bool = False,
     ):
         self.matcher = matcher
         self.os_mode = os_mode
         self.dry_run = dry_run
         self.send_with_enter = send_with_enter
+        self.auto_answer = auto_answer
         self.screen_width, self.screen_height = pyautogui.size()
         logging.info(
             "Runtime UI geometry: %dx%d",
@@ -1679,6 +1685,8 @@ class ChatGPTUIDriver:
         )
 
     def send_prompt(self, prompt: str) -> None:
+        if self.auto_answer:
+            prompt = f"{prompt}\n\n{AUTO_ANSWER_DIRECTIVE}"
         logging.info("Sending prompt (%d chars)", len(prompt))
         if self.dry_run:
             logging.info("[DRY-RUN] Prompt preview: %s", prompt[:350].replace("\n", " "))
@@ -2275,12 +2283,12 @@ def parse_args():
         "--prompt-builder-mode",
         choices=("strict", "version-only", "off"),
         default="strict",
-        help="0.6.0 integration level. strict is fail-closed and recommended.",
+        help="0.6.1 integration level. strict is fail-closed and recommended.",
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
         default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact supported Prompt Builder version (default: 0.6.0).",
+        help="Exact supported Prompt Builder version (default: 0.6.1).",
     )
     parser.add_argument("--package-manager", default="pnpm")
     parser.add_argument(
@@ -2305,6 +2313,12 @@ def parse_args():
         "--require-decisions-closed",
         action="store_true",
         help="Also fail unless all material Q-* decisions are closed after docs generation.",
+    )
+    parser.add_argument(
+        "--automatic-recommend-answer",
+        action="store_true",
+        help="Append the AUTO-ANSWER POLICY directive (explicit Recomendación per Q-*; "
+        "ANSWERED only with traceable human approval, else OPEN + mandatory manual).",
     )
     parser.add_argument("--progress-file", type=Path, default=Path(DEFAULT_PROGRESS_FILE))
     parser.add_argument("--log-file", type=Path, default=Path(DEFAULT_LOG_FILE))
@@ -2336,7 +2350,10 @@ def parse_args():
     parser.add_argument("--test-seconds", type=float, default=8.0, help="Duración del test de imagen en segundos (default 8).")
     parser.add_argument("--test-confidence", type=float, default=None, help="Override confidence para el test (default usa STATUS_CONFIDENCE/CLICK_CONFIDENCE).")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.dry_run and (args.init_project or args.refresh_baseline):
+        parser.error("--dry-run cannot be combined with project initialization or baseline refresh")
+    return args
 
 
 # ============================================================
@@ -2573,6 +2590,13 @@ def main() -> int:
 
     configure_logging(args.log_file)
 
+    # Docs generation and prompt execution share one visible ChatGPT UI. Take
+    # the same project-scoped lock before any real UI work; dry-run is read-only.
+    if not args.dry_run:
+        ui_lock = RunLock(project_root / ".prompt-runner" / "chatgpt-ui.runner.lock")
+        ui_lock.__enter__()
+        atexit.register(ui_lock.__exit__, None, None, None)
+
     os_mode = detect_os_mode(args)
     # --- intercepta modo test antes de requerir master_prompt ---
     if args.test_6 or args.test_4 or args.test_status or args.test_all:
@@ -2628,24 +2652,6 @@ def main() -> int:
     project_context = load_project_context(args.master_prompt)
     tasks = choose_tasks(tasks, args.start_at)
 
-    progress = ProgressStore(args.progress_file)
-
-    if not args.dry_run:
-        validate_runtime(
-            os_mode=os_mode,
-            assets_dir=args.assets,
-            need_new_chat=need_new_chat,
-            allow_resolution_mismatch=args.allow_resolution_mismatch,
-        )
-
-    matcher = ScreenMatcher(args.assets)
-    driver = ChatGPTUIDriver(
-        matcher,
-        os_mode=os_mode,
-        dry_run=args.dry_run,
-        send_with_enter=args.send_with_enter,
-    )
-
     # The master checklist is the source of truth for completion state.
     # [x] = completed, [ ] = pending. The progress JSON is kept only for
     # auxiliary metadata such as completed_at / initial_rounds / verify_rounds.
@@ -2658,7 +2664,36 @@ def main() -> int:
         len(pending),
     )
 
-    if pending and not args.dry_run:
+    if args.dry_run:
+        print(
+            "DRY-RUN: no ChatGPT UI, progress file, or master checklist will be modified. "
+            f"Would process {len(pending)} pending documentation task(s)."
+        )
+        for task in pending[:20]:
+            print(f"  would process {task.path}")
+        if len(pending) > 20:
+            print(f"  ... {len(pending) - 20} more")
+        return 0
+
+    progress = ProgressStore(args.progress_file)
+
+    validate_runtime(
+        os_mode=os_mode,
+        assets_dir=args.assets,
+        need_new_chat=need_new_chat,
+        allow_resolution_mismatch=args.allow_resolution_mismatch,
+    )
+
+    matcher = ScreenMatcher(args.assets)
+    driver = ChatGPTUIDriver(
+        matcher,
+        os_mode=os_mode,
+        dry_run=args.dry_run,
+        send_with_enter=args.send_with_enter,
+        auto_answer=args.automatic_recommend_answer,
+    )
+
+    if pending:
         logging.info(
             "Startup delay %.0fs: bring the ChatGPT browser window to the front now.",
             STARTUP_DELAY_SECONDS,

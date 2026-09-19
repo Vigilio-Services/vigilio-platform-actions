@@ -17,6 +17,7 @@ concurrency:
 env:
   NODE_VERSION: '24.16.0'
   PNPM_VERSION: '11.7.0'
+  PYTHON_VERSION: '3.11'
   SEMGREP_VERSION: '1.165.0'
 
 jobs:
@@ -49,6 +50,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-workspace.yaml
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm lint
       - run: pnpm typecheck

@@ -10,7 +10,7 @@
 from typing import Protocol, runtime_checkable
 
 
-PROMPT_BUILDER_VERSION = "0.6.0"
+PROMPT_BUILDER_VERSION = "0.6.1"
 
 
 @runtime_checkable
@@ -56,6 +56,19 @@ CANONICAL_GUARDRAILS = f"""PROMPT BUILDER CONTRACT `{PROMPT_BUILDER_VERSION}`:
 - OpenAPI/contract tests son la evidencia ejecutable HTTP; Scalar solo renderiza ese contrato cuando
   el target profile lo adopta. No inventes ni hardcodees una URL/vendor fuera del perfil del proyecto.
 - Ningún emoji, narrativa o checklist reemplaza validaciones, quality gates o evidencia ejecutable.
+"""
+
+# Directiva inyectada solo cuando el operador pasa --automatic-recommend-answer.
+# NO autoriza auto-marcar ANSWERED: el guardrail canónico sigue exigiendo aprobación
+# humana explícita. Obliga a que cada Q-* incluya Recomendación explícita + rationale,
+# y a dejar OPEN + escalado manual obligatorio lo que no pueda resolverse con evidencia.
+AUTO_ANSWER_DIRECTIVE = """AUTO-ANSWER POLICY (--automatic-recommend-answer activo):
+- Para cada decisión Q-* material: presenta SIEMPRE una `Recomendación:` explícita (opción
+  recomendada + rationale trazable a docs/rules/OpenSpec/código real).
+- Marca `ANSWERED` en `docs/rules/answers.md` SOLO si existe aprobación humana explícita y
+  trazable para esa Q-*. Sin ella, deja `OPEN` y registra `BLOQUEO MANUAL OBLIGATORIO:` con
+  qué debe decidir el humano, dónde y con qué evidencia.
+- Nunca inventes respuestas ni marques ANSWERED por defecto para satisfacer gates.
 """
 
 
@@ -340,9 +353,14 @@ PHASE_INSTRUCTIONS = {
         "No cambies código de negocio ni cierres decisiones humanas por inferencia."
     ),
     "propose": (
-        "Esta es fase PROPOSE. Analiza/prepara/refina la propuesta/OpenSpec requerida. "
-        "NO ejecutes el APPLY por adelantado. READY significa que no quedan blockers "
-        "materiales para que un humano pueda aprobar el paso a APPLY."
+        "Esta es fase PROPOSE. CREA o refina en la RAÍZ del proyecto el change OpenSpec "
+        "`openspec/changes/<change_id>/{proposal.md,design.md,tasks.md}`. NO ejecutes APPLY. "
+        "La ausencia de módulo backend, migración, OpenAPI, paquete contractual, UI o tests "
+        "es un GAP esperado de implementación: documéntalo como tarea/riesgo/gate y NO bloquees "
+        "PROPOSE solo por esa ausencia. READY significa que la propuesta es coherente y puede "
+        "ser revisada por un humano; no significa que APPLY ni sus gates ya estén completos. "
+        "Bloquea únicamente si falta autoridad canónica, una decisión material necesaria para "
+        "elegir el diseño, acceso read-only imprescindible o un scope seguro."
     ),
     "apply": (
         "Esta es fase APPLY. Ejecuta solamente el alcance autorizado por el prompt generado "
@@ -367,6 +385,7 @@ def build_execution_envelope(
     success_marker: str = SUCCESS_MARKER,
     blocked_marker: str = INCOMPLETE_MARKER,
     auto_apply_recommended: bool = False,
+    openspec_context: str = "",
 ) -> str:
     phase_instruction = PHASE_INSTRUCTIONS[item.phase]
 
@@ -383,6 +402,13 @@ def build_execution_envelope(
 
     dependencies = ", ".join(getattr(item, "dependencies", ()) or ()) or "none"
     previous_phase = getattr(item, "previous_phase_sequence", None)
+    change_id = item.pack.replace(".", "-")
+    openspec_path = f"openspec/changes/{change_id}"
+    runtime_openspec = (
+        f"\nOPEN SPEC ROOT MATERIALIZADO PARA ESTE PASO:\n{openspec_context}\n"
+        if openspec_context.strip()
+        else ""
+    )
 
     return f"""# PROMPT QUEUE AUTOMATION ENVELOPE
 
@@ -401,7 +427,16 @@ REGLAS DEL ORQUESTADOR:
 - Respeta literalmente los allowed/forbidden paths, blockers, gates y source-of-truth del prompt.
 - OBLIGACIÓN SKILLS 100% — CLARO solo las skills que se van a utilizar  LECTURA COMPLETA Y VINCULANTE: lee BIEN COMPLETO el contenido de las skills que SÍ aplican a esta ejecución (CATÁLOGO nombre→qué hace; NO es entrega física de archivos ni obligación de buscar/auditar `.opencode/skills/**/SKILL.md`; una skill requerida que no se resuelva → BLOCKED). Si la skill contiene links (http/https, `docs/rules/**`, `OpenSpec/**`, rutas SKILL.md u otras referencias), ENTRA al link, LEE el contenido COMPLETO y OBEDECE al 100% como norma vinculante. No hagas lectura superficial, no omitas checklists/gates/workflow de la skill. El cumplimiento de la skill es obligatorio para READY.
 - No inventes decisiones para conseguir READY.
-- Si falta una decisión/regla/dependencia/evidencia material, responde BLOCKED.
+- PROPOSE: si el change no existía, créalo en `{openspec_path}`. Crear/redactar la propuesta NO
+  requiere aprobación humana previa; la aprobación ocurre después de READY y antes de APPLY.
+- PROPOSE: `{openspec_path}/**` es una extensión de escritura explícitamente autorizada por este
+  runner aunque un prompt legacy no la liste todavía en `allowed_paths`. Es la ÚNICA extensión;
+  no autoriza modificar `apps/**`, contratos, datos, cloud o infraestructura durante PROPOSE.
+- PROPOSE: código/schema/OpenAPI/UI/tests ausentes son entregables futuros de `tasks.md`, no evidencia
+  exigible en esta fase. Ejecuta únicamente validaciones documentales/OpenSpec que sí apliquen.
+- APPLY/REVIEW/FIX: lee primero el change aprobado en `{openspec_path}`; allí sí falta de
+  precondiciones/evidencia material produce BLOCKED.
+- Si falta una decisión/regla/dependencia material para definir una propuesta segura, responde BLOCKED.
 - No uses los marcadores finales `{success_marker}` ni `{blocked_marker}` en ninguna otra parte de la respuesta.
 - Antes del marcador final, deja RESUMEN corto (3-5 líneas): qué hiciste, qué verificaste en allowed_paths/gates/source-of-truth, y resultado READY/BLOCKED con siguiente paso. Luego sección DETALLES completa separada por gravedad.
 - Si estás BLOCKED, en DETALLES separa por gravedad (ALTA / MEDIA / BAJA) y enumera los blockers y clasifica cada uno como uno de:
@@ -414,6 +449,7 @@ REGLAS DEL ORQUESTADOR:
 
 FASE:
 {phase_instruction}
+{runtime_openspec}
 
 PROTOCOLO FINAL OBLIGATORIO:
 
@@ -428,6 +464,46 @@ AUTOMATION_STATUS: BLOCKED
 --- BEGIN GENERATED PROMPT ---
 {raw_prompt}
 --- END GENERATED PROMPT ---
+"""
+
+
+def build_propose_artifact_repair_prompt(
+    item: PromptItemLike,
+    openspec_path: str,
+    problems: list[str],
+    success_marker: str = SUCCESS_MARKER,
+    blocked_marker: str = INCOMPLETE_MARKER,
+) -> str:
+    problem_lines = "\n".join(f"- {problem}" for problem in problems)
+    return f"""# REPARACIÓN / RECLASIFICACIÓN AUTOMÁTICA DE PROPOSE
+
+El paso `{item.display_seq}` `{item.pack}.propose` no dejó todavía un contrato físico y una
+clasificación de estado compatibles con la semántica de PROPOSE.
+
+Corrige AHORA, sin implementar código de aplicación, estos archivos en la raíz:
+`{openspec_path}/proposal.md`, `{openspec_path}/design.md`, `{openspec_path}/tasks.md`.
+
+Problemas detectados:
+{problem_lines}
+
+Reglas:
+- elimina todos los marcadores `PROMPT_BUILDER_TODO` después de reemplazarlos por contenido real;
+- usa `docs/rules/**` como autoridad y no inventes decisiones;
+- convierte backend/schema/OpenAPI/UI/tests faltantes en tareas verificables, no en blocker de PROPOSE;
+- incluye alcance/out-of-scope, CURRENT/TARGET/GAP, compatibilidad, migración/rollback, seguridad,
+  observabilidad, gates y dependencias cuando apliquen;
+- no ejecutes APPLY ni operaciones destructivas;
+- PROPOSE evalúa si existe un diseño implementable y seguro; no exige que el módulo, DDL, OpenAPI,
+  UI ni tests futuros ya existan;
+- si el diseño no puede decidirse sin una decisión humana material, explica solo ese blocker real.
+
+Si los tres archivos quedaron completos:
+AUTOMATION_STATUS: READY
+{success_marker}
+
+Si persiste un blocker material para redactar la propuesta:
+AUTOMATION_STATUS: BLOCKED
+{blocked_marker}
 """
 
 

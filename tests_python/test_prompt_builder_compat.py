@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 import json
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 
 from chatgpt_prompt_queue import (
     PromptItem,
+    RunLock,
     StateStore,
     discover_prompts,
     enforce_phase_gate,
     ensure_senior_answer_placeholder,
+    parse_args,
+    ready_checkpoint,
+    wait_for_fresh_status,
 )
 from prompt_builder_compat import (
     PromptBuilderCommandResult,
@@ -106,9 +113,9 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             client = FakeVersionClient(
                 Path(temp),
-                "Already up to date\n0.6.0\nDone in 300ms using pnpm v11.22.0\n",
+                "Already up to date\n0.6.1\nDone in 300ms using pnpm v11.22.0\n",
             )
-            self.assertEqual(client.assert_compatible(), "0.6.0")
+            self.assertEqual(client.assert_compatible(), "0.6.1")
 
     def test_json_parser_returns_outer_report_not_nested_object(self):
         report = _extract_json('pnpm notice\n{"valid": true, "checks": [{"passed": true}]}\n')
@@ -130,7 +137,42 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
             store.update(items[0], status="done")
             enforce_phase_gate(items[1], items, store)
 
-    def test_templates_support_all_prompt_builder_060_phases(self):
+    def test_reconcile_rewinds_stale_awaiting_evidence_after_artifact_change(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            prompt = root / "0001-identity.login.apply.md"
+            lock = root / "0001-identity.login.apply.lock.json"
+            prompt.write_text("apply", encoding="utf-8")
+            lock.write_text("{}", encoding="utf-8")
+            original = PromptItem(
+                seq=1,
+                seq_width=4,
+                pack="identity.login",
+                phase="apply",
+                path=prompt,
+                lock_path=lock,
+                prompt_sha256="old-prompt",
+                lock_sha256="old-lock",
+            )
+            regenerated = PromptItem(
+                seq=1,
+                seq_width=4,
+                pack="identity.login",
+                phase="apply",
+                path=prompt,
+                lock_path=lock,
+                prompt_sha256="new-prompt",
+                lock_sha256="new-lock",
+            )
+            store = StateStore(root / "state.json", root)
+            store.reconcile([original], include_context_only=True)
+            store.update(original, status="awaiting_evidence", evidence_ref="old-ui-marker")
+
+            self.assertEqual(store.reconcile([regenerated], include_context_only=True), 1)
+            self.assertEqual(store.status(regenerated), "pending")
+            self.assertIsNone(store.ensure_record(regenerated)["evidence_ref"])
+
+    def test_templates_support_all_prompt_builder_061_phases(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for phase in ("explore", "propose", "apply", "review", "fix"):
@@ -177,6 +219,71 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
             self.assertIn("ALTA/CRITICAL", envelope)
             self.assertIn("permanecen BLOCKED", envelope)
             self.assertNotIn("ALTA también se auto-repara", envelope)
+
+    def test_automation_advances_ready_but_manual_mode_keeps_checkpoints(self):
+        for phase in ("propose", "apply", "review", "fix"):
+            self.assertIsNone(
+                ready_checkpoint(
+                    phase,
+                    automation=True,
+                    auto_approve_propose=False,
+                )
+            )
+
+        self.assertEqual(
+            ready_checkpoint(
+                "propose",
+                automation=False,
+                auto_approve_propose=False,
+            ),
+            "approval",
+        )
+        self.assertEqual(
+            ready_checkpoint(
+                "apply",
+                automation=False,
+                auto_approve_propose=False,
+            ),
+            "evidence",
+        )
+        self.assertIsNone(
+            ready_checkpoint(
+                "propose",
+                automation=False,
+                auto_approve_propose=True,
+            )
+        )
+
+    def test_automation_rejects_force_block_override(self):
+        with patch("sys.argv", ["chatgpt_prompt_queue.py", "--automation", "--force-block"]):
+            with redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    parse_args()
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_dry_run_rejects_state_mutating_action(self):
+        with patch("sys.argv", ["chatgpt_prompt_queue.py", "--dry-run", "--approve-next"]):
+            with redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    parse_args()
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_queue_refuses_stale_status_adapter(self):
+        class FreshDriver:
+            def wait_status_fresh(self):
+                return 6
+
+        self.assertEqual(wait_for_fresh_status(FreshDriver()), 6)
+        with self.assertRaisesRegex(RuntimeError, "wait_status_fresh"):
+            wait_for_fresh_status(object())
+
+    def test_run_lock_is_exclusive_at_a_stable_byte_offset(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lock_path = Path(temp) / "prompt-runner.lock"
+            with RunLock(lock_path):
+                contender = RunLock(lock_path)
+                with self.assertRaisesRegex(RuntimeError, "Another ChatGPT automation runner"):
+                    contender.__enter__()
 
 
 if __name__ == "__main__":

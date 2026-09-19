@@ -7,7 +7,6 @@ ChatGPT Generated Prompt Queue Runner
 Purpose
 -------
 Execute Prompt Builder artifacts from a directory such as:
-echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" | sudo tee /etc/resolv.conf
     generated/prompts/full-project/
 
 in deterministic numeric order:
@@ -83,13 +82,14 @@ Typical Linux/Webtop run
 
 By default the runner:
 
-    1. requires Prompt Builder 0.6.0, execution-plan.json schema v2 and valid locks;
+    1. requires Prompt Builder 0.6.1, execution-plan.json schema v2 and valid locks;
     2. opens a NEW ChatGPT chat for every generated prompt;
     3. executes the next dependency-ready prompt;
-    4. on PROPOSE success, saves `awaiting_approval` and STOPS;
+    4. on PROPOSE success, saves `awaiting_approval` and STOPS by default;
     5. after `--approve-next`, continues with APPLY;
-    6. on BLOCKED, saves state and STOPS;
-    7. on restart, resumes at the first unfinished item.
+    6. with `--automation`, every READY/❤️ checkpoint continues unattended;
+    7. on BLOCKED/👎, saves state and STOPS even in automation mode;
+    8. on restart, resumes at the first unfinished item.
 
 Useful commands
 ---------------
@@ -114,9 +114,9 @@ Rewind from a sequence after REVIEW found implementation problems:
 
     python3 chatgpt_prompt_queue.py --rewind-from 0002
 
-Run unattended through PROPOSE approval gates (NOT recommended):
+Run the complete queue unattended. READY/❤️ continues; BLOCKED/👎 stops:
 
-    python3 chatgpt_prompt_queue.py --auto-approve-propose [normal UI args...]
+    python3 chatgpt_prompt_queue.py --automation [normal UI args...]
 
 Safety notes
 ------------
@@ -133,6 +133,9 @@ Safety notes
   The persistent logical identity is `<pack>:<phase>`.
 - Every prompt is checked with `vigilio-prompt verify-lock` immediately before
   UI execution. APPLY/REVIEW/FIX additionally require closed human decisions.
+- `--automation` is an explicit operator policy: it treats a fresh READY/❤️
+  marker as approval to advance PROPOSE/APPLY/REVIEW. It never converts a
+  BLOCKED/👎 marker, stale lock, incomplete OpenSpec or failed preflight to done.
 - `--auto-apply-recommended` never closes Q-* decisions or HIGH/CRITICAL blockers.
 
 Senior mode anti-rewind (2026-08-30):
@@ -146,6 +149,7 @@ Senior mode anti-rewind (2026-08-30):
 from __future__ import annotations
 
 import argparse
+import atexit
 import hashlib
 import importlib.util
 import json
@@ -159,7 +163,12 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Iterable, Optional
 
-from prompt_templates import build_blocked_ticket_text, build_execution_envelope
+from chatgpt_automation_lock import RunLock
+from prompt_templates import (
+    build_blocked_ticket_text,
+    build_execution_envelope,
+    build_propose_artifact_repair_prompt,
+)
 from prompt_builder_compat import (
     MUTATING_PHASES,
     SUPPORTED_PHASES,
@@ -172,7 +181,7 @@ from prompt_builder_compat import (
 )
 
 
-SCRIPT_VERSION = "2026.09.12-v3-prompt-builder-0.6.0"
+SCRIPT_VERSION = "2026.09.19-v5-prompt-builder-0.6.1"
 # The persisted shape did not change; retain v1 so existing resumable queues stay valid.
 STATE_SCHEMA_VERSION = 1
 
@@ -181,6 +190,11 @@ DEFAULT_PROMPTS_DIR = Path("generated/prompts/full-project")
 DEFAULT_UI_MODULE = SCRIPT_DIR / "chatgpt_docs_automation.py"
 DEFAULT_ASSETS_DIR = SCRIPT_DIR / "assets"
 DEFAULT_STATE_DIR = Path(".prompt-runner")
+DEFAULT_PROPOSE_REPAIR_ROUNDS = 2
+OPENSPEC_TODO_MARKER = "PROMPT_BUILDER_TODO"
+OPENSPEC_REQUIRED_FILES = ("proposal.md", "design.md", "tasks.md")
+OPENSPEC_CONTEXT_MAX_FILE_CHARS = 6_000
+OPENSPEC_CONTEXT_MAX_TOTAL_CHARS = 16_000
 
 PROMPT_RE = re.compile(
     r"^(?P<seq>\d+)-(?P<pack>.+)\.(?P<phase>explore|propose|apply|review|fix)\.md$",
@@ -243,6 +257,7 @@ class ItemState:
     interrupted_at: Optional[str] = None
     evidence_approved_at: Optional[str] = None
     evidence_ref: Optional[str] = None
+    automation_ready_marker: Optional[str] = None
     note: Optional[str] = None
 
 
@@ -275,6 +290,126 @@ def atomic_write_json(path: Path, data: Any) -> None:
 
 def safe_slug(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value)
+
+
+def openspec_change_id(item: PromptItem) -> str:
+    """Resolve an explicit lock change or derive a deterministic per-pack id."""
+    try:
+        lock = json.loads(item.lock_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Cannot read prompt lock for OpenSpec change: {item.lock_path}") from exc
+    explicit = lock.get("change")
+    candidate = explicit if isinstance(explicit, str) and explicit.strip() else item.pack.replace(".", "-")
+    if not re.fullmatch(r"[a-z0-9]+(?:[.-][a-z0-9]+)*", candidate):
+        raise RuntimeError(f"Unsafe OpenSpec change id: {candidate!r}")
+    return candidate
+
+
+def openspec_change_dir(project_root: Path, item: PromptItem) -> Path:
+    changes_root = (project_root / "openspec" / "changes").resolve()
+    target = (changes_root / openspec_change_id(item)).resolve()
+    try:
+        target.relative_to(changes_root)
+    except ValueError as exc:
+        raise RuntimeError(f"OpenSpec change escapes project root: {target}") from exc
+    return target
+
+
+def ensure_propose_openspec_scaffold(project_root: Path, item: PromptItem) -> Path:
+    """Create only missing root OpenSpec files; never overwrite human/agent content."""
+    target = openspec_change_dir(project_root, item)
+    target.mkdir(parents=True, exist_ok=True)
+    lock = json.loads(item.lock_path.read_text(encoding="utf-8"))
+    pack_version = lock.get("pack_version")
+    if not isinstance(pack_version, int) or pack_version < 1:
+        raise RuntimeError(f"Invalid pack_version in lock: {item.lock_path}")
+
+    scaffolds = {
+        "canonical-reference.yaml": (
+            "schema_version: 1\n"
+            "authority: docs-rules\n"
+            "mode: reference-only\n"
+            f"pack: {item.pack}\n"
+            f"pack_version: {pack_version}\n"
+        ),
+        "proposal.md": (
+            f"# Change Proposal — {openspec_change_id(item)}\n\n"
+            f"Pack: `{item.pack}`\n\nStatus: DRAFT\n\n"
+            "## Outcome and scope\n\n"
+            f"<!-- {OPENSPEC_TODO_MARKER}: derive from canonical docs/rules -->\n\n"
+            "## Out of scope\n\n"
+            f"<!-- {OPENSPEC_TODO_MARKER} -->\n"
+        ),
+        "design.md": (
+            f"# Design — {openspec_change_id(item)}\n\nStatus: DRAFT\n\n"
+            "## Current, target and gaps\n\n"
+            f"<!-- {OPENSPEC_TODO_MARKER} -->\n\n"
+            "## Compatibility, migration and rollback\n\n"
+            f"<!-- {OPENSPEC_TODO_MARKER} -->\n"
+        ),
+        "tasks.md": (
+            f"# Tasks — {openspec_change_id(item)}\n\nStatus: DRAFT\n\n"
+            f"- [ ] {OPENSPEC_TODO_MARKER}: replace with ordered, verifiable tasks.\n"
+        ),
+    }
+    for filename, content in scaffolds.items():
+        destination = target / filename
+        if not destination.exists():
+            destination.write_text(content, encoding="utf-8", newline="\n")
+    return target
+
+
+def validate_propose_openspec(project_root: Path, item: PromptItem) -> list[str]:
+    target = openspec_change_dir(project_root, item)
+    problems: list[str] = []
+    for filename in OPENSPEC_REQUIRED_FILES:
+        file = target / filename
+        if not file.is_file():
+            problems.append(f"missing {file.relative_to(project_root)}")
+            continue
+        content = file.read_text(encoding="utf-8")
+        if OPENSPEC_TODO_MARKER in content:
+            problems.append(f"{file.relative_to(project_root)} still contains {OPENSPEC_TODO_MARKER}")
+        if len(content.strip()) < 180:
+            problems.append(f"{file.relative_to(project_root)} is not substantive")
+    reference = target / "canonical-reference.yaml"
+    if not reference.is_file():
+        problems.append(f"missing {reference.relative_to(project_root)}")
+    else:
+        content = reference.read_text(encoding="utf-8")
+        if f"pack: {item.pack}" not in content:
+            problems.append(f"{reference.relative_to(project_root)} does not reference {item.pack}")
+    return problems
+
+
+def load_runtime_openspec_context(project_root: Path, item: PromptItem) -> str:
+    """Return hashed, bounded OpenSpec context without unbounded prompt growth."""
+    target = openspec_change_dir(project_root, item)
+    sections = [f"Change path: `{target.relative_to(project_root).as_posix()}`"]
+    remaining = OPENSPEC_CONTEXT_MAX_TOTAL_CHARS
+    for filename in ("canonical-reference.yaml", *OPENSPEC_REQUIRED_FILES):
+        file = target / filename
+        if not file.is_file():
+            continue
+        content = file.read_text(encoding="utf-8")
+        digest = hashlib.sha256(content.replace("\r\n", "\n").encode("utf-8")).hexdigest()
+        if remaining <= 0:
+            sections.append(f"\n### {filename} (sha256={digest})\n\n[Omitted: context budget exhausted]")
+            continue
+        limit = min(OPENSPEC_CONTEXT_MAX_FILE_CHARS, remaining)
+        if len(content) > limit:
+            tail_size = min(600, max(0, limit // 5))
+            head_size = max(0, limit - tail_size)
+            excerpt = (
+                content[:head_size]
+                + "\n\n[OpenSpec content truncated; use the change path and sha256 above for the full file]\n\n"
+                + content[-tail_size:]
+            )
+        else:
+            excerpt = content
+        remaining -= len(excerpt)
+        sections.append(f"\n### {filename} (sha256={digest})\n\n{excerpt}")
+    return "\n".join(sections)
 
 
 def parse_seq(value: str) -> int:
@@ -423,7 +558,7 @@ def discover_prompts(
     if gaps:
         logging.warning("Queue has numeric gaps: %s", gaps[:10])
 
-    # Validate phase order per pack for whatever 0.6.0 phases the plan selected.
+    # Validate phase order per pack for whatever 0.6.1 phases the plan selected.
     by_pack: dict[str, list[PromptItem]] = {}
     for item in items:
         by_pack.setdefault(item.pack, []).append(item)
@@ -530,6 +665,7 @@ class StateStore:
                     "interrupted_at": None,
                     "evidence_approved_at": None,
                     "evidence_ref": None,
+                    "automation_ready_marker": None,
                     "note": f"rewound: {reason}",
                     "seq": item.seq,
                     "prompt_file": item.path.name,
@@ -582,13 +718,10 @@ class StateStore:
             if old_prompt_hash and (
                 old_prompt_hash != item.prompt_sha256 or old_lock_hash != item.lock_sha256
             ):
-                if old_status in {
-                    "done",
-                    "awaiting_approval",
-                    "running",
-                    "interrupted",
-                    "blocked",
-                }:
+                # Every non-pending execution result is tied to the exact
+                # prompt/lock pair that produced it. A regenerated artifact
+                # invalidates READY, evidence, deferred and blocker states too.
+                if old_status not in {"pending", "skipped"}:
                     rewind_candidates.append(
                         (
                             item.seq,
@@ -664,58 +797,6 @@ class StateStore:
         if interrupted:
             self.save()
         return interrupted
-
-
-# ---------------------------------------------------------------------------
-# Runtime lock: one UI automation process at a time
-# ---------------------------------------------------------------------------
-
-
-class RunLock:
-    def __init__(self, path: Path):
-        self.path = path
-        self.handle = None
-
-    def __enter__(self):
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.handle = self.path.open("a+", encoding="utf-8")
-        self.handle.seek(0)
-        self.handle.write(f"pid={os.getpid()} started={now_iso()}\n")
-        self.handle.flush()
-
-        try:
-            if os.name == "posix":
-                import fcntl  # type: ignore
-
-                fcntl.flock(self.handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            elif os.name == "nt":
-                import msvcrt  # type: ignore
-
-                msvcrt.locking(self.handle.fileno(), msvcrt.LK_NBLCK, 1)
-        except Exception as exc:
-            self.handle.close()
-            self.handle = None
-            raise RuntimeError(
-                f"Another prompt queue runner appears to be active: {self.path}"
-            ) from exc
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        if not self.handle:
-            return
-        try:
-            if os.name == "posix":
-                import fcntl  # type: ignore
-
-                fcntl.flock(self.handle.fileno(), fcntl.LOCK_UN)
-            elif os.name == "nt":
-                import msvcrt  # type: ignore
-
-                self.handle.seek(0)
-                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
-        finally:
-            self.handle.close()
-            self.handle = None
 
 
 # ---------------------------------------------------------------------------
@@ -806,7 +887,7 @@ def try_auto_rebuild_for_blocked(
     plan: ExecutionPlan,
     token_budget: int,
 ) -> bool:
-    """Regenerate the owning 0.6.0 plan without creating an orphan single build."""
+    """Regenerate the owning 0.6.1 plan without creating an orphan single build."""
     try:
         logging.warning(
             "Regenerating Prompt Builder plan=%s before retrying %s",
@@ -825,13 +906,13 @@ def try_auto_rebuild_for_blocked(
 
 
 def ensure_senior_answer_placeholder(item: PromptItem, prompts_dir: Path) -> bool:
-    """Deprecated compatibility hook; 0.6.0 forbids automatic human answers.
+    """Deprecated compatibility hook; 0.6.1 forbids automatic human answers.
 
     Kept so older callers do not crash. It intentionally performs no write.
     """
     del prompts_dir
     logging.warning(
-        "Decision placeholder suppressed for %s: Prompt Builder 0.6.0 requires explicit human answers",
+        "Decision placeholder suppressed for %s: Prompt Builder 0.6.1 requires explicit human answers",
         item.logical_id,
     )
     return False
@@ -963,7 +1044,7 @@ def defer_blocked_item_and_later_phases(
 
 
 def enforce_phase_gate(item: PromptItem, items: list[PromptItem], store: StateStore) -> None:
-    """Honor 0.6.0 previous-phase and transitive pack dependency barriers."""
+    """Honor 0.6.1 previous-phase and transitive pack dependency barriers."""
     by_sequence = {candidate.seq: candidate for candidate in items}
     if item.previous_phase_sequence is not None:
         previous = by_sequence.get(item.previous_phase_sequence)
@@ -997,6 +1078,32 @@ def enforce_phase_gate(item: PromptItem, items: list[PromptItem], store: StateSt
             )
 
 
+def ready_checkpoint(
+    phase: str,
+    *,
+    automation: bool,
+    auto_approve_propose: bool,
+) -> str | None:
+    """Return the manual checkpoint required after a fresh READY marker."""
+    if automation:
+        return None
+    if phase == "propose" and not auto_approve_propose:
+        return "approval"
+    if phase in MUTATING_PHASES:
+        return "evidence"
+    return None
+
+
+def wait_for_fresh_status(driver: Any) -> int:
+    """Fail closed unless the UI adapter can prove the marker is from this send."""
+    wait_status_fresh = getattr(driver, "wait_status_fresh", None)
+    if not callable(wait_status_fresh):
+        raise RuntimeError(
+            "UI adapter lacks wait_status_fresh(); refusing to accept a potentially stale READY/BLOCKED marker"
+        )
+    return int(wait_status_fresh())
+
+
 # ---------------------------------------------------------------------------
 # Main execution
 # ---------------------------------------------------------------------------
@@ -1017,7 +1124,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--expected-prompt-builder-version",
         default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact Prompt Builder version required for execution (default: 0.6.0).",
+        help="Exact Prompt Builder version required for execution (default: 0.6.1).",
     )
     parser.add_argument(
         "--package-manager",
@@ -1065,7 +1172,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--regenerate-plan",
         action="store_true",
-        help="Explicitly rebuild the complete owning 0.6.0 plan, reconcile hashes, then stop.",
+        help="Explicitly rebuild the complete owning 0.6.1 plan, reconcile hashes, then stop.",
     )
     parser.add_argument("--max-prompts", type=int, default=None, help="Maximum prompts to execute this run.")
     parser.add_argument(
@@ -1077,6 +1184,16 @@ def parse_args() -> argparse.Namespace:
         "--auto-approve-propose",
         action="store_true",
         help="Continue from successful PROPOSE directly to APPLY without human approval. Not recommended.",
+    )
+    parser.add_argument(
+        "--automation",
+        "--automatizacion",
+        dest="automation",
+        action="store_true",
+        help=(
+            "Run unattended: READY/heart advances PROPOSE/APPLY/REVIEW; "
+            "BLOCKED/dislike always persists and stops the queue."
+        ),
     )
     parser.add_argument(
         "--approve-next",
@@ -1142,7 +1259,20 @@ def parse_args() -> argparse.Namespace:
         help="Reset this sequence and all later work prompts to pending.",
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.automation and args.force_block:
+        parser.error("--automation cannot be combined with --force-block; BLOCKED must stop")
+    if args.dry_run and any(
+        (
+            args.regenerate_plan,
+            args.approve_next,
+            args.approve_evidence is not None,
+            args.mark_done is not None,
+            args.rewind_from is not None,
+        )
+    ):
+        parser.error("--dry-run cannot be combined with a state-mutating queue action")
+    return args
 
 
 def configure_logging(log_file: Path) -> None:
@@ -1189,7 +1319,9 @@ def main() -> int:
     )
     state_file = state_dir / f"{safe_slug(plan_name)}.state.json"
     log_file = state_dir / f"{safe_slug(plan_name)}.log"
-    lock_file = state_dir / f"{safe_slug(plan_name)}.runner.lock"
+    # Both runners control the same ChatGPT window, so the lock is global to
+    # the project UI session rather than one generated plan.
+    lock_file = state_dir / "chatgpt-ui.runner.lock"
 
     configure_logging(log_file)
     logging.info("Prompt Queue Runner version=%s", SCRIPT_VERSION)
@@ -1200,20 +1332,27 @@ def main() -> int:
         plan.plan_id if plan else "legacy-explicit",
     )
 
+    # Take the process-wide lock before any StateStore reconciliation or state
+    # transition. A dry run remains read-only for queue state, so it does not
+    # take/create the runtime lock. The CLI lock releases at normal process exit
+    # and the operating system releases it after a crash.
+    run_lock: Optional[RunLock] = None
+    if not args.dry_run:
+        run_lock = RunLock(lock_file)
+        run_lock.__enter__()
+        atexit.register(run_lock.__exit__, None, None, None)
+
     items = discover_prompts(
         prompts_dir,
         project_root=project_root,
         require_execution_plan=not args.allow_legacy_without_plan,
     )
-    pack_phases: dict[str, list[str]] = {}
     eligibility_validated: set[str] = set()
     if plan:
         client.validate_references()
-        for item in items:
-            if not item.context_only:
-                pack_phases.setdefault(item.pack, []).append(item.phase)
     store = StateStore(state_file, prompts_dir)
-    store.reconcile(items, include_context_only=args.include_context_only)
+    if not args.dry_run:
+        store.reconcile(items, include_context_only=args.include_context_only)
 
     work_items = executable_items(items, args.include_context_only)
 
@@ -1252,6 +1391,7 @@ def main() -> int:
         item = find_item_by_seq(items, args.mark_done)
         if item.context_only and not args.include_context_only:
             raise RuntimeError("Refusing to mark context-only prompt as implementation work.")
+        enforce_phase_gate(item, work_items, store)
         if item.phase in MUTATING_PHASES and not args.evidence_ref:
             raise RuntimeError(
                 "Mutating --mark-done requires --evidence-ref; a UI marker is not quality evidence."
@@ -1260,12 +1400,27 @@ def main() -> int:
             client.verify_lock(item.lock_path)
             if item.phase in MUTATING_PHASES:
                 client.validate_decisions(pack=item.pack)
+        if item.phase == "propose":
+            problems = validate_propose_openspec(project_root, item)
+            if problems:
+                raise RuntimeError(
+                    "Cannot mark PROPOSE done: root OpenSpec is incomplete:\n- "
+                    + "\n- ".join(problems)
+                )
+        elif item.phase in {"apply", "review", "fix"}:
+            problems = validate_propose_openspec(project_root, item)
+            if problems:
+                raise RuntimeError(
+                    "Cannot mark mutating phase done: root OpenSpec is incomplete:\n- "
+                    + "\n- ".join(problems)
+                )
         store.update(
             item,
             status="done",
             completed_at=now_iso(),
             evidence_approved_at=now_iso() if args.evidence_ref else None,
             evidence_ref=args.evidence_ref,
+            automation_ready_marker=None,
             note="manually marked done via --mark-done",
         )
         print(f"Marked done: {item.display_seq} {item.pack} {item.phase}")
@@ -1286,12 +1441,19 @@ def main() -> int:
         if plan:
             client.verify_lock(item.lock_path)
             client.validate_decisions(pack=item.pack)
+        problems = validate_propose_openspec(project_root, item)
+        if problems:
+            raise RuntimeError(
+                "Cannot approve evidence: root OpenSpec is incomplete:\n- "
+                + "\n- ".join(problems)
+            )
         store.update(
             item,
             status="done",
             completed_at=now_iso(),
             evidence_approved_at=now_iso(),
             evidence_ref=args.evidence_ref.strip(),
+            automation_ready_marker=None,
             note="Mutating phase approved with external evidence reference",
         )
         print(
@@ -1309,6 +1471,15 @@ def main() -> int:
         if awaiting.phase != "propose":
             raise RuntimeError(
                 f"State corruption: non-PROPOSE item awaiting approval: {awaiting.logical_id}"
+            )
+        enforce_phase_gate(awaiting, work_items, store)
+        if plan:
+            client.verify_lock(awaiting.lock_path)
+        problems = validate_propose_openspec(project_root, awaiting)
+        if problems:
+            raise RuntimeError(
+                "Cannot approve PROPOSE: root OpenSpec is incomplete:\n- "
+                + "\n- ".join(problems)
             )
         store.update(
             awaiting,
@@ -1334,15 +1505,35 @@ def main() -> int:
         ]
         if args.max_prompts is not None:
             preview = preview[: max(0, args.max_prompts)]
+        deferred_phase_preflights = 0
         if plan:
-            for pack, phases in pack_phases.items():
-                client.check_eligibility(pack=pack, phases=phases)
             for item in preview:
-                client.verify_lock(item.lock_path)
+                try:
+                    client.verify_lock(item.lock_path)
+                    should_preflight = item.phase in {"explore", "propose"}
+                    if not should_preflight:
+                        try:
+                            enforce_phase_gate(item, work_items, store)
+                            should_preflight = True
+                        except RuntimeError:
+                            deferred_phase_preflights += 1
+                    if should_preflight:
+                        client.check_eligibility(pack=item.pack, phases=[item.phase])
+                except (PromptBuilderCommandError, PromptBuilderCompatibilityError) as exc:
+                    raise PromptBuilderCompatibilityError(
+                        "Dry-run preflight failed for "
+                        f"{item.display_seq} {item.pack}.{item.phase}: {exc}"
+                    ) from exc
         print(
-            "\nDRY-RUN: version/plan/references/eligibility/locks validated; "
+            "\nDRY-RUN: version/plan/references/locks and runnable phase preflights validated; "
             "no UI interaction or execution-state transitions."
         )
+        if deferred_phase_preflights:
+            print(
+                "  deferred strict preflight for "
+                f"{deferred_phase_preflights} future mutating phase(s) until their "
+                "previous-phase/dependency gates are complete"
+            )
         for item in preview[:20]:
             print(
                 f"  would consider {item.display_seq} {item.pack} {item.phase} "
@@ -1375,7 +1566,7 @@ def main() -> int:
 
     current_status = store.status(current)
 
-    if current_status == "awaiting_approval":
+    if current_status == "awaiting_approval" and not args.automation:
         print(
             f"STOP: {current.display_seq} {current.pack} PROPOSE is awaiting human approval.\n"
             "Review the proposal/OpenSpec result, then run:\n\n"
@@ -1383,7 +1574,7 @@ def main() -> int:
         )
         return 2
 
-    if current_status == "awaiting_evidence":
+    if current_status == "awaiting_evidence" and not args.automation:
         print(
             f"STOP: {current.display_seq} {current.pack}.{current.phase} returned READY but "
             "still requires external quality evidence.\nRun:\n\n"
@@ -1408,7 +1599,7 @@ def main() -> int:
     if current_status == "blocked" and args.auto_apply_recommended:
         logging.warning(
             "AUTO-APPLY-RECOMMENDED cannot clear pre-existing BLOCKED %s %s. "
-            "Prompt Builder 0.6.0 requires the real source/decision to be resolved first.",
+            "Prompt Builder 0.6.1 requires the real source/decision to be resolved first.",
             current.display_seq,
             current.logical_id,
         )
@@ -1466,7 +1657,11 @@ def main() -> int:
 
     executed = 0
 
-    with RunLock(lock_file):
+    # Re-entering the same lock is in-process only; it keeps the outer lock
+    # acquired above alive across every state and UI transition.
+    if run_lock is None:
+        raise RuntimeError("Internal error: queue runtime lock was not acquired")
+    with run_lock:
         while True:
             item = next_unfinished(work_items, store)
             if item is None:
@@ -1484,6 +1679,37 @@ def main() -> int:
 
             status = store.status(item)
 
+            if status == "awaiting_approval" and args.automation:
+                problems = validate_propose_openspec(project_root, item)
+                if problems:
+                    store.update(
+                        item,
+                        status="blocked",
+                        blocked_at=now_iso(),
+                        note="Automation refused incomplete root OpenSpec: " + "; ".join(problems),
+                    )
+                    logging.error(
+                        "BLOCKED automation resume %s: incomplete root OpenSpec: %s",
+                        item.logical_id,
+                        "; ".join(problems),
+                    )
+                    return 3
+                if plan:
+                    client.verify_lock(item.lock_path)
+                store.update(
+                    item,
+                    status="done",
+                    approved_at=now_iso(),
+                    completed_at=now_iso(),
+                    note="Existing READY PROPOSE accepted by explicit --automation",
+                )
+                logging.info(
+                    "AUTOMATION accepted existing PROPOSE checkpoint: %s %s",
+                    item.display_seq,
+                    item.logical_id,
+                )
+                continue
+
             if status == "awaiting_approval":
                 logging.info(
                     "STOP awaiting human approval: %s %s PROPOSE",
@@ -1491,6 +1717,43 @@ def main() -> int:
                     item.pack,
                 )
                 return 2
+
+            if status == "awaiting_evidence" and args.automation:
+                problems = validate_propose_openspec(project_root, item)
+                if problems:
+                    store.update(
+                        item,
+                        status="blocked",
+                        blocked_at=now_iso(),
+                        note="Automation refused incomplete root OpenSpec: " + "; ".join(problems),
+                    )
+                    logging.error(
+                        "BLOCKED automation evidence resume %s: incomplete root OpenSpec: %s",
+                        item.logical_id,
+                        "; ".join(problems),
+                    )
+                    return 3
+                if plan:
+                    client.verify_lock(item.lock_path)
+                    client.validate_decisions(pack=item.pack)
+                store.update(
+                    item,
+                    status="done",
+                    completed_at=now_iso(),
+                    evidence_approved_at=None,
+                    evidence_ref=None,
+                    automation_ready_marker=f"automation-ready-marker:{item.logical_id}",
+                    note=(
+                        "Existing READY mutating checkpoint accepted by explicit --automation; "
+                        "external quality evidence remains unverified"
+                    ),
+                )
+                logging.info(
+                    "AUTOMATION accepted existing READY checkpoint: %s %s",
+                    item.display_seq,
+                    item.logical_id,
+                )
+                continue
 
             if status == "awaiting_evidence":
                 logging.info(
@@ -1538,14 +1801,38 @@ def main() -> int:
                 logging.info("Reached --max-prompts=%d; stopping cleanly.", args.max_prompts)
                 return 0
 
+            if item.phase == "propose":
+                ensure_propose_openspec_scaffold(project_root, item)
+            elif item.phase in {"apply", "review", "fix"}:
+                openspec_problems = validate_propose_openspec(project_root, item)
+                if openspec_problems:
+                    store.update(
+                        item,
+                        status="blocked",
+                        blocked_at=now_iso(),
+                        note=(
+                            "Root OpenSpec precondition failed: "
+                            + "; ".join(openspec_problems)
+                        ),
+                    )
+                    logging.error(
+                        "BLOCKED before %s: approved root OpenSpec is incomplete: %s",
+                        item.logical_id,
+                        "; ".join(openspec_problems),
+                    )
+                    return 3
+
             if plan:
                 try:
-                    if item.pack not in eligibility_validated:
+                    if (
+                        item.phase not in {"explore", "propose"}
+                        and item.logical_id not in eligibility_validated
+                    ):
                         client.check_eligibility(
                             pack=item.pack,
-                            phases=pack_phases[item.pack],
+                            phases=[item.phase],
                         )
-                        eligibility_validated.add(item.pack)
+                        eligibility_validated.add(item.logical_id)
                     # verify-lock rechecks the builder version, prompt/template, baseline,
                     # registry, canonical references, plan and every source document.
                     client.verify_lock(item.lock_path)
@@ -1556,7 +1843,7 @@ def main() -> int:
                         item,
                         status="blocked",
                         blocked_at=now_iso(),
-                        note=f"Prompt Builder 0.6.0 preflight failed: {exc}",
+                        note=f"Prompt Builder 0.6.1 preflight failed: {exc}",
                     )
                     logging.error(
                         "BLOCKED before UI execution %s %s: %s",
@@ -1578,12 +1865,18 @@ def main() -> int:
 
             raw_prompt = item.path.read_text(encoding="utf-8")
             success_marker, blocked_marker = ui_status_markers(ui)
+            openspec_context = (
+                load_runtime_openspec_context(project_root, item)
+                if item.phase in {"propose", "apply", "review", "fix"}
+                else ""
+            )
             wrapped_prompt = build_execution_envelope(
                 item,
                 raw_prompt,
                 success_marker=success_marker,
                 blocked_marker=blocked_marker,
                 auto_apply_recommended=args.auto_apply_recommended,
+                openspec_context=openspec_context,
             )
 
             record = store.ensure_record(item)
@@ -1605,8 +1898,58 @@ def main() -> int:
 
                 print(f"--> Enviado {item.display_seq} a ChatGPT, esperando ❤️/👎 ...", flush=True)
                 driver.send_prompt(wrapped_prompt)
-                result = driver.wait_status()
+                result = wait_for_fresh_status(driver)
                 print(f"<-- Respuesta {item.display_seq} recibida: {'READY ❤️' if result==6 else 'BLOCKED 👎' if result==4 else f'code={result}'}", flush=True)
+
+                # A UI marker does not make a PROPOSE usable by itself. The root
+                # OpenSpec change must be complete before either a manual or an
+                # automated checkpoint can advance to APPLY.
+                if item.phase == "propose" and result in {4, 6}:
+                    problems = validate_propose_openspec(project_root, item)
+                    if result == 4 and not problems:
+                        problems = [
+                            "The response returned BLOCKED; re-evaluate it under PROPOSE semantics. "
+                            "Missing future implementation/evidence belongs in tasks.md."
+                        ]
+                    repair_round = 0
+                    while problems and repair_round < DEFAULT_PROPOSE_REPAIR_ROUNDS:
+                        repair_round += 1
+                        repair_prompt = build_propose_artifact_repair_prompt(
+                            item,
+                            openspec_change_dir(project_root, item)
+                            .relative_to(project_root)
+                            .as_posix(),
+                            problems,
+                            success_marker=success_marker,
+                            blocked_marker=blocked_marker,
+                        )
+                        print(
+                            f"--> Reparación PROPOSE {repair_round}/{DEFAULT_PROPOSE_REPAIR_ROUNDS} "
+                            f"para {item.display_seq}...",
+                            flush=True,
+                        )
+                        driver.send_prompt(repair_prompt)
+                        result = wait_for_fresh_status(driver)
+                        problems = validate_propose_openspec(project_root, item)
+                        if result == 4 and not problems:
+                            problems = [
+                                "The root change is physically complete, but BLOCKED persisted. "
+                                "Confirm whether a material authority/access/safety blocker exists; "
+                                "otherwise return READY for human review."
+                            ]
+                        print(
+                            f"<-- Reparación PROPOSE {repair_round}: "
+                            f"{'READY ❤️' if result==6 else 'BLOCKED 👎' if result==4 else f'code={result}'}",
+                            flush=True,
+                        )
+
+                    final_problems = validate_propose_openspec(project_root, item)
+                    if result == 6 and final_problems:
+                        logging.error(
+                            "PROPOSE marker was READY but root OpenSpec stayed incomplete: %s",
+                            "; ".join(final_problems),
+                        )
+                        result = 4
             except KeyboardInterrupt:
                 store.update(
                     item,
@@ -1712,13 +2055,23 @@ def main() -> int:
                     )
                     return 3
 
+            checkpoint = ready_checkpoint(
+                item.phase,
+                automation=args.automation,
+                auto_approve_propose=args.auto_approve_propose,
+            )
+
             # PROPOSE is a human approval gate by default.
-            if item.phase == "propose" and not args.auto_approve_propose:
+            if checkpoint == "approval":
+                change_path = openspec_change_dir(project_root, item).relative_to(project_root)
                 store.update(
                     item,
                     status="awaiting_approval",
                     completed_at=now_iso(),
-                    note="PROPOSE returned READY; awaiting explicit human approval before APPLY",
+                    note=(
+                        "PROPOSE returned READY with complete root OpenSpec at "
+                        f"{change_path.as_posix()}; awaiting explicit human approval before APPLY"
+                    ),
                 )
                 logging.info(
                     "PROPOSE READY %s %s -> awaiting human approval; APPLY will NOT run yet.",
@@ -1727,12 +2080,13 @@ def main() -> int:
                 )
                 print(
                     f"PROPOSE READY: {item.display_seq} {item.pack}\n"
+                    f"Root OpenSpec: {change_path.as_posix()}\n"
                     "Queue paused for human approval. After reviewing the proposal/OpenSpec, run:\n\n"
                     "  python3 chatgpt_prompt_queue.py --approve-next\n"
                 )
                 return 2
 
-            if item.phase in MUTATING_PHASES:
+            if checkpoint == "evidence":
                 store.update(
                     item,
                     status="awaiting_evidence",
@@ -1755,16 +2109,36 @@ def main() -> int:
                 )
                 return 2
 
+            completed_at = now_iso()
+            if args.automation:
+                completion_note = "READY accepted by explicit --automation; queue continued"
+            elif item.phase == "propose":
+                completion_note = (
+                    "PROPOSE auto-approved by --auto-approve-propose; root OpenSpec="
+                    + openspec_change_dir(project_root, item)
+                    .relative_to(project_root)
+                    .as_posix()
+                )
+            else:
+                completion_note = "ChatGPT returned READY"
+
             store.update(
                 item,
                 status="done",
-                completed_at=now_iso(),
-                approved_at=(now_iso() if item.phase == "propose" else record.get("approved_at")),
-                note=(
-                    "PROPOSE auto-approved by --auto-approve-propose"
-                    if item.phase == "propose"
-                    else "ChatGPT returned READY"
+                completed_at=completed_at,
+                approved_at=(completed_at if item.phase == "propose" else record.get("approved_at")),
+                evidence_approved_at=(
+                    record.get("evidence_approved_at")
                 ),
+                evidence_ref=(
+                    None if args.automation and item.phase in MUTATING_PHASES else record.get("evidence_ref")
+                ),
+                automation_ready_marker=(
+                    f"automation-ready-marker:{item.logical_id}"
+                    if args.automation and item.phase in MUTATING_PHASES
+                    else record.get("automation_ready_marker")
+                ),
+                note=completion_note,
             )
             logging.info("DONE %s %s", item.display_seq, item.logical_id)
 
