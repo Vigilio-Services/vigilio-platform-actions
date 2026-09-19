@@ -162,6 +162,14 @@ pack_version: 1
       });
       assert.equal(verified.valid, true);
 
+      const generatedPrompt = await readFile(`${outputBase}.md`, 'utf8');
+      await writeFile(`${outputBase}.md`, generatedPrompt.replaceAll('\n', '\r\n'));
+      const windowsCheckout = await verifyPromptLock({
+        projectRoot: root,
+        lockFile: `${outputBase}.lock.json`,
+      });
+      assert.equal(windowsCheckout.valid, true);
+
       await write(root, 'factory-master.md', '# Factory architecture changed\n');
       const architectureStale = await verifyPromptLock({
         projectRoot: root,

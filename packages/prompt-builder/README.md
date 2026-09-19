@@ -53,6 +53,12 @@ The command creates, when missing:
 - `docs/rules/project-brief.md`;
 - `docs/rules/answers.md` with a global `Q-000` discovery approval gate;
 - `docs/rules/registry.yaml` as an empty, explicit registry;
+- in migration mode, `docs/rules/migration-inputs.yaml` with explicit repositories, databases,
+  dynamic cloud/VPS/on-prem environments, provider adapters, read-only access and prohibited operations;
+- in migration mode, the root assessment change
+  `openspec/changes/migration-assessment/{proposal.md,design.md,tasks.md}`; its
+  `canonical-reference.yaml` is added only after discovery registers the owning prompt pack, so
+  `validate-references` never points at an invented registry entry;
 - `docs/rules/factory-baseline.yaml` with the architecture source and SHA-256;
 - `generated/prompts/bootstrap/0000-project-discovery.md` plus its lock.
 
@@ -68,6 +74,25 @@ pnpm exec vigilio-prompt init-project --project-root . --mode migration \
 
 The discovery agent inspects the idea or existing system, records only material human decisions,
 and creates the approved blueprint/packs. It must not implement application code during discovery.
+For migration, inspection is read-only: source-code graph/search and Git metadata; database catalogs,
+`SELECT` and non-executing plans under a read-only role/transaction; and provider inventory through
+approved read-only adapters. AWS, Azure, GCP, Kubernetes, VPS, on-prem and additional providers use
+the same identity/scope/allowlist/denylist contract. It must never run DDL/DML, invoke mutating stored
+routines, read secret values, alter IAM/RBAC/network/traffic, deploy or delete resources. The assessment produces
+CURRENT/TARGET/GAP, per-capability dependency waves, a weighted 1–10 feasibility score, validation,
+cutover and rollback plans. Missing approved access is reported honestly rather than bypassed.
+
+### PROPOSE is a producer, not an APPLY audit
+
+For `explore` and `propose`, target-profile validation runs in discovery mode. A target app, contract
+manifest or consumer that is not materialized is a warning/GAP that the proposal must address. For
+`apply`, `review` and `fix`, the same checks are strict and fail closed.
+
+PROPOSE creates/refines `openspec/changes/<change-id>/proposal.md`, `design.md` and `tasks.md` at the
+project root. A backend module, DDL, OpenAPI, contract release, UI or tests that do not yet exist are
+future tasks, not reasons to block writing the proposal. PROPOSE blocks only for missing/contradictory
+authority, an unresolved material design decision, required read-only access or unsafe scope. A READY
+proposal still requires human approval before APPLY.
 
 Before implementation planning, validate decision closure:
 

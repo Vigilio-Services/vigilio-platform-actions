@@ -226,12 +226,14 @@ describe('planner', () => {
       assert.match(firstPrompt, /profile: k8s-v2/);
       assert.match(firstPrompt, /@vigilioyonatan\/bus-v2-contracts/);
       assert.match(firstPrompt, /apps\/bus-impl-v2\/src\/\*\*/);
+      assert.match(firstPrompt, /openspec\/changes\/identity-users-store\/\*\*/);
       assert.match(firstPrompt, /apps\/web-mfe-v2\/apps\/salud\/backoffice\/src\/\*\*/);
       assert.match(firstPrompt, /apps\/web-mfe\/\*\*/);
       const firstLock = JSON.parse(
         await readFile(path.resolve(root, plan.steps[0].lockfile), 'utf8'),
       );
       assert.equal(firstLock.target_profile.id, 'k8s-v2');
+      assert.ok(firstLock.allowed_paths.includes('openspec/changes/identity-users-store/**'));
       assert.equal(firstLock.target_profile.materialized.frontend, true);
       assert.deepEqual(firstLock.activation_gates, ['build', 'security']);
       assert.deepEqual(firstLock.activation_requirements, [
@@ -263,6 +265,43 @@ describe('planner', () => {
             dryRun: true,
           }),
         /CONTRACT_OWNER_MISMATCH/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('allows PROPOSE discovery to report an unmaterialized target while APPLY stays strict', async () => {
+    const root = await createFixture();
+    try {
+      await rm(path.join(root, 'apps/bus-impl-v2/packages/contracts/package.json'));
+      await rm(path.join(root, 'apps/web-mfe-v2/package.json'));
+
+      const propose = await checkPackEligibility({
+        projectRoot: root,
+        packId: 'identity.users-store',
+        phases: ['propose'],
+      });
+      assert.equal(propose.eligible, true);
+
+      const prepared = await buildAll({
+        projectRoot: root,
+        phases: ['propose'],
+        tokenBudget: 60_000,
+        planId: 'assessment',
+        dryRun: true,
+      });
+      assert.equal(prepared.executionPlan.prompt_count, 4);
+
+      const apply = await checkPackEligibility({
+        projectRoot: root,
+        packId: 'identity.users-store',
+        phases: ['apply'],
+      });
+      assert.equal(apply.eligible, false);
+      assert.match(
+        apply.checks.find((item) => item.name === 'prompt_preflight')?.detail ?? '',
+        /Backend contract manifest missing/,
       );
     } finally {
       await rm(root, { recursive: true, force: true });
