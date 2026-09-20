@@ -101,7 +101,7 @@ on:
 
 jobs:
   build-and-test:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       node-version: '24.16.0'
       pnpm-version: '11.7.0'

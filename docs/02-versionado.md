@@ -1,20 +1,20 @@
 # Versionado
 
-Los repos consumidores deben ejecutar un commit inmutable y conservar la version legible como comentario.
+Los repos consumidores deben fijar el SHA completo de un commit inmutable y conservar una etiqueta legible como comentario. El SHA bootstrap de los ejemplos debe actualizarse mediante PR cuando se publique una revisión compatible.
 
 Correcto:
 
 ```yaml
-uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
 ```
 
 No permitido:
 
 ```yaml
-uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
-uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@latest
-uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
-uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1.2.3
+uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@main
+uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@latest
+uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1
+uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@v1.2.3
 ```
 
 ## Politica de compatibilidad

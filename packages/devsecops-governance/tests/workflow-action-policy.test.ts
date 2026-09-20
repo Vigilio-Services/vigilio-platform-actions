@@ -216,7 +216,7 @@ describe('workflow and action policies', () => {
         '  id-token: write',
         'jobs:',
         '  delivery:',
-        '    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@0000000000000000000000000000000000000000',
+        '    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@0000000000000000000000000000000000000000',
       ].join('\n'),
     );
 
@@ -238,7 +238,7 @@ describe('workflow and action policies', () => {
         '  id-token: write',
         'jobs:',
         '  drift:',
-        '    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-drift.yml@0000000000000000000000000000000000000000',
+        '    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-terraform-drift.yml@0000000000000000000000000000000000000000',
       ].join('\n'),
     );
 
