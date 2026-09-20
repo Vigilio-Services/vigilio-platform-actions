@@ -47,7 +47,9 @@ on:
         required: false
         default: v0.72.0
     secrets:
-      # Legacy fallback for the protected apply job only.
+      # Legacy fallback for the protected apply job only. New callers must not
+      # map a write-role secret here: AWS_APPLY_ROLE_ARN is resolved as a
+      # GitHub Environment secret by the protected `apply` job below.
       AWS_ROLE_ARN:
         required: false
       AWS_APPLY_ROLE_ARN:
@@ -94,7 +96,13 @@ jobs:
             echo 'A dedicated read-only AWS plan role ARN is required'; exit 1;
           }
           [[ "${STAGE}" =~ ^(development|staging|production)$ ]] || { echo 'Invalid deployment stage'; exit 1; }
-          [[ "${WORKING_DIRECTORY%/}" == */"${STAGE}" ]] || { echo 'Terraform working directory must match the deployment stage'; exit 1; }
+          # A reusable workflow cannot infer a stage from its working directory:
+          # valid consumers may use a component root such as stacks/aws/network-foundation
+          # and keep reviewed stage-specific backend/var files elsewhere. The caller's
+          # contract job must bind stage to those paths before invoking this workflow.
+          test -d "${WORKING_DIRECTORY}" || {
+            echo "Terraform working directory not found: ${WORKING_DIRECTORY}"; exit 1;
+          }
           test -f "${BACKEND_CONFIG}" || { echo "Terraform backend config not found: ${BACKEND_CONFIG}"; exit 1; }
           if grep -q 'REPLACE_WITH_' "${BACKEND_CONFIG}"; then echo 'Terraform backend config still contains placeholders'; exit 1; fi
           test -f "${VAR_FILE}" || { echo "Terraform var file not found: ${VAR_FILE}"; exit 1; }
