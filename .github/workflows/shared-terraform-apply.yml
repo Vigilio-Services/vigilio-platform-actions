@@ -89,6 +89,7 @@ jobs:
           BACKEND_CONFIG: ${{ inputs.backend-config }}
           STAGE: ${{ inputs.stage }}
           VAR_FILE: ${{ inputs.var-file }}
+          WORKING_DIRECTORY: ${{ inputs.working-directory }}
         run: |
           set -euo pipefail
           test -n "${PLAN_AWS_ROLE_ARN}" || {
@@ -99,6 +100,9 @@ jobs:
           # valid consumers may use a component root such as stacks/aws/network-foundation
           # and keep reviewed stage-specific backend/var files elsewhere. The caller's
           # contract job must bind stage to those paths before invoking this workflow.
+          test -d "${WORKING_DIRECTORY}" || {
+            echo "Terraform working directory not found: ${WORKING_DIRECTORY}"; exit 1;
+          }
           test -f "${BACKEND_CONFIG}" || { echo "Terraform backend config not found: ${BACKEND_CONFIG}"; exit 1; }
           if grep -q 'REPLACE_WITH_' "${BACKEND_CONFIG}"; then echo 'Terraform backend config still contains placeholders'; exit 1; fi
           test -f "${VAR_FILE}" || { echo "Terraform var file not found: ${VAR_FILE}"; exit 1; }
