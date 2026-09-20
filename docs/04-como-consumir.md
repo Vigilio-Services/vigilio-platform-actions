@@ -68,11 +68,19 @@ jobs:
       var-file: production.tfvars
     secrets:
       AWS_PLAN_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
-      AWS_APPLY_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
 ```
 
-El rol de plan debe ser de solo lectura; el rol de apply se entrega únicamente al job protegido por
-el environment. No reutilizar el rol de apply para el preflight.
+El rol de plan debe ser de solo lectura y puede ser un secret de repositorio u organización. En cada
+GitHub Environment (`development`, `staging`, `production`), definir `AWS_APPLY_ROLE_ARN` como
+**environment secret**. No pasarlo en `jobs.<id>.secrets`: GitHub no propaga environment secrets
+desde un caller reutilizable y hacerlo expondría el rol de escritura al preflight. El job `apply` del
+workflow reutilizable resuelve ese secret recién después de la aprobación del environment. No
+reutilizar el rol de apply para el preflight.
+
+`working-directory` puede ser un directorio de entorno o la raíz de un componente. Antes de llamar
+al workflow reutilizable, el caller debe validar de forma explícita que `stage`, `backend-config` y
+`var-file` pertenecen a la misma configuración revisada; el reusable valida existencia, placeholders
+y el stage permitido, pero no asume una topología de carpetas específica.
 
 ```yaml
 jobs:

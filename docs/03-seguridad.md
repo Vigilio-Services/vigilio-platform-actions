@@ -21,6 +21,11 @@ Los secrets viven en:
 
 Este repo solo define contratos de inputs/secrets.
 
+En reusable workflows, un secret de GitHub Environment no se pasa desde el caller. El caller puede
+enviar el rol OIDC read-only de plan; el rol de escritura debe existir como `AWS_APPLY_ROLE_ARN` en
+el Environment seleccionado por el job protegido del workflow reutilizable. Esto evita que el
+preflight reciba credenciales de apply antes de la aprobación.
+
 ## Repo privado
 
 Puede ser privado. En GitHub:
