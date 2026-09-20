@@ -19,7 +19,14 @@ on:
         type: string
         required: false
         default: us-east-1
+      # aws-role-arn remains the write-role input for existing callers.
       aws-role-arn:
+        type: string
+        required: false
+        default: ''
+      # The preflight plan must use a dedicated read-only role, provided here
+      # or via the AWS_PLAN_ROLE_ARN workflow secret.
+      plan-aws-role-arn:
         type: string
         required: false
         default: ''
@@ -40,7 +47,12 @@ on:
         required: false
         default: v0.72.0
     secrets:
+      # Legacy fallback for the protected apply job only.
       AWS_ROLE_ARN:
+        required: false
+      AWS_APPLY_ROLE_ARN:
+        required: false
+      AWS_PLAN_ROLE_ARN:
         required: false
 
 permissions:
@@ -49,14 +61,18 @@ permissions:
 
 jobs:
   plan:
-    name: Verified apply plan ${{ inputs.stage }}
+    name: Read-only apply preflight ${{ inputs.stage }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    outputs:
+      plan_fingerprint: ${{ steps.review_fingerprint.outputs.plan_fingerprint }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     env:
+      TF_IN_AUTOMATION: 'true'
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      PLAN_AWS_ROLE_ARN: ${{ inputs.plan-aws-role-arn || secrets.AWS_PLAN_ROLE_ARN }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -65,17 +81,18 @@ jobs:
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ github.ref_name }}
-      - name: Require deployment identity and configuration
+      - name: Require read-only plan identity and configuration
         shell: bash
         env:
-          AWS_ROLE_ARN: ${{ inputs.aws-role-arn || secrets.AWS_ROLE_ARN }}
           BACKEND_CONFIG: ${{ inputs.backend-config }}
           STAGE: ${{ inputs.stage }}
           VAR_FILE: ${{ inputs.var-file }}
           WORKING_DIRECTORY: ${{ inputs.working-directory }}
         run: |
           set -euo pipefail
-          test -n "${AWS_ROLE_ARN}" || { echo 'An AWS OIDC role ARN is required'; exit 1; }
+          test -n "${PLAN_AWS_ROLE_ARN}" || {
+            echo 'A dedicated read-only AWS plan role ARN is required'; exit 1;
+          }
           [[ "${STAGE}" =~ ^(development|staging|production)$ ]] || { echo 'Invalid deployment stage'; exit 1; }
           [[ "${WORKING_DIRECTORY%/}" == */"${STAGE}" ]] || { echo 'Terraform working directory must match the deployment stage'; exit 1; }
           test -f "${BACKEND_CONFIG}" || { echo "Terraform backend config not found: ${BACKEND_CONFIG}"; exit 1; }
@@ -89,32 +106,34 @@ jobs:
       - name: Prepare Terraform provider cache
         shell: bash
         run: mkdir -p "${TF_PLUGIN_CACHE_DIR}"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      # A failed preflight must never publish a partial provider download.
+      - name: Restore verified provider cache
+        id: provider_cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
+          key: terraform-shared-apply-preflight-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
       - uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
         with:
           aws-region: ${{ inputs.aws-region }}
-          role-to-assume: ${{ inputs.aws-role-arn || secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.PLAN_AWS_ROLE_ARN }}
           role-session-name: terraform-plan-${{ inputs.stage }}-${{ github.run_id }}
           unset-current-credentials: true
       - run: terraform fmt -check -recursive
-      - run: terraform init -input=false -backend-config="${BACKEND_CONFIG}"
+      - run: terraform init -input=false -lockfile=readonly -backend-config="${BACKEND_CONFIG}"
         env:
           BACKEND_CONFIG: ${{ inputs.backend-config }}
       - run: terraform validate
-      - name: Build exact apply plan
+      - name: Build read-only preflight plan
         run: terraform plan -input=false -lock-timeout=5m -var-file="${VAR_FILE}" -out=tfplan
         env:
           VAR_FILE: ${{ inputs.var-file }}
-      - name: Render and checksum plan
+      - name: Render plan for policy evaluation
         shell: bash
         run: |
           set -euo pipefail
           terraform show -json tfplan > tfplan.json
-          terraform show -no-color tfplan > tfplan.txt
-          sha256sum tfplan > tfplan.sha256
+          terraform show -no-color tfplan > tfplan.review.txt
       - name: Install Conftest with checksum verification
         shell: bash
         working-directory: ${{ runner.temp }}
@@ -140,21 +159,51 @@ jobs:
           scan-ref: ${{ inputs.working-directory }}
           severity: HIGH,CRITICAL
           exit-code: 1
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - name: Record reviewed plan fingerprint
+        id: review_fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Terraform emits a volatile top-level timestamp; exclude only that
+          # field so a fresh equivalent plan retains the same fingerprint.
+          fingerprint="$(jq -S -c 'del(.timestamp)' tfplan.json | sha256sum | awk '{print $1}')"
+          echo "plan_fingerprint=${fingerprint}" >> "${GITHUB_OUTPUT}"
+      - name: Upload redacted review evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: terraform-apply-plan-${{ inputs.stage }}-${{ github.run_id }}
-          path: |
-            ${{ inputs.working-directory }}/tfplan
-            ${{ inputs.working-directory }}/tfplan.sha256
-            ${{ inputs.working-directory }}/tfplan.txt
-          retention-days: 1
+          name: terraform-apply-review-${{ inputs.stage }}-${{ github.run_id }}
+          path: ${{ inputs.working-directory }}/tfplan.review.txt
+          retention-days: 7
           if-no-files-found: error
+      - name: Publish preflight summary
+        shell: bash
+        run: |
+          {
+            echo "## Terraform preflight: ${STAGE}"
+            echo
+            echo 'A redacted review artifact is available for approval. The Terraform binary and JSON plan remain only on the ephemeral runner.'
+            echo "Reviewed plan fingerprint: \`${FINGERPRINT}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          FINGERPRINT: ${{ steps.review_fingerprint.outputs.plan_fingerprint }}
+          STAGE: ${{ inputs.stage }}
+      - name: Remove raw preflight plan material
+        if: always()
+        shell: bash
+        run: rm -f tfplan tfplan.json tfplan.review.txt
+      - name: Save verified provider cache
+        if: ${{ success() && steps.provider_cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/.terraform-plugin-cache
+          key: terraform-shared-apply-preflight-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
 
   apply:
     name: Terraform apply ${{ inputs.stage }}
     needs: plan
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
+    # Environment protection runs before the write role is made available.
     environment: ${{ inputs.stage }}
     concurrency:
       group: terraform-${{ inputs.stage }}
@@ -163,11 +212,20 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     env:
+      TF_IN_AUTOMATION: 'true'
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      APPLY_AWS_ROLE_ARN: ${{ inputs.aws-role-arn || secrets.AWS_APPLY_ROLE_ARN || secrets.AWS_ROLE_ARN }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Require protected apply identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${APPLY_AWS_ROLE_ARN}" || {
+            echo 'An AWS apply role ARN is required'; exit 1;
+          }
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ inputs.terraform-version }}
@@ -175,36 +233,93 @@ jobs:
       - name: Prepare Terraform provider cache
         shell: bash
         run: mkdir -p "${TF_PLUGIN_CACHE_DIR}"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      - name: Restore verified provider cache
+        id: provider_cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
+          key: terraform-shared-apply-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
       - uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
         with:
           aws-region: ${{ inputs.aws-region }}
-          role-to-assume: ${{ inputs.aws-role-arn || secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.APPLY_AWS_ROLE_ARN }}
           role-session-name: terraform-apply-${{ inputs.stage }}-${{ github.run_id }}
           unset-current-credentials: true
-      - run: terraform init -input=false -backend-config="${BACKEND_CONFIG}"
+      - name: Initialize immutable backend contract
+        run: terraform init -input=false -lockfile=readonly -backend-config="${BACKEND_CONFIG}"
         env:
           BACKEND_CONFIG: ${{ inputs.backend-config }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - run: terraform validate
+      # Recreate after approval instead of transporting a Terraform plan binary.
+      # A state/value change invalidates the reviewed fingerprint and fails closed.
+      - name: Rebuild and verify reviewed plan
+        shell: bash
+        env:
+          EXPECTED_FINGERPRINT: ${{ needs.plan.outputs.plan_fingerprint }}
+          VAR_FILE: ${{ inputs.var-file }}
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -lock-timeout=5m -var-file="${VAR_FILE}" -out=tfplan
+          terraform show -json tfplan > tfplan.json
+          actual="$(jq -S -c 'del(.timestamp)' tfplan.json | sha256sum | awk '{print $1}')"
+          [[ "${actual}" == "${EXPECTED_FINGERPRINT}" ]] || {
+            echo 'Protected re-plan differs from reviewed plan; rerun for review.'
+            exit 1
+          }
+      - name: Install Conftest with checksum verification
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          archive="conftest_${CONFTEST_VERSION}_Linux_x86_64.tar.gz"
+          base="https://github.com/open-policy-agent/conftest/releases/download/v${CONFTEST_VERSION}"
+          curl --fail --location --silent --show-error --output "${archive}" "${base}/${archive}"
+          curl --fail --location --silent --show-error --output checksums.txt "${base}/checksums.txt"
+          grep " ${archive}$" checksums.txt | sha256sum --check
+          tar -xzf "${archive}" conftest
+          sudo install -m 0755 conftest /usr/local/bin/conftest
+        env:
+          CONFTEST_VERSION: ${{ inputs.conftest-version }}
+      - name: Enforce policy against exact apply plan
+        run: conftest test tfplan.json --policy "${GITHUB_WORKSPACE}/${POLICY_DIRECTORY}"
+        env:
+          POLICY_DIRECTORY: ${{ inputs.policy-directory }}
+      - name: Scan Terraform configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          name: terraform-apply-plan-${{ inputs.stage }}-${{ github.run_id }}
-          path: ${{ inputs.working-directory }}
-      - name: Verify and apply the approved plan
+          version: ${{ inputs.trivy-version }}
+          scan-type: config
+          scan-ref: ${{ inputs.working-directory }}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+      - name: Apply exact protected plan
+        run: terraform apply -input=false -auto-approve tfplan
+      - name: Capture non-sensitive outputs
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          sha256sum --check tfplan.sha256
-          terraform apply -input=false -auto-approve tfplan
-      - name: Capture non-sensitive outputs
-        if: always()
-        run: terraform output -no-color > terraform-outputs.txt
+          if terraform output -json > terraform-outputs.raw.json; then
+            jq 'with_entries(select(.value.sensitive != true) | .value = .value.value)' \
+              terraform-outputs.raw.json > terraform-outputs.json
+          else
+            printf '{}\n' > terraform-outputs.json
+          fi
+          rm -f terraform-outputs.raw.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: terraform-apply-evidence-${{ inputs.stage }}-${{ github.sha }}
-          path: ${{ inputs.working-directory }}/terraform-outputs.txt
+          path: ${{ inputs.working-directory }}/terraform-outputs.json
           retention-days: 30
           if-no-files-found: warn
+      - name: Remove raw apply plan material
+        if: always()
+        shell: bash
+        run: rm -f tfplan tfplan.json
+      - name: Save verified provider cache
+        if: ${{ success() && steps.provider_cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/.terraform-plugin-cache
+          key: terraform-shared-apply-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}

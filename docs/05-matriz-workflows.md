@@ -6,7 +6,7 @@
 | `shared-backend-node-nest-deploy-cdk.yml` | Deploy AWS CDK por stage | backends con CDK |
 | `shared-container-build-push.yml` | Build OCI multi-arquitectura por revisión exacta, SBOM, provenance, firma y scan | servicios en contenedores |
 | `shared-terraform-plan.yml` | Plan AWS con OIDC, políticas y evidencia redactada | repositorios Terraform |
-| `shared-terraform-apply.yml` | Plan y apply exactos dentro de un environment protegido | repositorios Terraform |
+| `shared-terraform-apply.yml` | Preflight con rol read-only, huella de plan y apply protegido sin artifact binario | repositorios Terraform |
 | `shared-helm-kubernetes-ci.yml` | Helm lint/template, Kustomize, Kubeconform y Trivy | workloads Kubernetes |
 | `shared-gitops-promote.yml` | PR de promoción por digest inmutable | aplicaciones reconciliadas por Argo CD |
 | `shared-web-mfe-preact-ci.yml` | CI web MFE Vite/Preact con contratos backend, config/runtime, skills, visuales y CDK opcionales | `web-mfe`, `web-mfe-v2`, futuros web |
