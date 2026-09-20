@@ -73,8 +73,11 @@ jobs:
         run: |
           set -euo pipefail
           case "${STAGE}" in development|staging|production) ;; *) echo "Invalid stage: ${STAGE}"; exit 1 ;; esac
-          test "${WORKING_DIRECTORY}" = "infra/environments/aws/${STAGE}" || {
-            echo 'Working directory and stage do not match'; exit 1;
+          # Consumers may keep a state boundary at a component root while
+          # storing its reviewed, stage-specific backend and vars elsewhere.
+          # Validate the supplied contract instead of imposing one layout.
+          test -d "${WORKING_DIRECTORY}" || {
+            echo "Terraform working directory not found: ${WORKING_DIRECTORY}"; exit 1;
           }
           test -n "${AWS_ROLE_ARN}" || { echo 'A read-only AWS drift role ARN is required'; exit 1; }
           test -f "${BACKEND_CONFIG}" || { echo "Missing backend config: ${BACKEND_CONFIG}"; exit 1; }
