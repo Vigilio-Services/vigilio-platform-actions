@@ -80,7 +80,8 @@ reutilizar el rol de apply para el preflight.
 `working-directory` puede ser un directorio de entorno o la raíz de un componente. Antes de llamar
 al workflow reutilizable, el caller debe validar de forma explícita que `stage`, `backend-config` y
 `var-file` pertenecen a la misma configuración revisada; el reusable valida existencia, placeholders
-y el stage permitido, pero no asume una topología de carpetas específica.
+y el stage permitido, pero no asume una topología de carpetas específica. La misma regla aplica a
+los reusables de `apply` y `drift`.
 
 ```yaml
 jobs:
