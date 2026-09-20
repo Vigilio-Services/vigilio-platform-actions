@@ -57,6 +57,7 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     env:
+      TF_IN_AUTOMATION: 'true'
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
       PLAN_AWS_ROLE_ARN: ${{ inputs.aws-role-arn || secrets.AWS_ROLE_ARN }}
     steps:
@@ -89,10 +90,14 @@ jobs:
       - name: Prepare Terraform provider cache
         shell: bash
         run: mkdir -p "${TF_PLUGIN_CACHE_DIR}"
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      # Restore and save are deliberately separate so a failed plan cannot
+      # publish an incomplete provider download to later runs.
+      - name: Restore verified provider cache
+        id: provider_cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
+          key: terraform-shared-plan-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
       - uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
         if: inputs.aws-role-arn != '' || env.PLAN_AWS_ROLE_ARN != ''
         with:
@@ -105,9 +110,9 @@ jobs:
       - name: Initialize backend
         run: |
           if [[ -n "${AWS_ROLE_ARN}" ]]; then
-            terraform init -input=false -backend-config="${BACKEND_CONFIG}"
+            terraform init -input=false -lockfile=readonly -backend-config="${BACKEND_CONFIG}"
           else
-            terraform init -input=false -backend=false
+            terraform init -input=false -lockfile=readonly -backend=false
           fi
         env:
           AWS_ROLE_ARN: ${{ env.PLAN_AWS_ROLE_ARN }}
@@ -160,3 +165,13 @@ jobs:
           path: ${{ inputs.working-directory }}/tfplan.txt
           retention-days: 7
           if-no-files-found: warn
+      - name: Remove raw plan material
+        if: always()
+        shell: bash
+        run: rm -f tfplan tfplan.json tfplan.txt
+      - name: Save verified provider cache
+        if: ${{ success() && steps.provider_cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ github.workspace }}/.terraform-plugin-cache
+          key: terraform-shared-plan-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}

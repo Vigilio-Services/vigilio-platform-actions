@@ -52,7 +52,27 @@ jobs:
       AWS_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
 ```
 
-El workflow de apply vuelve a crear el plan y aplica exactamente ese archivo dentro del mismo job protegido. Los planes binarios y JSON no se publican porque pueden contener datos sensibles.
+El workflow de apply hace un preflight con un rol OIDC de solo lectura y publica únicamente su
+representación humana redactada. Tras la aprobación del environment, vuelve a crear el plan con el
+rol de apply y exige la misma huella canónica antes de aplicarlo. Los planes binarios y JSON nunca se
+publican porque pueden contener datos sensibles.
+
+```yaml
+jobs:
+  terraform-apply:
+    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-apply.yml@REPLACE_WITH_RELEASE_SHA
+    with:
+      stage: production
+      working-directory: infra/environments/aws/production
+      backend-config: backend.hcl
+      var-file: production.tfvars
+    secrets:
+      AWS_PLAN_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
+      AWS_APPLY_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
+```
+
+El rol de plan debe ser de solo lectura; el rol de apply se entrega únicamente al job protegido por
+el environment. No reutilizar el rol de apply para el preflight.
 
 ```yaml
 jobs:

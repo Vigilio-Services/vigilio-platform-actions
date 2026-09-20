@@ -104,20 +104,37 @@ from prompt_builder_compat import (
     PromptBuilderClient,
 )
 
+_GUI_AUTOMATION_IMPORT_ERROR: ImportError | None = None
+
 try:
-    # OpenCV is used by PyAutoGUI/PyScreeze when confidence=... is enabled.
+    # These are only needed when controlling a real ChatGPT UI. Keeping them
+    # optional lets deterministic, read-only modes (for example --dry-run)
+    # run in CI without installing a desktop automation stack.
     import cv2
     import numpy as np
     import pyautogui
     import pyperclip
 except ImportError as exc:
-    print(
-        "Missing dependency. Install with:\n"
-        "python3 -m pip install opencv-python-headless numpy pyautogui pyperclip\n"
-        f"\nOriginal error: {exc}",
-        file=sys.stderr,
-    )
-    raise
+    cv2 = None
+    np = None
+    pyautogui = None
+    pyperclip = None
+    _GUI_AUTOMATION_IMPORT_ERROR = exc
+
+
+def require_gui_automation_dependencies() -> None:
+    """Fail only when an operation actually needs the desktop UI stack."""
+    if _GUI_AUTOMATION_IMPORT_ERROR is not None:
+        raise RuntimeError(
+            "Missing desktop-automation dependency. Install with:\n"
+            "python3 -m pip install opencv-python-headless numpy pyautogui pyperclip\n"
+            f"\nOriginal error: {_GUI_AUTOMATION_IMPORT_ERROR}"
+        ) from _GUI_AUTOMATION_IMPORT_ERROR
+
+    assert cv2 is not None
+    assert np is not None
+    assert pyautogui is not None
+    assert pyperclip is not None
 
 # ============================================================
 # GLOBAL CONFIGURATION — requested defaults
@@ -384,10 +401,6 @@ CLICK_EDITOR_BEFORE_SEND = True
 # Local progress/state files.
 DEFAULT_PROGRESS_FILE = ".chatgpt_docs_automation_progress.json"
 DEFAULT_LOG_FILE = "chatgpt_docs_automation.log"
-
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.08
-
 
 # ============================================================
 # Data models
@@ -2135,6 +2148,11 @@ def validate_runtime(
 ) -> None:
     global ASSET_STATUS_6, ASSET_STATUS_4, ALWAYS_ALLOW_ENABLED, ASSET_COPY_RESPONSE, COPY_RESPONSE_ENABLED
 
+    require_gui_automation_dependencies()
+    assert pyautogui is not None
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0.08
+
     required_exact = [
         ASSET_SEARCH_INPUT,
         ASSET_SEND_BUTTON,
@@ -2570,6 +2588,11 @@ def _run_image_test(args, os_mode: str) -> int:
 
 def main() -> int:
     args = parse_args()
+
+    # Keep CI-safe dry runs free of desktop dependencies, but fail before
+    # acquiring a project lock or changing any project state for real UI work.
+    if not args.dry_run:
+        require_gui_automation_dependencies()
 
     project_root = args.project_root.resolve()
 
