@@ -30,7 +30,7 @@ Backend Nest:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       node-version: '24.16.0'
       pnpm-version: '11.7.0'
@@ -46,7 +46,7 @@ Backend Nest + CDK deploy:
 jobs:
   deploy-production:
     if: github.ref_name == 'main'
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       app-name: bus-impl
       stage: production
@@ -61,7 +61,7 @@ Jira DevOps automation:
 
 ```yaml
 steps:
-  - uses: VigilioYonatan/vigilio-platform-actions/actions/jira-devops@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+  - uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       mode: deployment
       issue-keys: ABC-123
@@ -81,7 +81,7 @@ Web MFE:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       node-version: '24.16.0'
       pnpm-version: '11.7.0'
@@ -93,7 +93,7 @@ Mobile Expo:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       node-version: '24.16.0'
       pnpm-version: '11.7.0'
@@ -109,7 +109,7 @@ Tauri:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       node-version: '24.16.0'
       pnpm-version: '11.7.0'
@@ -118,7 +118,7 @@ jobs:
 
 ## Reglas
 
-- Consumir actions y workflows remotos por SHA completo, con el tag de release como comentario.
+- Consumir actions y workflows remotos por SHA completo; los ejemplos usan el bootstrap pin actual y cada consumidor debe actualizarlo mediante PR a una revisión completa publicada.
 - Actualizar SHAs mediante PR de Dependabot; nunca mover consumidores silenciosamente.
 - En trunk-based, los deploys compartidos `development`, `test`, `staging`, `preproduction` y `production` salen desde `main`.
 - Los secrets viven en el repo consumidor, organization secrets o GitHub Environments.

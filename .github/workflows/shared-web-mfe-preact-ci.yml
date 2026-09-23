@@ -104,7 +104,7 @@ jobs:
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -176,7 +176,7 @@ jobs:
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -234,14 +234,14 @@ jobs:
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/setup-node-pnpm@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
           working-directory: ${{ inputs.working-directory }}
-      - uses: VigilioYonatan/vigilio-platform-actions/actions/install-playwright-chromium@a46b75d3bdac70b49596c7dbd8aebbbc3f6bb3ab # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
         with:
           working-directory: ${{ inputs.working-directory }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4

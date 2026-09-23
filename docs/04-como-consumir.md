@@ -13,7 +13,7 @@ on:
 
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       has-postgres: true
       has-cdk: true
@@ -26,7 +26,7 @@ jobs:
 ```yaml
 jobs:
   deploy:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-backend-node-nest-deploy-cdk.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       stage: production
       deploy-mode: plan
@@ -43,7 +43,7 @@ El CI de Node existente se consume con `has-cdk: false`. Terraform, contenedores
 ```yaml
 jobs:
   terraform-plan:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-plan.yml@REPLACE_WITH_RELEASE_SHA
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-terraform-plan.yml@REPLACE_WITH_RELEASE_SHA
     with:
       working-directory: infra/environments/aws/development
       backend-config: backend.hcl
@@ -60,7 +60,7 @@ publican porque pueden contener datos sensibles.
 ```yaml
 jobs:
   terraform-apply:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-terraform-apply.yml@REPLACE_WITH_RELEASE_SHA
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-terraform-apply.yml@REPLACE_WITH_RELEASE_SHA
     with:
       stage: production
       working-directory: infra/environments/aws/production
@@ -86,7 +86,7 @@ los reusables de `apply` y `drift`.
 ```yaml
 jobs:
   kubernetes:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-helm-kubernetes-ci.yml@REPLACE_WITH_RELEASE_SHA
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-helm-kubernetes-ci.yml@REPLACE_WITH_RELEASE_SHA
     with:
       chart-directory: deploy/helm/bus-impl-v2
       minimal-values: deploy/helm/bus-impl-v2/tests/values-minimal.yaml
@@ -104,11 +104,11 @@ contexto antes del build:
 ```yaml
 jobs:
   image:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@REPLACE_WITH_RELEASE_SHA
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@REPLACE_WITH_RELEASE_SHA
     with:
       context: .
       dockerfile: docker/web-mfe-v2/Dockerfile
-      source-repository: VigilioYonatan/vigilio-web-mfe-v2
+      source-repository: Vigilio-Services/web-mfe
       source-ref: 0123456789abcdef0123456789abcdef01234567
       source-checkout-path: apps/web-mfe-v2
       image-repository: 111122223333.dkr.ecr.us-east-1.amazonaws.com/web-mfe-v2
@@ -126,9 +126,9 @@ nuevos contra una revisión anterior haría fallar la validación del reusable w
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-web-mfe-preact-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
-      backend-repository: VigilioYonatan/vigilio-bus-impl
+      backend-repository: Vigilio-Services/bus-impl-v2
       backend-checkout-path: .contract-source/bus-impl
       backend-openapi-path: .contract-source/bus-impl/docs/openapi/openapi.json
       run-cdk-synth: true
@@ -149,7 +149,7 @@ El cambio del consumer debe hacerse solo después de publicar la versión de pla
 ```yaml
 jobs:
   deploy:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-web-mfe-deploy-s3-cloudfront.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       stage: staging
     secrets:
@@ -163,7 +163,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-mobile-expo-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     secrets: inherit
 ```
 
@@ -172,7 +172,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-mobile-expo-eas-build.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       profile: test
       platform: android
@@ -185,7 +185,7 @@ jobs:
 ```yaml
 jobs:
   ci:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-ci.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
 ```
 
 ## Tauri Build
@@ -193,7 +193,7 @@ jobs:
 ```yaml
 jobs:
   build:
-    uses: VigilioYonatan/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-build.yml@87fe5c0890d6a1b639ce00431bf10d92453fdda2 # v1
+    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-desktop-tauri-build.yml@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # bootstrap pin
     with:
       stage: production
     secrets:

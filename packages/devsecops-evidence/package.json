@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/VigilioYonatan/vigilio-platform-actions.git",
+    "url": "git+https://github.com/Vigilio-Services/vigilio-platform-actions.git",
     "directory": "packages/devsecops-evidence"
   },
   "bin": {
