@@ -33,7 +33,7 @@ permissions:
 jobs:
   promote:
     name: Promote digest to ${{ inputs.stage }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     concurrency:
       group: gitops-promote-${{ inputs.gitops-repository }}-${{ inputs.values-file }}-${{ inputs.stage }}

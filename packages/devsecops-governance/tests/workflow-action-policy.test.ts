@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -26,6 +26,10 @@ const requiredActions = [
 ];
 
 const CHECKOUT_SHA = 'df4cb1c069e1874edd31b4311f1884172cec0e10';
+const PNPM_SETUP_SHA = 'ea17c68df8912ef543352723c149a84f56e3d413';
+const UPLOAD_ARTIFACT_SHA = '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a';
+const DOWNLOAD_ARTIFACT_SHA = '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c';
+const CACHE_SHA = '55cc8345863c7cc4c66a329aec7e433d2d1c52a9';
 
 function createWorkflow(directory: string, file: string, extra = '') {
   writeFileSync(
@@ -181,6 +185,45 @@ describe('workflow and action policies', () => {
     expect(requiredGate).toContain('RUN_ATTEST:');
     expect(requiredGate).toContain('inputs.attest-artifact');
     expect(requiredGate).toContain('.attest.result');
+  });
+
+  it('pins maintained workflows to explicit runners and Node 24 action releases', () => {
+    const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
+    const workflowsDirectory = join(repositoryRoot, '.github', 'workflows');
+    const workflows = readdirSync(workflowsDirectory)
+      .filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'))
+      .map((file) => readFileSync(join(workflowsDirectory, file), 'utf8'));
+    const setupAction = readFileSync(
+      join(repositoryRoot, 'actions', 'setup-node-pnpm', 'action.yml'),
+      'utf8',
+    );
+    const playwrightAction = readFileSync(
+      join(repositoryRoot, 'actions', 'install-playwright-chromium', 'action.yml'),
+      'utf8',
+    );
+    const workflowCatalog = workflows.join('\n');
+
+    expect(workflowCatalog).not.toContain('ubuntu-latest');
+    expect(workflowCatalog).toContain('ubuntu-24.04');
+    expect(workflowCatalog).toContain(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`);
+    expect(workflowCatalog).toContain(`actions/download-artifact@${DOWNLOAD_ARTIFACT_SHA}`);
+    expect(workflowCatalog).toContain(`actions/cache@${CACHE_SHA}`);
+    expect(setupAction).toContain(`pnpm/action-setup@${PNPM_SETUP_SHA}`);
+    expect(playwrightAction).toContain(`actions/cache@${CACHE_SHA}`);
+  });
+
+  it('retains hidden backend SARIF evidence as a required artifact', () => {
+    const workflow = readFileSync(
+      fileURLToPath(
+        new URL('../../../.github/workflows/shared-backend-node-nest-ci.yml', import.meta.url),
+      ),
+      'utf8',
+    );
+    const evidenceStep = workflow.split('- name: Retain security evidence')[1] ?? '';
+
+    expect(evidenceStep).toContain('include-hidden-files: true');
+    expect(evidenceStep).toContain('if-no-files-found: error');
+    expect(evidenceStep).toContain(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`);
   });
 
   it('allows OIDC and delegated timeout for local reusable deployment callers', () => {

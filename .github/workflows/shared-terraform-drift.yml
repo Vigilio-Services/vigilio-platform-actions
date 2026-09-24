@@ -46,7 +46,7 @@ permissions:
 jobs:
   drift:
     name: Terraform drift (${{ inputs.stage }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     defaults:
       run:
@@ -91,7 +91,7 @@ jobs:
       # A failed drift check must not promote an incomplete provider download.
       - name: Restore verified provider cache
         id: provider_cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
           key: terraform-shared-drift-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
@@ -164,7 +164,7 @@ jobs:
               echo 'No drift detected.'
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: terraform-drift-${{ inputs.stage }}-${{ github.run_id }}
@@ -184,7 +184,7 @@ jobs:
         run: rm -f tfplan tfplan.json tfplan.txt tfplan.review.txt
       - name: Save verified provider cache
         if: ${{ success() && steps.provider_cache.outputs.cache-hit != 'true' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
           key: terraform-shared-drift-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}

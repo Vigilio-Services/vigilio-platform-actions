@@ -69,7 +69,7 @@ permissions:
 jobs:
   build:
     name: Build and verify OCI image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     outputs:
       digest: ${{ steps.build.outputs.digest }}
