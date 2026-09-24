@@ -84,6 +84,11 @@ on:
         type: boolean
         required: false
         default: true
+      publish-security-sarif:
+        description: Publish SARIF to GitHub Code Scanning. Disable only when the repository does not have GitHub Advanced Security; scanner execution and retained SARIF evidence remain enabled.
+        type: boolean
+        required: false
+        default: true
       attest-artifact:
         type: boolean
         required: false
@@ -606,11 +611,16 @@ jobs:
       - if: inputs.has-cdk
         run: pnpm cdk:synth
       - uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        with:
+          output: ${{ inputs.working-directory }}/.security-results/codeql
+          upload: ${{ inputs.publish-security-sarif && 'always' || 'never' }}
+          upload-database: ${{ inputs.publish-security-sarif && 'true' || 'false' }}
       - name: Semgrep
         shell: bash
         run: |
+          mkdir -p .security-results
           python -m pip install "semgrep==${SEMGREP_VERSION}"
-          semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif
+          semgrep scan --config p/owasp-top-ten --sarif --output .security-results/semgrep.sarif
         env:
           SEMGREP_VERSION: ${{ inputs.semgrep-version }}
       - name: Trivy filesystem
@@ -621,7 +631,7 @@ jobs:
           scan-type: fs
           scan-ref: ${{ inputs.working-directory }}
           format: sarif
-          output: ${{ inputs.working-directory }}/trivy-fs.sarif
+          output: ${{ inputs.working-directory }}/.security-results/trivy-fs.sarif
           severity: HIGH,CRITICAL
           exit-code: 0
       - name: Trivy synthesized IaC
@@ -632,24 +642,32 @@ jobs:
           scan-type: config
           scan-ref: ${{ inputs.working-directory }}/cdk.out
           format: sarif
-          output: ${{ inputs.working-directory }}/trivy-iac.sarif
+          output: ${{ inputs.working-directory }}/.security-results/trivy-iac.sarif
           severity: HIGH,CRITICAL
           exit-code: 0
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/semgrep.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/semgrep.sarif', inputs.working-directory)) != '' }}
         with:
-          sarif_file: ${{ inputs.working-directory }}/semgrep.sarif
+          sarif_file: ${{ inputs.working-directory }}/.security-results/semgrep.sarif
           category: semgrep
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/trivy-fs.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/trivy-fs.sarif', inputs.working-directory)) != '' }}
         with:
-          sarif_file: ${{ inputs.working-directory }}/trivy-fs.sarif
+          sarif_file: ${{ inputs.working-directory }}/.security-results/trivy-fs.sarif
           category: trivy-fs
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/trivy-iac.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/trivy-iac.sarif', inputs.working-directory)) != '' }}
         with:
-          sarif_file: ${{ inputs.working-directory }}/trivy-iac.sarif
+          sarif_file: ${{ inputs.working-directory }}/.security-results/trivy-iac.sarif
           category: trivy-iac
+      - name: Retain security evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: backend-security-sarif-${{ github.run_id }}
+          path: ${{ inputs.working-directory }}/.security-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   ci-gate:
     name: Required CI Gate
