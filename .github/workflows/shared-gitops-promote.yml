@@ -61,14 +61,14 @@ jobs:
           repositories: ${{ steps.target.outputs.repository }}
           permission-contents: write
           permission-pull-requests: write
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           repository: ${{ inputs.gitops-repository }}
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.base-branch }}
           token: ${{ steps.app-token.outputs.token }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ inputs.base-branch }}

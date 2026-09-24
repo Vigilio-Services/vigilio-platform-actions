@@ -141,23 +141,23 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: Actionlint
-        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+        uses: reviewdog/action-actionlint@ab7138020abfe6cd20b742c82e5b7a9749fb5884 # v1.75.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
           reporter: github-check
           fail_level: error
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
@@ -201,7 +201,7 @@ jobs:
           done
       - name: Move Jira issue to code review
         if: github.event_name == 'pull_request' && inputs.jira-enabled && inputs.jira-transition-code-review != ''
-        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           mode: transition
           issue-keys: ${{ github.head_ref }} ${{ github.event.pull_request.title }}
@@ -216,7 +216,7 @@ jobs:
         run: pnpm cdk:synth
       - name: Checkov IaC security
         if: github.event_name == 'pull_request' && inputs.has-cdk
-        uses: bridgecrewio/checkov-action@7b972723c44fb3d256283fac96fae5d7c1894bb7 # v12
+        uses: bridgecrewio/checkov-action@444c9db6fa75e2d9c19ebf1fde7322089be9009e # v12
         with:
           directory: ${{ inputs.working-directory }}/cdk.out
           framework: cloudformation
@@ -231,10 +231,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -252,7 +252,7 @@ jobs:
           fi
       - if: inputs.run-unit-tests
         run: pnpm test:coverage
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: backend-coverage
@@ -283,10 +283,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -327,10 +327,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -347,10 +347,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -367,11 +367,11 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -405,10 +405,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -471,15 +471,15 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           working-directory: ${{ inputs.working-directory }}
       - name: Resolve browser E2E database identity
@@ -517,10 +517,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -540,16 +540,16 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
       - run: pnpm build
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-dist
           path: ${{ inputs.working-directory }}/dist/
@@ -567,11 +567,11 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: backend-dist
           path: ${{ inputs.working-directory }}/dist
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: ${{ inputs.working-directory }}/dist/**
 
@@ -584,7 +584,7 @@ jobs:
       pull-requests: read
       security-events: write
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -610,21 +610,21 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           languages: javascript-typescript
           queries: security-extended,security-and-quality
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@75312c4611668ddc16fdb303d0b756b226e027c9 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
       - if: inputs.has-cdk
         run: pnpm cdk:synth
-      - uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           output: ${{ inputs.working-directory }}/.security-results/codeql
           upload: ${{ inputs.publish-security-sarif && 'always' || 'never' }}
@@ -659,24 +659,24 @@ jobs:
           output: ${{ inputs.working-directory }}/.security-results/trivy-iac.sarif
           severity: HIGH,CRITICAL
           exit-code: 0
-      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/semgrep.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/.security-results/semgrep.sarif
           category: semgrep
-      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/trivy-fs.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/.security-results/trivy-fs.sarif
           category: trivy-fs
-      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/.security-results/trivy-iac.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/.security-results/trivy-iac.sarif
           category: trivy-iac
       - name: Retain security evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: backend-security-sarif-${{ github.run_id }}
           path: ${{ inputs.working-directory }}/.security-results/
