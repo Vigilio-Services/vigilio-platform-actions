@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { validateActions } from '../src/action-policy.js';
 import { validateWorkflows } from '../src/workflow-policy.js';
@@ -163,7 +164,9 @@ describe('workflow and action policies', () => {
 
   it('isolates backend artifact attestation credentials from the build job', () => {
     const workflow = readFileSync(
-      join(process.cwd(), '.github', 'workflows', 'shared-backend-node-nest-ci.yml'),
+      fileURLToPath(
+        new URL('../../../.github/workflows/shared-backend-node-nest-ci.yml', import.meta.url),
+      ),
       'utf8',
     );
     const buildJob = workflow.split('\n  build:')[1]?.split('\n  attest:')[0] ?? '';
