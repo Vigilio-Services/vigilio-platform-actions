@@ -536,8 +536,6 @@ jobs:
     permissions:
       contents: read
       packages: read
-      attestations: write
-      id-token: write
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -556,8 +554,24 @@ jobs:
           name: backend-dist
           path: ${{ inputs.working-directory }}/dist/
           retention-days: 30
+
+  attest:
+    name: Artifact Attestation
+    needs: build
+    if: ${{ inputs.attest-artifact && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: backend-dist
+          path: ${{ inputs.working-directory }}/dist
       - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
-        if: inputs.attest-artifact
         with:
           subject-path: ${{ inputs.working-directory }}/dist/**
 
@@ -671,7 +685,7 @@ jobs:
 
   ci-gate:
     name: Required CI Gate
-    needs: [governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure, build, secret-scan, security-deep]
+    needs: [governance, quality, integration, integration-aws, bdd, contract, e2e, e2e-browser, infrastructure, build, attest, secret-scan, security-deep]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -679,6 +693,7 @@ jobs:
       - name: Enforce required jobs
         shell: bash
         env:
+          RUN_ATTEST: ${{ inputs.attest-artifact }}
           RUN_BUILD: ${{ inputs.run-build }}
           RESULTS: ${{ toJSON(needs) }}
         run: |
@@ -690,4 +705,9 @@ jobs:
             test "$(jq -r '.build.result' <<<"${RESULTS}")" = "success"
           else
             test "$(jq -r '.build.result' <<<"${RESULTS}")" = "skipped"
+          fi
+          if [ "${RUN_ATTEST}" = "true" ]; then
+            test "$(jq -r '.attest.result' <<<"${RESULTS}")" = "success"
+          else
+            test "$(jq -r '.attest.result' <<<"${RESULTS}")" = "skipped"
           fi

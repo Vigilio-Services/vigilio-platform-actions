@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validateActions } from '../src/action-policy.js';
@@ -159,6 +159,25 @@ describe('workflow and action policies', () => {
     const errors = validateWorkflows(directory);
     expect(errors.some((error) => error.includes('id-token'))).toBe(true);
     expect(errors.some((error) => error.includes('workflow_call'))).toBe(true);
+  });
+
+  it('isolates backend artifact attestation credentials from the build job', () => {
+    const workflow = readFileSync(
+      join(process.cwd(), '.github', 'workflows', 'shared-backend-node-nest-ci.yml'),
+      'utf8',
+    );
+    const buildJob = workflow.split('\n  build:')[1]?.split('\n  attest:')[0] ?? '';
+    const attestJob = workflow.split('\n  attest:')[1]?.split('\n  secret-scan:')[0] ?? '';
+    const requiredGate = workflow.split('\n  ci-gate:')[1] ?? '';
+
+    expect(buildJob).not.toContain('id-token: write');
+    expect(buildJob).not.toContain('attestations: write');
+    expect(attestJob).toContain('needs: build');
+    expect(attestJob).toContain('id-token: write');
+    expect(attestJob).toContain('attestations: write');
+    expect(requiredGate).toContain('RUN_ATTEST:');
+    expect(requiredGate).toContain('inputs.attest-artifact');
+    expect(requiredGate).toContain('.attest.result');
   });
 
   it('allows OIDC and delegated timeout for local reusable deployment callers', () => {
