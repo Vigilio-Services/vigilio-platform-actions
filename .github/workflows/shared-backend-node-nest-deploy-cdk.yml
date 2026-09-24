@@ -147,17 +147,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ github.ref_name }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
@@ -299,13 +299,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
@@ -441,7 +441,7 @@ jobs:
           GITHUB_EVENT_BEFORE: ${{ github.event.before || '' }}
       - name: Register Jira deployment
         if: inputs.deploy-mode == 'apply' && inputs.jira-enabled && steps.jira_keys.outputs.issue_keys != ''
-        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           mode: deployment
           issue-keys: ${{ steps.jira_keys.outputs.issue_keys }}
@@ -462,7 +462,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       - name: Move Jira issues after deployment
         if: inputs.deploy-mode == 'apply' && inputs.jira-enabled && inputs.jira-transition-name != '' && steps.jira_keys.outputs.issue_keys != ''
-        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           mode: transition
           issue-keys: ${{ steps.jira_keys.outputs.issue_keys }}
@@ -475,7 +475,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
       - name: Create Jira incident on production deploy failure
         if: failure() && inputs.deploy-mode == 'apply' && inputs.jira-enabled && inputs.stage == 'production'
-        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           mode: incident
           project-key: ${{ inputs.jira-project-key }}
@@ -514,13 +514,13 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline

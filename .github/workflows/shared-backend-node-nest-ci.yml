@@ -151,13 +151,13 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN || github.token }}
           reporter: github-check
           fail_level: error
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
@@ -201,7 +201,7 @@ jobs:
           done
       - name: Move Jira issue to code review
         if: github.event_name == 'pull_request' && inputs.jira-enabled && inputs.jira-transition-code-review != ''
-        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+        uses: Vigilio-Services/vigilio-platform-actions/actions/jira-devops@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           mode: transition
           issue-keys: ${{ github.head_ref }} ${{ github.event.pull_request.title }}
@@ -234,7 +234,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -286,7 +286,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -330,7 +330,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -350,7 +350,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -371,7 +371,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -408,7 +408,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -474,12 +474,12 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           working-directory: ${{ inputs.working-directory }}
       - name: Resolve browser E2E database identity
@@ -520,7 +520,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -543,7 +543,7 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
@@ -617,7 +617,7 @@ jobs:
         with:
           languages: javascript-typescript
           queries: security-extended,security-and-quality
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@d497eac9dac8aa90545a9bf1b54191c11c7f4e3e # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
         with:
           node-version: ${{ env.NODE_VERSION }}
           pnpm-version: ${{ env.PNPM_VERSION }}
