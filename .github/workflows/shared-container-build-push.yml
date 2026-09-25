@@ -59,6 +59,8 @@ on:
         value: ${{ jobs.build.outputs.digest }}
 
 permissions:
+  # upload-sarif reads workflow-run metadata for private repositories.
+  actions: read
   contents: read
   # Required for AWS OIDC authentication and Cosign OIDC signing when push=true
   id-token: write

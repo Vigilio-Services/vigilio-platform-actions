@@ -235,6 +235,8 @@ describe('workflow and action policies', () => {
     );
     const expressionStart = ['$', '{{'].join('');
 
+    expect(workflow).toContain('  actions: read');
+    expect(workflow).toContain('  security-events: write');
     expect(workflow).toContain(
       `provenance: ${expressionStart} inputs.push && 'mode=max' || 'false' }}`,
     );
