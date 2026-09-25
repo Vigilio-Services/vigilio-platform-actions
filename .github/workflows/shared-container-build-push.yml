@@ -151,8 +151,11 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: mode=max
-          sbom: true
+          # The Docker exporter used by non-publishing previews cannot load the
+          # manifest list emitted by BuildKit attestations. Published images keep
+          # maximum provenance and SBOM attestations in the registry.
+          provenance: ${{ inputs.push && 'mode=max' || 'false' }}
+          sbom: ${{ inputs.push && 'true' || 'false' }}
           secrets: |
             "npmrc=//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}"
       - name: Scan image for vulnerabilities before signing

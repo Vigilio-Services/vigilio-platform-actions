@@ -226,6 +226,25 @@ describe('workflow and action policies', () => {
     expect(evidenceStep).toContain(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`);
   });
 
+  it('emits OCI attestations only for published container images', () => {
+    const workflow = readFileSync(
+      fileURLToPath(
+        new URL('../../../.github/workflows/shared-container-build-push.yml', import.meta.url),
+      ),
+      'utf8',
+    );
+    const expressionStart = ['$', '{{'].join('');
+
+    expect(workflow).toContain(
+      `provenance: ${expressionStart} inputs.push && 'mode=max' || 'false' }}`,
+    );
+    expect(workflow).toContain(`sbom: ${expressionStart} inputs.push && 'true' || 'false' }}`);
+    expect(workflow).toContain(
+      `load: ${expressionStart} !inputs.push && !contains(inputs.platforms, ',') }}`,
+    );
+    expect(workflow).toContain("if: inputs.push || !contains(inputs.platforms, ',')");
+  });
+
   it('allows OIDC and delegated timeout for local reusable deployment callers', () => {
     const directory = join(process.cwd(), 'coverage', `wf-local-call-${Date.now()}`);
     mkdirSync(directory, { recursive: true });
