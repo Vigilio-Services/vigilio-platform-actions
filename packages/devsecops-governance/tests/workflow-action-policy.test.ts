@@ -234,6 +234,14 @@ describe('workflow and action policies', () => {
       'utf8',
     );
     const expressionStart = ['$', '{{'].join('');
+    const policyGate =
+      workflow
+        .split('- name: Enforce HIGH and CRITICAL container security policy')[1]
+        ?.split('- name: Generate complete container security evidence')[0] ?? '';
+    const evidenceScan =
+      workflow
+        .split('- name: Generate complete container security evidence')[1]
+        ?.split('- uses: sigstore/cosign-installer')[0] ?? '';
 
     expect(workflow).toContain('  actions: read');
     expect(workflow).toContain('  security-events: write');
@@ -250,6 +258,14 @@ describe('workflow and action policies', () => {
       `load: ${expressionStart} !inputs.push && !contains(inputs.platforms, ',') }}`,
     );
     expect(workflow).toContain("if: inputs.push || !contains(inputs.platforms, ',')");
+    expect(policyGate).toContain('format: table');
+    expect(policyGate).toContain('severity: HIGH,CRITICAL');
+    expect(policyGate).toContain('exit-code: 1');
+    expect(evidenceScan).toContain('always() &&');
+    expect(evidenceScan).toContain('format: sarif');
+    expect(evidenceScan).toContain('output: trivy-image.sarif');
+    expect(evidenceScan).toContain('severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL');
+    expect(evidenceScan).toContain('exit-code: 0');
   });
 
   it('allows OIDC and delegated timeout for local reusable deployment callers', () => {

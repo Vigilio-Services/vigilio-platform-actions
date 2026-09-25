@@ -165,16 +165,27 @@ jobs:
           sbom: ${{ inputs.push && 'true' || 'false' }}
           secrets: |
             "npmrc=//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}"
-      - name: Scan image for vulnerabilities before signing
+      - name: Enforce HIGH and CRITICAL container security policy
         if: inputs.push || !contains(inputs.platforms, ',')
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: ${{ inputs.trivy-version }}
+          image-ref: ${{ inputs.push && format('{0}@{1}', inputs.image-repository, steps.build.outputs.digest) || steps.metadata.outputs.tags }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          scanners: vuln,secret
+      - name: Generate complete container security evidence
+        if: ${{ always() && (inputs.push || !contains(inputs.platforms, ',')) }}
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: ${{ inputs.trivy-version }}
           image-ref: ${{ inputs.push && format('{0}@{1}', inputs.image-repository, steps.build.outputs.digest) || steps.metadata.outputs.tags }}
           format: sarif
           output: trivy-image.sarif
-          severity: HIGH,CRITICAL
-          exit-code: 1
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: 0
+          scanners: vuln,secret
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         if: inputs.push
       - name: Sign immutable digest with GitHub OIDC
