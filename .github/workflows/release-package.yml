@@ -31,9 +31,8 @@ jobs:
     timeout-minutes: 15
     environment: production
     permissions:
-      contents: write
+      contents: read
       packages: write
-      pull-requests: write
     outputs:
       published: ${{ steps.changesets.outputs.published }}
     steps:
@@ -61,13 +60,36 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm test:packages
+      - name: Validate release bot configuration
+        shell: bash
+        env:
+          RELEASE_APP_CLIENT_ID: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          [[ -n "${RELEASE_APP_CLIENT_ID}" ]] || {
+            echo '::error::Missing production environment variable RELEASE_APP_CLIENT_ID'
+            exit 1
+          }
+          [[ -n "${RELEASE_APP_PRIVATE_KEY}" ]] || {
+            echo '::error::Missing production environment secret RELEASE_APP_PRIVATE_KEY'
+            exit 1
+          }
+      - name: Mint least-privilege release token
+        id: release-app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           publish: pnpm release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.release-app-token.outputs.token }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Pack published packages for provenance
         if: steps.changesets.outputs.published == 'true'
