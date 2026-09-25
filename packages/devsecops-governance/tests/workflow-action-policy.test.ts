@@ -237,6 +237,11 @@ describe('workflow and action policies', () => {
 
     expect(workflow).toContain('  actions: read');
     expect(workflow).toContain('  security-events: write');
+    expect(workflow).toContain('      upload-sarif:');
+    expect(workflow).toContain(`uses: actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`);
+    expect(workflow).toContain(`name: trivy-container-sarif-${expressionStart} github.run_id }}`);
+    expect(workflow).toContain('if-no-files-found: error');
+    expect(workflow).toContain('always() && inputs.upload-sarif');
     expect(workflow).toContain(
       `provenance: ${expressionStart} inputs.push && 'mode=max' || 'false' }}`,
     );

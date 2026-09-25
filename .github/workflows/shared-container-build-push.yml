@@ -48,6 +48,11 @@ on:
         type: string
         required: false
         default: v0.72.0
+      upload-sarif:
+        description: Publish the Trivy SARIF report to GitHub code scanning; requires GitHub Advanced Security for private repositories.
+        type: boolean
+        required: false
+        default: true
     secrets:
       AWS_ROLE_ARN:
         required: false
@@ -191,8 +196,16 @@ jobs:
           CERTIFICATE_IDENTITY_REGEXP: '^https://github\\.com/${{ github.repository_owner }}/[A-Za-z0-9_.-]+/\\.github/workflows/[A-Za-z0-9_.-]+\\.yml@.+$'
           IMAGE_REPOSITORY: ${{ inputs.image-repository }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      - name: Retain container vulnerability evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: ${{ always() && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
+        with:
+          name: trivy-container-sarif-${{ github.run_id }}
+          path: trivy-image.sarif
+          if-no-files-found: error
+          retention-days: 14
+      - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+        if: ${{ always() && inputs.upload-sarif && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
         with:
           sarif_file: trivy-image.sarif
           category: trivy-container
