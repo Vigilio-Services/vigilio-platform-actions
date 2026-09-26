@@ -1,5 +1,17 @@
 # @vigilioyonatan/devsecops-governance
 
+## 0.5.1
+
+### Patch Changes
+
+- 611f4fd: Add portable regression coverage for least-privilege backend artifact attestation jobs and their required CI gate contract.
+- d9d9525: Recognize the canonical `Vigilio-Services/vigilio-platform-actions` repository in workflow source governance while preserving immutable SHA enforcement.
+- efe961c: Prevent non-publishing OCI previews from combining Docker `load` with BuildKit provenance and SBOM attestations, while retaining maximum attestations for published images and Trivy scanning for previews.
+- 7bafab2: Enforce explicit Ubuntu 24.04 runners, Node 24-compatible immutable action releases, and retained hidden SARIF evidence across the platform workflow catalog.
+- cb9f925: Allow the reusable container workflow to read workflow-run metadata required by GitHub's SARIF uploader, retain every generated Trivy SARIF report as an auditable artifact, and let private repositories without GitHub Advanced Security skip only the unavailable code-scanning publication.
+- dfc29ee: Require release pull requests to use a repository-scoped GitHub App token instead of broadening organization-wide `GITHUB_TOKEN` pull-request creation permissions.
+- de2a952: Separate the blocking HIGH/CRITICAL Trivy container policy from the complete SARIF evidence scan so lower-severity findings remain auditable without incorrectly failing a compliant image.
+
 ## 0.5.0
 
 ### Minor Changes
