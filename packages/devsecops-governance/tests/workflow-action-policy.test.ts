@@ -226,6 +226,28 @@ describe('workflow and action policies', () => {
     expect(evidenceStep).toContain(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`);
   });
 
+  it('uses a repository-scoped GitHub App for release pull requests', () => {
+    const expressionStart = ['$', '{{'].join('');
+    const workflow = readFileSync(
+      fileURLToPath(new URL('../../../.github/workflows/release-package.yml', import.meta.url)),
+      'utf8',
+    );
+    const publishJob = workflow.split('\n  publish:')[1]?.split('\n  attest:')[0] ?? '';
+
+    expect(publishJob).toContain('contents: read');
+    expect(publishJob).toContain('packages: write');
+    expect(publishJob.split('\n')).not.toContain('      pull-requests: write');
+    expect(publishJob).toContain(
+      'uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1',
+    );
+    expect(publishJob).toContain('permission-contents: write');
+    expect(publishJob).toContain('permission-pull-requests: write');
+    expect(publishJob).toContain(
+      `GITHUB_TOKEN: ${expressionStart} steps.release-app-token.outputs.token }}`,
+    );
+    expect(publishJob).toContain(`NODE_AUTH_TOKEN: ${expressionStart} secrets.GITHUB_TOKEN }}`);
+  });
+
   it('emits OCI attestations only for published container images', () => {
     const workflow = readFileSync(
       fileURLToPath(
