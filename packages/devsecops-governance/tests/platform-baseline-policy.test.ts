@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadPlatformBaseline, validatePlatformBaseline } from '../src/platform-baseline-policy.js';
 
-function createRepository(): string {
+function createRepository(typesVersion = '24.13.3'): string {
   const root = mkdtempSync(path.join(tmpdir(), 'vigilio-platform-baseline-'));
   mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
   writeFileSync(
@@ -14,7 +14,7 @@ function createRepository(): string {
       engines: { node: '>=24 <25', pnpm: '11.20.0' },
       devDependencies: {
         '@biomejs/biome': '2.5.7',
-        '@types/node': '26.2.0',
+        '@types/node': typesVersion,
         '@vitest/coverage-v8': '4.1.10',
         typescript: '7.0.2',
         vitest: '4.1.10',
@@ -54,6 +54,12 @@ describe('platform baseline policy', () => {
 
   it('accepts a repository aligned with the baseline', () => {
     expect(validatePlatformBaseline({ root: createRepository() })).toEqual([]);
+  });
+
+  it('rejects Node 26 typings for the Node 24 runtime baseline', () => {
+    expect(validatePlatformBaseline({ root: createRepository('26.2.0') })).toContain(
+      'package.json @types/node must be 24.13.3; received 26.2.0',
+    );
   });
 
   it('reports package, schema and workflow drift', () => {
