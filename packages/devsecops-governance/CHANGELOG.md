@@ -1,5 +1,11 @@
 # @vigilio-services/devsecops-governance
 
+## 0.5.3
+
+### Patch Changes
+
+- 0c4be87: Align the backend baseline's Node typings with its Node 24 runtime.
+
 ## 0.5.2
 
 ### Patch Changes

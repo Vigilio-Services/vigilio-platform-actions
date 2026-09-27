@@ -1,5 +1,11 @@
 # @vigilio-services/node-nest-tooling
 
+## 0.3.2
+
+### Patch Changes
+
+- 0c4be87: Exclude NestJS `*.doc.ts` adapters from generated browser-safe contracts.
+
 ## 0.3.1
 
 ### Patch Changes
