@@ -70,12 +70,12 @@ Instala solo paquetes compatibles con el stack y fija versiones exactas:
 
 ```bash
 pnpm add -D --save-exact \
-  @vigilioyonatan/devsecops-governance@0.1.0 \
-  @vigilioyonatan/devsecops-evidence@0.1.0 \
-  @vigilioyonatan/vigilio-skills@0.1.0
+  @vigilio-services/devsecops-governance@0.5.2 \
+  @vigilio-services/devsecops-evidence@0.3.1 \
+  @vigilio-services/vigilio-skills@0.6.2
 ```
 
-Agrega `@vigilioyonatan/node-nest-tooling` únicamente en backends Node/Nest. Migra comandos
+Agrega `@vigilio-services/node-nest-tooling` únicamente en backends Node/Nest. Migra comandos
 reutilizables uno por uno. Conserva scripts de dominio, fixtures, seeders, smoke tests y lógica
 específica del proyecto. Nunca borres `scripts/` completa por una migración de plataforma.
 

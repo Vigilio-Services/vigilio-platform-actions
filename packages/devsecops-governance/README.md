@@ -1,11 +1,11 @@
-# @vigilioyonatan/devsecops-governance
+# @vigilio-services/devsecops-governance
 
 CLI TypeScript para validar reglas DevSecOps compartidas entre repos Vigilio.
 
 ## Instalacion
 
 ```bash
-pnpm add -D @vigilioyonatan/devsecops-governance
+pnpm add -D @vigilio-services/devsecops-governance
 ```
 
 ## CLI
@@ -23,7 +23,7 @@ vigilio-governance validate-platform-baseline
 vigilio-governance validate-repository --policy-file .github/repository-policy.json
 vigilio-governance validate-security-exceptions
 vigilio-governance audit-github-governance --policy .github/governance-policy.json
-vigilio-governance validate-ruleset --ruleset-file node_modules/@vigilioyonatan/devsecops-governance/policies/github/main-branch-ruleset.json
+vigilio-governance validate-ruleset --ruleset-file node_modules/@vigilio-services/devsecops-governance/policies/github/main-branch-ruleset.json
 vigilio-governance validate-stage-source --stage production --ref-name main
 ```
 

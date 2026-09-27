@@ -44,10 +44,10 @@ La migracion ocurre en un PR posterior al release:
 
 ```bash
 pnpm add -D --save-exact \
-  @vigilioyonatan/devsecops-evidence@0.1.0 \
-  @vigilioyonatan/devsecops-governance@0.1.0 \
-  @vigilioyonatan/node-nest-tooling@0.1.0 \
-  @vigilioyonatan/vigilio-skills@0.1.0
+  @vigilio-services/devsecops-evidence@0.3.1 \
+  @vigilio-services/devsecops-governance@0.5.2 \
+  @vigilio-services/node-nest-tooling@0.3.1 \
+  @vigilio-services/vigilio-skills@0.6.2
 
 pnpm exec vigilio-skills sync
 pnpm exec vigilio-skills check

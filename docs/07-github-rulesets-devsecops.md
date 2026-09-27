@@ -5,7 +5,7 @@ La politica central esta en:
 `packages/devsecops-governance/policies/github/main-branch-ruleset.json`
 
 El archivo es un body valido para la API de repository rulesets y se distribuye dentro de
-`@vigilioyonatan/devsecops-governance`.
+`@vigilio-services/devsecops-governance`.
 
 ## Controles obligatorios
 
@@ -34,7 +34,7 @@ Validacion local:
 
 ```bash
 vigilio-governance validate-ruleset \
-  --ruleset-file node_modules/@vigilioyonatan/devsecops-governance/policies/github/main-branch-ruleset.json
+  --ruleset-file node_modules/@vigilio-services/devsecops-governance/policies/github/main-branch-ruleset.json
 ```
 
 ## Activacion

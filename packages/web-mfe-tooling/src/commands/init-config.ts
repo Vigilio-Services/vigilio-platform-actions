@@ -357,7 +357,7 @@ export function discoverConfig(root: string, args: ParsedArgs): InitConfigResult
   if (!envPath) warnings.push('No .env.example or .env.template file was detected.');
 
   const config: WebMfeToolingConfig = {
-    extends: '@vigilioyonatan/web-mfe-tooling/presets/vite-web.json',
+    extends: '@vigilio-services/web-mfe-tooling/presets/vite-web.json',
     bundle: {
       dist,
       maxCssBytes: budgetWithHeadroom(directorySize(distPath, '.css'), 80 * 1024),

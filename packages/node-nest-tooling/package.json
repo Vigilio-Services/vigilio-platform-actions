@@ -1,5 +1,5 @@
 {
-  "name": "@vigilioyonatan/node-nest-tooling",
+  "name": "@vigilio-services/node-nest-tooling",
   "version": "0.3.0",
   "description": "Versioned Node.js and NestJS project tooling for Vigilio repositories.",
   "type": "module",

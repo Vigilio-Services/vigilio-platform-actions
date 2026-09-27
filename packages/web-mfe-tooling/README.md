@@ -1,4 +1,4 @@
-# `@vigilioyonatan/web-mfe-tooling`
+# `@vigilio-services/web-mfe-tooling`
 
 Reusable browser frontend governance and delivery tooling. The package centralizes the repeated
 implementation used by `web-mfe` consumers while keeping thresholds, paths and environment values
@@ -25,7 +25,7 @@ Pin the package to an exact version and keep stable aliases in the consuming rep
 ```json
 {
   "devDependencies": {
-    "@vigilioyonatan/web-mfe-tooling": "0.1.0"
+    "@vigilio-services/web-mfe-tooling": "0.2.1"
   },
   "scripts": {
     "bundle:budget": "vigilio-web validate-bundle-budget",
@@ -79,7 +79,7 @@ win, and arrays replace inherited arrays. Circular inheritance and missing prese
 
 ```json
 {
-  "extends": "@vigilioyonatan/web-mfe-tooling/presets/vite-web.json",
+  "extends": "@vigilio-services/web-mfe-tooling/presets/vite-web.json",
   "contracts": { "package": "@acme/browser-contracts" },
   "openApi": { "path": "../orders-api/openapi.json" }
 }

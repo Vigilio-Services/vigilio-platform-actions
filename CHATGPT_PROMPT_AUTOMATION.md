@@ -21,13 +21,13 @@ plans.
 ## Prerequisites
 
 - Node.js 24 and pnpm.
-- `@vigilioyonatan/prompt-builder@0.6.0` installed in the consumer project.
+- `@vigilio-services/prompt-builder@0.6.2` installed in the consumer project.
 - Python 3.11+.
 - UI dependencies and image assets documented in `chatgpt_docs_automation.py`.
 - A project-local `.npmrc`/token that can read the private GitHub package.
 
 ```bash
-pnpm add -D @vigilioyonatan/prompt-builder@0.6.0
+pnpm add -D @vigilio-services/prompt-builder@0.6.2
 pnpm exec vigilio-prompt --version
 ```
 

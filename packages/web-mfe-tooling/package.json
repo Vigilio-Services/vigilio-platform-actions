@@ -1,5 +1,5 @@
 {
-  "name": "@vigilioyonatan/web-mfe-tooling",
+  "name": "@vigilio-services/web-mfe-tooling",
   "version": "0.2.0",
   "description": "Reusable browser frontend governance and delivery tooling for Vigilio repositories.",
   "type": "module",

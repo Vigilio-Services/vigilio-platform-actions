@@ -1,4 +1,4 @@
-# @vigilioyonatan/devsecops-governance
+# @vigilio-services/devsecops-governance
 
 ## 0.5.1
 

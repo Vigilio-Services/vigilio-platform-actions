@@ -1,4 +1,4 @@
-# @vigilioyonatan/vigilio-skills
+# @vigilio-services/vigilio-skills
 
 ## 0.6.1
 

@@ -97,7 +97,7 @@ export async function syncSkills(options: SkillSyncOptions): Promise<SkillSyncRe
       `${JSON.stringify(
         {
           schemaVersion: 1,
-          package: '@vigilioyonatan/vigilio-skills',
+          package: '@vigilio-services/vigilio-skills',
           version: options.packageVersion,
           files,
         },

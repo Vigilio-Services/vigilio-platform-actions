@@ -1,4 +1,4 @@
-# @vigilioyonatan/web-mfe-tooling
+# @vigilio-services/web-mfe-tooling
 
 ## 0.2.0
 

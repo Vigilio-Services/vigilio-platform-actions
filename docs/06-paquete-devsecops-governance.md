@@ -1,6 +1,6 @@
 # Paquete DevSecOps Governance
 
-`@vigilioyonatan/devsecops-governance` es el paquete npm privado para compartir validadores entre repos.
+`@vigilio-services/devsecops-governance` es el paquete npm organizacional para compartir validadores entre repos.
 
 ## Por que existe
 

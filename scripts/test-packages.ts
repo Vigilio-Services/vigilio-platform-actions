@@ -9,6 +9,7 @@ const repositoryRoot = process.cwd();
 const fixture = await mkdtemp(path.join(os.tmpdir(), 'vigilio-package-consumer-'));
 const tarballs = path.join(fixture, 'tarballs');
 const consumer = path.join(fixture, 'consumer');
+const canonicalPackageScope = '@vigilio-services/';
 const packages = await discoverPublishablePackages();
 
 async function discoverPublishablePackages(): Promise<string[]> {
@@ -25,6 +26,11 @@ async function discoverPublishablePackages(): Promise<string[]> {
         readonly private?: unknown;
       };
       if (manifest.private !== true && typeof manifest.name === 'string' && manifest.name) {
+        if (!manifest.name.startsWith(canonicalPackageScope)) {
+          throw new Error(
+            `Publishable package ${manifest.name} must use the organization scope ${canonicalPackageScope}`,
+          );
+        }
         discovered.push(manifest.name);
       }
     } catch (error) {
@@ -81,7 +87,7 @@ try {
     path.join(consumer, 'web-mfe-tooling.config.json'),
     `${JSON.stringify(
       {
-        extends: '@vigilioyonatan/web-mfe-tooling/presets/vite-web.json',
+        extends: '@vigilio-services/web-mfe-tooling/presets/vite-web.json',
         bundle: { dist: 'dist', maxCssBytes: 1024, maxJsBytes: 1024 },
         publicEnv: {
           file: '.env.example',
@@ -114,7 +120,7 @@ try {
   );
 
   runPnpm(['install', '--ignore-scripts', '--no-frozen-lockfile'], consumer);
-  const installedScope = path.join(consumer, 'node_modules', '@vigilioyonatan');
+  const installedScope = path.join(consumer, 'node_modules', '@vigilio-services');
   await assertPathExists(path.join(installedScope, 'devsecops-evidence', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'node-nest-tooling', 'dist', 'bin', 'cli.js'));
   await assertPathExists(path.join(installedScope, 'prompt-builder', 'dist', 'cli.js'));
