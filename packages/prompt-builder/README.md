@@ -14,7 +14,7 @@ always-auth=true
 ```
 
 ```bash
-pnpm add -D @vigilioyonatan/prompt-builder
+pnpm add -D @vigilio-services/prompt-builder
 pnpm exec vigilio-prompt --help
 ```
 
@@ -23,7 +23,7 @@ Use a token with `read:packages`. In GitHub Actions, grant `packages: read` and 
 For local workspace development, build and execute it without publishing:
 
 ```bash
-pnpm --filter @vigilioyonatan/prompt-builder build
+pnpm --filter @vigilio-services/prompt-builder build
 node packages/prompt-builder/dist/cli.js --help
 ```
 

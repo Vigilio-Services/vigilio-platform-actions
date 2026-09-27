@@ -1,4 +1,4 @@
-# @vigilioyonatan/devsecops-evidence
+# @vigilio-services/devsecops-evidence
 
 CLI TypeScript compilado para generar metricas DORA, procedencia SLSA v1 y evidencia operacional
 reutilizable entre backend, web, mobile y desktop.

@@ -1,4 +1,4 @@
-# @vigilioyonatan/prompt-builder
+# @vigilio-services/prompt-builder
 
 ## 0.6.1
 

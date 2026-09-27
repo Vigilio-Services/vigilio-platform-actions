@@ -59,7 +59,7 @@ Lo comun se reutiliza con composite actions. Lo especifico queda en el workflow 
 - Flujo CI/CD base.
 - Setup Node/pnpm/cache.
 - Politica stage/branch.
-- Paquete npm `@vigilioyonatan/devsecops-governance`.
+- Paquete npm `@vigilio-services/devsecops-governance`.
 - Buenas practicas de deploy por stack.
 - Validaciones del propio repo de plataforma.
 

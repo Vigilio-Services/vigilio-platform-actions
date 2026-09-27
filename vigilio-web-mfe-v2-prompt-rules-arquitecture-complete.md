@@ -855,7 +855,7 @@ Reglas de cutover:
 3. si existen simultáneamente dos Prompt Builders candidatos a canonical owner, fallar con `DUAL_PROMPT_BUILDER_SOURCE` hasta resolver ownership;
 4. mientras `{{FACTORY_CONTROL_PLANE}}/skills/` siga siendo el source real, no afirmar que Agent Plugins ya es canonical;
 5. cuando `{{FACTORY_CONTROL_PLANE}}/agent-plugins/*/skills/` tenga manifests válidos, tests/conformance y consumidores migrados, `{{FACTORY_CONTROL_PLANE}}/skills/` pasa a legacy/compat y se retira en un change posterior;
-6. `@vigilioyonatan/vigilio-skills` puede mantenerse como artefacto generado de compatibilidad, pero no como segunda fuente manual;
+6. `@vigilio-services/vigilio-skills` puede mantenerse como artefacto generado de compatibilidad, pero no como segunda fuente manual;
 7. OpenSpec-managed `openspec-*` nunca se reempaqueta ni se sobreescribe desde custom plugins.
 
 ### 2.0.2 Agent Plugins: boundary exacto
@@ -3481,7 +3481,7 @@ El orden textual del YAML y el nombre de las carpetas no definen el orden de con
 
 # 16. Prompt Builder
 
-`{{PACKAGE_MANAGER}} context:*` es tooling PROPIO DE LA SOFTWARE FACTORY. Su owner ejecutable es el paquete versionado `{{FACTORY_CONTROL_PLANE}}/packages/prompt-builder/`, publicado como `@vigilioyonatan/prompt-builder`; los consumidores usan el binario `vigilio-prompt` y no copian scripts internos.
+`{{PACKAGE_MANAGER}} context:*` es tooling PROPIO DE LA SOFTWARE FACTORY. Su owner ejecutable es el paquete versionado `{{FACTORY_CONTROL_PLANE}}/packages/prompt-builder/`, publicado como `@vigilio-services/prompt-builder`; los consumidores usan el binario `vigilio-prompt` y no copian scripts internos.
 
 NO es un comando oficial de OpenSpec.
 
@@ -3525,7 +3525,7 @@ Aliases opcionales mínimos del `package.json` consumidor; resuelven el binario 
 
 No declarar `context:conflicts`, `context:evidence` o un Execution Runner como implementados hasta que exista código y tests para esos comandos. `validate-references` sí pertenece al contrato ejecutable del paquete que materializa esta revisión.
 
-**Compatibilidad de migración:** si un consumidor todavía ejecuta `tools/prompt-builder`, conservarlo solo mientras migra al paquete publicado. Si el path local y `@vigilioyonatan/prompt-builder` están activos simultáneamente, bloquear hasta establecer un único owner y eliminar el drift verificablemente.
+**Compatibilidad de migración:** si un consumidor todavía ejecuta `tools/prompt-builder`, conservarlo solo mientras migra al paquete publicado. Si el path local y `@vigilio-services/prompt-builder` están activos simultáneamente, bloquear hasta establecer un único owner y eliminar el drift verificablemente.
 
 ---
 
@@ -4316,7 +4316,7 @@ skills-src/
 
 CURRENT Vigilio posible durante migración:
 {{FACTORY_CONTROL_PLANE}}/skills/
-→ @vigilioyonatan/vigilio-skills
+→ @vigilio-services/vigilio-skills
 → sync por profile
 
 TARGET Vigilio con Agent Plugins:
@@ -4327,7 +4327,7 @@ TARGET Vigilio con Agent Plugins:
 
 No crear `skills-src/` local paralelo en `{{BACKEND}}` o `{{FRONTEND}}` cuando `{{FACTORY_CONTROL_PLANE}}` ya es owner. No mantener `{{FACTORY_CONTROL_PLANE}}/skills/` y `{{FACTORY_CONTROL_PLANE}}/agent-plugins/*/skills/` como dos fuentes manuales después del cutover. `pnpm skills:check`/plugin conformance debe detectar drift mediante manifest/checksum.
 
-`@vigilioyonatan/vigilio-skills` puede permanecer como paquete **generado de compatibilidad** durante la transición; una vez Agent Plugins sea canonical, no se edita manualmente como una segunda implementación.
+`@vigilio-services/vigilio-skills` puede permanecer como paquete **generado de compatibilidad** durante la transición; una vez Agent Plugins sea canonical, no se edita manualmente como una segunda implementación.
 
 No colocar código de negocio en una skill.
 
@@ -6765,7 +6765,7 @@ Antes de dar por terminado el bootstrap de este sistema, verificar:
 [ ] custom factory policy kept outside plugin.json root fields
 [ ] agent-capabilities/catalog.yaml has no duplicate logical owners
 [ ] no two custom skill canonical sources after cutover
-[ ] @vigilioyonatan/vigilio-skills is source OR generated compat, never both simultaneously
+[ ] @vigilio-services/vigilio-skills is source OR generated compat, never both simultaneously
 [ ] plugin/adapters contain no embedded secrets
 [ ] MCP absent unless real capability requires it
 ```

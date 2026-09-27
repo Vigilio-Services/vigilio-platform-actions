@@ -1,5 +1,5 @@
 {
-  "name": "@vigilioyonatan/vigilio-skills",
+  "name": "@vigilio-services/vigilio-skills",
   "version": "0.6.1",
   "description": "Versioned AI skills with explicit, conflict-safe synchronization.",
   "type": "module",

@@ -1,4 +1,4 @@
-# @vigilioyonatan/node-nest-tooling
+# @vigilio-services/node-nest-tooling
 
 ## 0.3.0
 

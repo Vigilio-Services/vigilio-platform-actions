@@ -16,7 +16,7 @@ No abrir issues publicos con secretos, credenciales, tokens, PoC explotable o de
 
 - Reusable workflows.
 - Composite actions.
-- Paquete `@vigilioyonatan/devsecops-governance`.
+- Paquete `@vigilio-services/devsecops-governance`.
 - Politicas de branch/stage, PR, commit y Jira.
 
 ## Response

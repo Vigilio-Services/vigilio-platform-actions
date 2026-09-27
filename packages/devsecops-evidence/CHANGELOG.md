@@ -1,4 +1,4 @@
-# @vigilioyonatan/devsecops-evidence
+# @vigilio-services/devsecops-evidence
 
 ## 0.3.0
 
