@@ -1,5 +1,11 @@
 # @vigilio-services/vigilio-skills
 
+## 0.6.2
+
+### Patch Changes
+
+- 1ff2a65: Move the platform packages to the organization-owned `@vigilio-services` namespace so the repository-scoped `GITHUB_TOKEN` can publish them without a broad personal access token. Existing `@vigilioyonatan` releases remain available during consumer migration.
+
 ## 0.6.1
 
 ### Patch Changes

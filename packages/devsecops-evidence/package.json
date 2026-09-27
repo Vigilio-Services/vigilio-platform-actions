@@ -1,6 +1,6 @@
 {
   "name": "@vigilio-services/devsecops-evidence",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Cross-stack delivery metrics, SLSA provenance, and operational evidence tooling.",
   "type": "module",
   "private": false,
