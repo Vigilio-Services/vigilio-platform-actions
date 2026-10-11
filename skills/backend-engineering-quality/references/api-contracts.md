@@ -40,6 +40,46 @@ versionado y migración coordinada.
 - Ejecutar lint, bundle/export y diff breaking con las herramientas y severidades del repositorio.
 - Tratar Swagger o Scalar como representaciones del contrato, no como evidencia de funcionamiento.
 
+### Ejemplo Mínimo De Documentación OpenAPI
+
+El contrato declara comportamiento observable y evita ejemplos con datos reales:
+
+```yaml
+paths:
+  /tenants/{tenantId}/settlements:
+    post:
+      operationId: createSettlement
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: tenantId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSettlementRequest' }
+      responses:
+        '201':
+          description: Liquidación creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettlementResponse' }
+        '409':
+          description: La referencia idempotente ya existe
+        '422':
+          description: El importe o período viola una regla de negocio
+```
+
+El runtime debe implementar exactamente ese método, path, auth, required/nullability, status y schemas.
+Si el repositorio genera OpenAPI desde código, documentar en los decoradores/DTOs propietarios y validar
+el artefacto exportado; si contract-first es la autoridad, generar o adaptar el runtime desde ese owner.
+
+Evitar descripciones vacías (`"error"`), respuestas genéricas copiadas, ejemplos con PII, schemas inline
+duplicados y status que el controller nunca devuelve.
+
 ## Fronteras, Errores Y Observabilidad
 
 - Validar todo input no confiable al entrar; después trabajar con datos parseados y tipados.

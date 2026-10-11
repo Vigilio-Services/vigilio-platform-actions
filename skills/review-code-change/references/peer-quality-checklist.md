@@ -47,6 +47,40 @@ No agregar:
 - secretos, payloads reales o PII;
 - `TODO` sin razón accionable; si necesita seguimiento, incluir owner o ticket según la convención real.
 
+### Ejemplos De Comentarios Senior
+
+Bien — explica decisión, invariante y referencia durable sin repetir el código:
+
+```ts
+// El proveedor puede reenviar el mismo evento. La clave externa evita duplicar el abono.
+// Ver ADR-014 para la ventana de retención y la estrategia de replay.
+await ledger.applyOnce(event.externalId, event.amount);
+```
+
+```ts
+/**
+ * Mantiene el importe como decimal textual para no perder precisión entre JSON y la base de datos.
+ * Precondición: el valor ya fue validado por el schema de entrada.
+ */
+function toSettlementAmount(value: string): SettlementAmount {
+  return SettlementAmount.fromDecimal(value);
+}
+```
+
+Mal — repite la instrucción, agrega historial manual o deja una deuda sin owner:
+
+```ts
+// Incrementa el contador.
+attempts += 1;
+
+// Juan Perez - 11/10/2026 - se cambió este método.
+// TODO: arreglar luego.
+```
+
+Para APIs públicas, documentar semántica, restricciones, seguridad y errores en el contrato ejecutable;
+no trasladar una especificación completa a comentarios del controller. Para migraciones, documentar
+forward, verificación y recovery en su owner operativo, no como un bloque histórico pegado al SQL.
+
 ## Excepciones Y Flujo
 
 - Nunca dejar `catch` vacío ni suprimir silenciosamente un fallo.
@@ -69,8 +103,8 @@ No agregar:
 - límites rígidos de 100 líneas, 120 columnas o tres parámetros;
 - `try/catch` en todos los métodos;
 - `default` obligatorio en todo `switch`;
-- `COUNT(1)` siempre superior a `COUNT(*)`;
-- `UNION ALL` siempre superior a `UNION`;
+- dogmas de rendimiento SQL sin semántica ni plan; el criterio detallado pertenece a la referencia
+  `data-sql.md` de `backend-engineering-quality`;
 - cabeceras de autor/fecha/ticket dentro de cada fragmento;
 - porcentajes de cobertura o listas fijas de status HTTP sin autoridad del proyecto.
 

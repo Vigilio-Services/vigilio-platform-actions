@@ -28,6 +28,29 @@
   operación destruye información; usar backup, expand-contract o forward-fix probado.
 - Mantener seeders idempotentes y separados de migraciones estructurales cuando el stack lo soporte.
 
+### Ejemplo De Plan De Migración Documentado
+
+```markdown
+Cambio: agregar `external_reference` única a settlements.
+
+Forward:
+1. agregar columna nullable e índice no bloqueante;
+2. desplegar escritura dual compatible;
+3. backfill por lotes con checkpoint;
+4. verificar nulos, duplicados, locks y latencia;
+5. activar unique/not-null y retirar compatibilidad en otro release.
+
+Recovery:
+- antes de contraer: desactivar escritura dual y retirar índice/columna nueva;
+- después de contraer: restaurar desde backup o aplicar forward-fix; no prometer recuperar datos
+  destruidos con un `down` ficticio.
+
+Evidencia: comandos + exit codes, conteos pre/post, duración, plan de ejecución y owner operativo.
+```
+
+La migración real usa la sintaxis y tooling del stack. El documento explica orden, compatibilidad,
+verificación y recuperación; no incluye credenciales, datos reales ni afirmaciones sin ensayo.
+
 ## Evidencia
 
 - Ejecutar migración y rollback/recovery en un entorno desechable con datos representativos.

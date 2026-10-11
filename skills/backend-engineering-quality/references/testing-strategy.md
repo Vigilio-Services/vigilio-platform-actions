@@ -33,6 +33,20 @@ Colocar cada escenario en la capa más barata que pruebe el riesgo real.
 - Ejecutar primero el caso afectado y después los gates de la capa. Un mock verde no reemplaza contrato,
   integración o E2E requeridos.
 
+### Ejemplo De Escenarios Sin Duplicación
+
+Para crear una liquidación idempotente:
+
+| Riesgo | Capa más barata suficiente | Evidencia |
+| --- | --- | --- |
+| importe inválido | unit del schema/validator | rechaza el valor exacto y devuelve error tipado |
+| referencia repetida | integration con DB real | unique constraint y mapping a conflicto público |
+| proveedor caído | unit del servicio con port mockeado | no confirma estado y conserva causa segura |
+| contrato HTTP | E2E/contract | request `201`; duplicado `409`; auth ausente según contrato |
+
+No repetir el mismo happy path en las cuatro capas. Cada test tiene un riesgo, un límite y una salida
+observable; los detalles del runner y fixtures pertenecen a la skill del stack.
+
 ## Calidad De La Evidencia
 
 - Respetar thresholds y comandos del repositorio; no inventar porcentajes universales.
