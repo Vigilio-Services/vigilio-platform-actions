@@ -114,9 +114,17 @@ async function validateFrontend(input: {
     warnings.push(message);
     return { materialized: false, warnings };
   }
-  if (input.frontend.app_path) resolveInside(root, input.frontend.app_path, 'frontend app_path');
+  const appRoot = input.frontend.app_path
+    ? resolveInside(root, input.frontend.app_path, 'frontend app_path')
+    : root;
   if (!materialized) {
     const message = `TARGET_NOT_MATERIALIZED: frontend target missing: ${input.frontend.root}`;
+    if (input.mode === 'strict') throw new Error(message);
+    warnings.push(message);
+    return { materialized: false, warnings };
+  }
+  if (!(await exists(appRoot))) {
+    const message = `Frontend app path missing: ${appRoot}`;
     if (input.mode === 'strict') throw new Error(message);
     warnings.push(message);
     return { materialized: false, warnings };
@@ -153,7 +161,11 @@ async function validateFrontend(input: {
 export async function resolveTargetProfile(
   projectRoot: string,
   profileId?: string,
-  options: { mode?: TargetValidationMode } = {},
+  options: {
+    mode?: TargetValidationMode;
+    workspaceRoot?: string;
+    workspaceRootLabel?: string;
+  } = {},
 ): Promise<ResolvedTargetProfile | undefined> {
   if (!profileId) return undefined;
   const configPath = path.resolve(projectRoot, 'docs/rules/target-profiles.yaml');
@@ -185,20 +197,23 @@ export async function resolveTargetProfile(
     throw new Error(`Invalid contract package for ${profileId}`);
 
   const mode = options.mode ?? 'strict';
+  const implementationRoot = path.resolve(options.workspaceRoot ?? projectRoot);
+  const implementationRootLabel = options.workspaceRootLabel ?? '.';
   const backend = await validateBackend({
-    projectRoot,
+    projectRoot: implementationRoot,
     backend: profile.backend,
     contractPackage: profile.contract.package,
     mode,
   });
   const frontend = await validateFrontend({
-    projectRoot,
+    projectRoot: implementationRoot,
     frontend: profile.frontend,
     contractPackage: profile.contract.package,
     mode,
   });
   return {
     id: profileId,
+    implementation_root: implementationRootLabel,
     ...profile,
     forbidden_paths: [...new Set(profile.forbidden_paths ?? [])],
     materialized: {
@@ -213,6 +228,7 @@ export function formatTargetProfile(profile?: ResolvedTargetProfile) {
   if (!profile) return '- none declared; generic pack';
   return [
     `- profile: ${profile.id}`,
+    `- implementation workspace: ${profile.implementation_root}`,
     `- backend: ${profile.backend.repository} (${profile.backend.state}; root=${profile.backend.root})`,
     `- frontend: ${profile.frontend.repository} (${profile.frontend.state}; root=${profile.frontend.root}; app=${profile.frontend.app_path ?? 'resolved-from-existing-target'})`,
     `- contract: ${profile.contract.package} (${profile.contract.owner} -> ${profile.contract.consumer})`,

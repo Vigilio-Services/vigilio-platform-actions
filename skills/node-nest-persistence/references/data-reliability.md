@@ -36,3 +36,4 @@
 - Updates usan precondicion/version cuando hay lost-update risk.
 - Reintentos no duplican efectos.
 - Transaccion incluye estado y outbox cuando ambos son atomicos.
+

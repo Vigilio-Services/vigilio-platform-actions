@@ -5,12 +5,21 @@ import { activeYaml, validateCheckoutCredentials, validatePinnedUses } from './y
 const requiredReusableWorkflows = new Set([
   'shared-backend-node-nest-ci.yml',
   'shared-backend-node-nest-deploy-cdk.yml',
+  'shared-container-build-push.yml',
   'shared-web-mfe-preact-ci.yml',
   'shared-web-mfe-deploy-s3-cloudfront.yml',
   'shared-mobile-expo-ci.yml',
   'shared-mobile-expo-eas-build.yml',
+  'shared-mobile-expo-security.yml',
   'shared-desktop-tauri-ci.yml',
   'shared-desktop-tauri-build.yml',
+  'shared-dora-metrics.yml',
+  'shared-gitops-promote.yml',
+  'shared-governance-audit.yml',
+  'shared-helm-kubernetes-ci.yml',
+  'shared-terraform-apply.yml',
+  'shared-terraform-drift.yml',
+  'shared-terraform-plan.yml',
 ]);
 
 export type WorkflowProfile = 'consumer' | 'platform';
@@ -89,7 +98,7 @@ function usesOidcCapability(content: string, workflowsDir: string): boolean {
   }
 
   if (
-    /\buses:\s*VigilioYonatan\/vigilio-platform-actions\/\.github\/workflows\/(shared-backend-node-nest-ci|shared-container-build-push|shared-terraform-plan|shared-terraform-apply|shared-terraform-drift)\.yml@[a-f0-9]{40}\b/.test(
+    /\buses:\s*(?:VigilioYonatan|Vigilio-Services)\/vigilio-platform-actions\/\.github\/workflows\/(shared-backend-node-nest-ci|shared-container-build-push|shared-terraform-plan|shared-terraform-apply|shared-terraform-drift)\.yml@[a-f0-9]{40}\b/.test(
       content,
     )
   ) {

@@ -114,6 +114,10 @@ Cuando exista un contrato de orquestación, mapear sin alterar sus marcadores:
 
 ## Entrega
 
+Antes de emitir hallazgos de calidad, leer y aplicar
+[references/peer-quality-checklist.md](references/peer-quality-checklist.md). Sus reglas son criterios de
+riesgo y mantenibilidad; las convenciones ejecutables del repositorio siguen teniendo precedencia.
+
 Antes de responder, leer y usar [references/review-format.md](references/review-format.md). Ordenar los
 hallazgos por severidad y luego por archivo/línea. Si no hay hallazgos, decirlo explícitamente y
 mantener una sección breve de riesgos residuales o evidencia no disponible.

@@ -97,6 +97,11 @@ pack_version: 3
   );
   await write(
     root,
+    'openspec/changes/recalculate-august/execution-memory.md',
+    '# Execution Memory\n\nTASK-001 pending with canonical evidence.\n',
+  );
+  await write(
+    root,
     'openspec/changes/recalculate-august/specs/settlement-recalculation/spec.md',
     'DUPLICATED LOCAL DELTA MUST NOT BE INLINED.\n',
   );
@@ -110,6 +115,23 @@ pack_version: 3
 }
 
 describe('canonical OpenSpec references', () => {
+  it('keeps repairable gates and reusable templates out of terminal BLOCKED', async () => {
+    const apply = await readFile(path.resolve('templates/apply.md'), 'utf8');
+    const review = await readFile(path.resolve('templates/review.md'), 'utf8');
+    const fix = await readFile(path.resolve('templates/fix.md'), 'utf8');
+    const propose = await readFile(path.resolve('templates/propose.md'), 'utf8');
+
+    for (const template of [apply, review, fix]) {
+      assert.match(template, /allowed paths/i);
+      assert.match(template, /hardcod/i);
+      assert.match(template, /template(?: director|\/shared folder)/i);
+    }
+    assert.match(apply, /failures are implementation work, not terminal blockers/i);
+    assert.match(review, /repair it in the same step/i);
+    assert.match(fix, /rerun all affected gates until green/i);
+    assert.match(propose, /not yet copied\/used in the project.*blocker/i);
+  });
+
   it('uses docs/rules as authority and records reproducible reference evidence', async () => {
     const root = await createFixture();
     try {
@@ -138,6 +160,9 @@ pack_version: 1
       assert.match(prepared.prompt, /canonical-reference:capability:settlement-recalculation/);
       assert.match(prepared.prompt, /canonical-reference:change:recalculate-august/);
       assert.match(prepared.prompt, /Execute the canonical settlement change for August/);
+      assert.match(prepared.prompt, /TASK-001 pending with canonical evidence/);
+      assert.match(prepared.prompt, /Read each applicable `SKILL\.md` completely/);
+      assert.match(prepared.prompt, /Base Code Memory.*never canonical authority/);
       assert.doesNotMatch(prepared.prompt, /DUPLICATED LOCAL BUSINESS SPEC/);
       assert.doesNotMatch(prepared.prompt, /DUPLICATED LOCAL DELTA/);
       assert.equal(prepared.canonicalAuthority?.type, 'docs-rules');

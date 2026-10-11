@@ -48,6 +48,11 @@ on:
         type: string
         required: false
         default: v0.72.0
+      upload-sarif:
+        description: Publish SARIF to GitHub code scanning; scanning remains blocking when disabled.
+        type: boolean
+        required: false
+        default: true
     secrets:
       AWS_ROLE_ARN:
         required: false
@@ -130,6 +135,19 @@ jobs:
       - uses: aws-actions/amazon-ecr-login@d63b14614fe5d7fc5e5e52c523dea4e876816cc4 # v2.0.1
         if: inputs.push
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: Derive isolated BuildKit cache scope
+        id: build-cache
+        shell: bash
+        env:
+          BUILD_CONTEXT: ${{ inputs.context }}
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          set -euo pipefail
+          material="${IMAGE_REPOSITORY}|${BUILD_CONTEXT}|${DOCKERFILE}|${PLATFORMS}"
+          digest="$(printf '%s' "${material}" | sha256sum | cut -c1-24)"
+          echo "scope=oci-${digest}" >> "${GITHUB_OUTPUT}"
       - uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5.8.0
         id: metadata
         with:
@@ -149,8 +167,8 @@ jobs:
           load: ${{ !inputs.push && !contains(inputs.platforms, ',') }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ steps.build-cache.outputs.scope }}
+          cache-to: ${{ (github.event_name == 'push' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch') && format('type=gha,mode=max,scope={0}', steps.build-cache.outputs.scope) || '' }}
           provenance: mode=max
           sbom: true
           secrets: |
@@ -187,7 +205,7 @@ jobs:
           IMAGE_REPOSITORY: ${{ inputs.image-repository }}
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
+        if: ${{ always() && inputs.upload-sarif && (inputs.push || !contains(inputs.platforms, ',')) && hashFiles('trivy-image.sarif') != '' }}
         with:
           sarif_file: trivy-image.sarif
           category: trivy-container

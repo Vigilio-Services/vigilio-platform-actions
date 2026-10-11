@@ -56,6 +56,7 @@ profiles:
       dependencies: { '@vigilioyonatan/bus-v2-contracts': '2026.6.0' },
     }),
   );
+  await write(root, 'apps/web-mfe-v2/apps/salud/backoffice/.keep', 'materialized\n');
   await write(
     root,
     'docs/rules/registry.yaml',

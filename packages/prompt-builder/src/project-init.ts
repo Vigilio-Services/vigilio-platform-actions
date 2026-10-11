@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,13 +33,20 @@ async function exists(file: string) {
   }
 }
 
-async function writeIfMissing(file: string, content: string, created: string[], skipped: string[]) {
+async function writeIfMissing(
+  file: string,
+  content: string,
+  created: string[],
+  skipped: string[],
+  mode?: number,
+) {
   await mkdir(path.dirname(file), { recursive: true });
   if (await exists(file)) {
     skipped.push(file);
     return;
   }
-  await writeFile(file, content, 'utf8');
+  await writeFile(file, content, { encoding: 'utf8', ...(mode ? { mode } : {}) });
+  if (mode) await chmod(file, mode);
   created.push(file);
 }
 
@@ -79,6 +86,7 @@ async function loadTemplate(name: string) {
 export async function initializeProject(input: {
   projectRoot: string;
   architectureFile: string;
+  implementationRoot?: string | undefined;
   mode: ProjectMode;
   briefFile?: string | undefined;
   outputDirectory?: string | undefined;
@@ -96,11 +104,15 @@ export async function initializeProject(input: {
   const updated: string[] = [];
 
   const architectureRelative = portableRelative(projectRoot, architectureSource);
+  const implementationRoot = path.resolve(projectRoot, input.implementationRoot ?? '.');
+  await access(implementationRoot);
+  const implementationRootRelative = portableRelative(projectRoot, implementationRoot) || '.';
   const baseline = [
     'schema_version: 1',
     `project_mode: ${input.mode}`,
     `architecture_source: ${JSON.stringify(architectureRelative)}`,
     `architecture_sha256: ${sha256(architecture)}`,
+    `implementation_root: ${JSON.stringify(implementationRootRelative)}`,
     '',
   ].join('\n');
   await writeControlledBaseline({
@@ -146,6 +158,7 @@ export async function initializeProject(input: {
       ['proposal.md', 'migration-proposal.md'],
       ['design.md', 'migration-design.md'],
       ['tasks.md', 'migration-tasks.md'],
+      ['execution-memory.md', 'migration-execution-memory.md'],
     ] as const) {
       await writeIfMissing(
         path.join(migrationRoot, file),
@@ -166,6 +179,25 @@ export async function initializeProject(input: {
   await writeIfMissing(
     path.resolve(projectRoot, 'docs/rules/registry.yaml'),
     'version: 1\npacks: {}\n',
+    created,
+    skipped,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-env.sh'),
+    await loadTemplate('preflight-env.sh'),
+    created,
+    skipped,
+    0o755,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-env.ps1'),
+    await loadTemplate('preflight-env.ps1'),
+    created,
+    skipped,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-services.env.example'),
+    await loadTemplate('preflight-services.env.example'),
     created,
     skipped,
   );

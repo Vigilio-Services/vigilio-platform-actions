@@ -56,6 +56,7 @@ export async function writeLockfile(input: {
             source: input.prepared.factoryBaseline.architecture.source,
             sha256: sha256(input.prepared.factoryBaseline.architecture.content),
           },
+          implementation_root: input.prepared.factoryBaseline.implementationRootSource,
         }
       : null,
     estimated_tokens: input.prepared.estimatedTokens,

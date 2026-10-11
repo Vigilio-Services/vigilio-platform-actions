@@ -1,0 +1,4 @@
+interface:
+  display_name: "DevSecOps GitOps Delivery"
+  short_description: "Design reusable secure delivery pipelines"
+  default_prompt: "Use $devsecops-gitops-delivery to design or review reusable CI/CD and GitOps delivery."

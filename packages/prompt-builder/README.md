@@ -48,6 +48,11 @@ pnpm exec vigilio-prompt init-project \
   --architecture master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md
 ```
 
+If canonical docs and code intentionally live in different workspaces, add
+`--implementation-root <path>` during `init-project`. The reviewed relative path is stored in
+`factory-baseline.yaml`; target profiles are validated there while generated `allowed_paths` remain
+relative to the implementation workspace. This avoids copying repositories or creating junctions.
+
 The command creates, when missing:
 
 - `docs/rules/project-brief.md`;
@@ -60,10 +65,27 @@ The command creates, when missing:
   `canonical-reference.yaml` is added only after discovery registers the owning prompt pack, so
   `validate-references` never points at an invented registry entry;
 - `docs/rules/factory-baseline.yaml` with the architecture source and SHA-256;
+- `scripts/preflight-env.sh` and `scripts/preflight-env.ps1`, plus a non-secret service-policy
+  example. The ChatGPT runners execute the platform-appropriate script before Prompt Builder/UI
+  work and fail closed when a required database, cache, container runtime, process or endpoint is
+  unavailable;
 - `generated/prompts/bootstrap/0000-project-discovery.md` plus its lock.
 
 Rerunning initialization is idempotent. If the architecture file or project mode changes, the
 command fails with `FACTORY_BASELINE_MISMATCH` instead of silently accepting a new foundation.
+
+Copy `scripts/preflight-services.env.example` to `scripts/preflight-services.env`, declare only
+adopted dependencies, and keep credentials in the named environment variables. `true` means
+required, `false` means not adopted and `auto` means required only when its URL environment
+variable is present. Custom TCP, HTTP and process checks use semicolon-separated `name=target`
+entries; logs print names but never connection strings or secret values.
+
+Phase prompts apply a strict remediation contract: reproducible build, lint, type, test, contract
+or local-migration failures must be diagnosed, fixed and rerun inside the current step without
+hardcoding, skipped tests or weakened assertions. Terminal `BLOCKED` is reserved for missing
+material authority/access, unavailable external dependencies after preflight, unauthorized
+destructive/production actions or required writes outside scope. User-referenced template folders
+are read-only reusable inputs—including `shared` assets—not evidence that implementation is missing.
 After reviewing the impact, make the baseline change explicit:
 
 ```bash
@@ -256,8 +278,14 @@ pack_version: 3
 When the file exists, Prompt Builder validates that the referenced pack is registered, belongs to
 the resolved inheritance and has the exact declared version. The corresponding local `spec.md` or
 delta spec is not inlined; canonical documents are resolved from the pack. Change lifecycle files
-(`proposal.md`, `design.md`, `tasks.md`) remain local and may cite stable requirement IDs without
+(`proposal.md`, `design.md`, `tasks.md`, `execution-memory.md`) remain local and may cite stable requirement IDs without
 copying their bodies.
+
+`tasks.md` is the durable stable-ID checklist for the change. `execution-memory.md` is a bounded
+cross-chat handoff containing decisions/invariants, skills and required references actually read,
+commands with exit codes, evidence/commit references, risks and remaining work. PROPOSE initializes
+them, APPLY checks tasks only after objective evidence, and REVIEW audits/reopens unsupported claims.
+Base Code Memory/code indexes may accelerate lookup but never replace current files or canonical authority.
 
 Validate all active capability/change references in CI (historical OpenSpec archives remain immutable
 and are intentionally not revalidated against the current pack version):
@@ -341,7 +369,7 @@ executed as evidence.
 4. inheritance
 5. required and optional documents
 6. canonical OpenSpec references to `docs/rules`, or legacy local capability specs when no reference exists
-7. active change reference plus proposal/design/tasks, or legacy delta specs when no reference exists
+7. active change reference plus proposal/design/tasks/execution-memory, or legacy delta specs when no reference exists
 8. skills, required quality gates, activation gates and activation requirements
 9. target profile + contract owner/package/consumer gate
 10. allowed and forbidden scopes, including protected current-pair paths

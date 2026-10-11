@@ -32,6 +32,7 @@ const { positionals, values } = parseArgs({
     'rules-root': { type: 'string' },
     'backup-dir': { type: 'string' },
     architecture: { type: 'string' },
+    'implementation-root': { type: 'string' },
     mode: { type: 'string' },
     'brief-file': { type: 'string' },
     'lock-file': { type: 'string' },
@@ -76,6 +77,7 @@ Options:
   --rules-root <path>            Rules directory (default: docs/rules)
   --backup-dir <path>            Backup directory used by migrate --write
   --architecture <path>          Factory architecture master used by init-project
+  --implementation-root <path>   Code workspace root; may differ from the canonical docs root
   --mode <mode>                   greenfield or migration (default: greenfield)
   --brief-file <path>             Existing project brief used by init-project
   --lock-file <path>              Prompt lock checked by verify-lock
@@ -155,6 +157,7 @@ if (command === 'init-project') {
     architectureFile:
       values.architecture ??
       'master_prompt_software_factory_openspec_agent_plugins_runner_2026_UPDATED_20260823.md',
+    implementationRoot: values['implementation-root'],
     mode: parseProjectMode(values.mode),
     briefFile: values['brief-file'],
     outputDirectory: values['output-dir'],

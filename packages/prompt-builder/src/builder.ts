@@ -66,7 +66,11 @@ export async function preparePrompt(input: {
   const targetProfile = await resolveTargetProfile(
     input.projectRoot,
     resolveTargetProfileId(manifests),
-    { mode: input.phase === 'explore' || input.phase === 'propose' ? 'discovery' : 'strict' },
+    {
+      mode: input.phase === 'explore' || input.phase === 'propose' ? 'discovery' : 'strict',
+      workspaceRoot: factoryBaseline?.implementationRoot ?? input.projectRoot,
+      workspaceRootLabel: factoryBaseline?.implementationRootSource ?? '.',
+    },
   );
   const forbiddenPaths = [
     ...new Set([...scopes.forbidden, ...(targetProfile?.forbidden_paths ?? [])]),

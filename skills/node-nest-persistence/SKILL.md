@@ -16,6 +16,9 @@ afirmar cumplimiento ni cerrar el gate que dependa de ella.
 
 Priorizar schemas, repositories, migrations y tests ejecutables sobre `docs/`. Tratar documentos de cache/eventos como diseño hasta confirmar que exista adapter runtime en `src/`.
 
+Resolver y leer completa `backend-engineering-quality`, incluida su referencia SQL/datos. Esta skill
+añade las decisiones específicas de PostgreSQL, Drizzle, cache, outbox e inbox.
+
 ## Persistencia
 
 1. Partir de invariantes del aggregate, no de la tabla.
@@ -29,10 +32,7 @@ Priorizar schemas, repositories, migrations y tests ejecutables sobre `docs/`. T
 ## Queries
 
 - Usar operadores Drizzle y parametros; no concatenar SQL de usuario.
-- Aplicar limites maximos, orden determinista y paginacion compartida.
-- Filtrar tenant/ownership desde application y reforzarlo en repository cuando aplique.
 - Mantener decimales exactos como string y usar el custom type existente.
-- Evitar N+1, selects `*` y carga de columnas sensibles innecesarias.
 
 ## Cache
 
@@ -48,8 +48,6 @@ Agregar cache solo con evidencia de lectura repetida, costo o SLO. El proyecto d
 
 ## Migraciones Y Eventos
 
-- Usar expand-contract: expandir, desplegar compatibilidad, backfill, verificar y contraer despues.
-- No renombrar/eliminar columnas usadas en el mismo release.
 - Hacer seeders idempotentes y separados de migrations estructurales.
 - Usar outbox para DB + evento; no publicar antes del commit.
 - Usar inbox/idempotency keys para reintentos y deduplicacion.

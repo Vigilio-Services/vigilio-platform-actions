@@ -1,0 +1,4 @@
+interface:
+  display_name: "Container Supply Chain"
+  short_description: "Build and publish secure immutable OCI images"
+  default_prompt: "Use $container-supply-chain to design or review a secure reusable OCI image pipeline."

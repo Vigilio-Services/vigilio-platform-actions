@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terraform AWS Platform"
+  short_description: "Build reusable secure AWS infrastructure"
+  default_prompt: "Use $terraform-aws-platform to design or review reusable Terraform infrastructure on AWS."

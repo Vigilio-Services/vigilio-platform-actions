@@ -7,7 +7,11 @@ import type { LoadedDocument, OpenSpecContext, Phase, ResolvedTargetProfile } fr
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export async function loadTemplate(phase: Phase) {
-  return readFile(path.join(TOOL_ROOT, 'templates', `${phase}.md`), 'utf8');
+  const [template, seniorProtocol] = await Promise.all([
+    readFile(path.join(TOOL_ROOT, 'templates', `${phase}.md`), 'utf8'),
+    readFile(path.join(TOOL_ROOT, 'templates', 'senior-execution-protocol.md'), 'utf8'),
+  ]);
+  return template.replaceAll('{{SENIOR_EXECUTION_PROTOCOL}}', seniorProtocol.trim());
 }
 
 export function assemble(input: {

@@ -84,6 +84,11 @@ on:
         type: boolean
         required: false
         default: true
+      publish-security-sarif:
+        description: Publish SARIF to GitHub code scanning; scanning remains blocking when disabled.
+        type: boolean
+        required: false
+        default: true
       attest-artifact:
         type: boolean
         required: false
@@ -603,13 +608,31 @@ jobs:
       - if: inputs.has-cdk
         run: pnpm cdk:synth
       - uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-      - name: Semgrep
+      - name: Restore Semgrep download cache
+        id: semgrep-pip-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/pip
+          key: semgrep-${{ runner.os }}-${{ runner.arch }}-${{ inputs.semgrep-version }}
+      - name: Install pinned Semgrep
         shell: bash
         run: |
-          python -m pip install "semgrep==${SEMGREP_VERSION}"
-          semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif
+          python -m pip install --disable-pip-version-check --no-input "semgrep==${SEMGREP_VERSION}"
         env:
           SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+      - name: Save verified Semgrep download cache
+        if: >-
+          success() &&
+          steps.semgrep-pip-cache.outputs.cache-hit != 'true' &&
+          (github.event_name == 'push' || github.event_name == 'merge_group' ||
+          github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch')
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/pip
+          key: semgrep-${{ runner.os }}-${{ runner.arch }}-${{ inputs.semgrep-version }}
+      - name: Semgrep blocking scan
+        shell: bash
+        run: semgrep scan --config p/owasp-top-ten --sarif --output semgrep.sarif --error
       - name: Trivy filesystem
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: success() || failure()
@@ -620,7 +643,7 @@ jobs:
           format: sarif
           output: ${{ inputs.working-directory }}/trivy-fs.sarif
           severity: HIGH,CRITICAL
-          exit-code: 0
+          exit-code: 1
       - name: Trivy synthesized IaC
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: (success() || failure()) && inputs.has-cdk
@@ -631,19 +654,19 @@ jobs:
           format: sarif
           output: ${{ inputs.working-directory }}/trivy-iac.sarif
           severity: HIGH,CRITICAL
-          exit-code: 0
+          exit-code: 1
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/semgrep.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/semgrep.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/semgrep.sarif
           category: semgrep
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/trivy-fs.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/trivy-fs.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/trivy-fs.sarif
           category: trivy-fs
       - uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
-        if: ${{ always() && hashFiles(format('{0}/trivy-iac.sarif', inputs.working-directory)) != '' }}
+        if: ${{ always() && inputs.publish-security-sarif && hashFiles(format('{0}/trivy-iac.sarif', inputs.working-directory)) != '' }}
         with:
           sarif_file: ${{ inputs.working-directory }}/trivy-iac.sarif
           category: trivy-iac

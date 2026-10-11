@@ -16,6 +16,9 @@ afirmar cumplimiento ni cerrar el gate que dependa de ella.
 
 Derivar escenarios del comportamiento actual en `src/`, contratos y bugs reproducibles. Usar `docs/` para estrategia y thresholds, nunca como sustituto de ejecutar la suite.
 
+Resolver y leer completa `backend-engineering-quality`, incluida su estrategia transversal de pruebas.
+Esta skill define la implementación específica con Vitest, PostgreSQL, Cucumber y Playwright.
+
 ## Seleccionar La Capa
 
 - Unit: schemas, DTOs, application services, guards y providers con ports mockeados.

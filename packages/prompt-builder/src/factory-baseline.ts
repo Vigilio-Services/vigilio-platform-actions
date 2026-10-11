@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { parse } from 'yaml';
 
@@ -14,6 +14,8 @@ export type FactoryBaseline = {
   source: string;
   content: string;
   architecture: { source: string; content: string };
+  implementationRoot: string;
+  implementationRootSource: string;
 };
 
 function isMissing(error: unknown) {
@@ -66,6 +68,27 @@ export async function validateFactoryBaseline(
     throw new Error('FACTORY_BASELINE_INVALID: architecture_source and SHA-256 are required');
   }
 
+  const implementationRootSource =
+    typeof record['implementation_root'] === 'string' && record['implementation_root'].trim()
+      ? record['implementation_root'].trim()
+      : '.';
+  const implementationRoot = path.resolve(projectRoot, implementationRootSource);
+  try {
+    const implementationRootStats = await stat(implementationRoot);
+    if (!implementationRootStats.isDirectory()) {
+      throw new Error(
+        `FACTORY_BASELINE_INVALID: implementation_root is not a directory: ${implementationRootSource}`,
+      );
+    }
+  } catch (error) {
+    if (isMissing(error)) {
+      throw new Error(
+        `FACTORY_BASELINE_INVALID: implementation_root is missing: ${implementationRootSource}`,
+      );
+    }
+    throw error;
+  }
+
   const architecturePath = resolveInside(projectRoot, record['architecture_source']);
   const architectureContent = await readFile(architecturePath, 'utf8');
   if (!matchesTextHash(architectureContent, record['architecture_sha256'])) {
@@ -82,5 +105,7 @@ export async function validateFactoryBaseline(
       source: portableRelative(projectRoot, architecturePath),
       content: architectureContent,
     },
+    implementationRoot,
+    implementationRootSource: implementationRootSource.replaceAll('\\', '/'),
   };
 }

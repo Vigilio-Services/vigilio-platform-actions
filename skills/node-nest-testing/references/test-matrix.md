@@ -9,19 +9,6 @@
 - `playwright.config.ts`: proyectos API/browser y webServer.
 - `tests/unit/`, `tests/integration/`, `tests/bdd/`, `tests/e2e/`: ejemplos ejecutables.
 
-## Minimo Por Cambio
-
-| Cambio | Cobertura minima |
-| --- | --- |
-| DTO/schema | valid, invalid, boundary, normalization |
-| Application service | success, not found, conflict/race, dependency failure |
-| Repository | persistencia, mapping, constraint, update/destroy |
-| Guard/auth | public, missing, malformed, valid, wrong token type |
-| AWS provider | request mapping, success, SDK error, resource cleanup |
-| Endpoint | 2xx, 400, 401/403, 404/409 segun contrato |
-| Migration | forward, compatibility, backfill, rollback rehearsal |
-| Cache | hit, miss, invalidation, timeout/failure |
-
 ## Gates
 
 - Respetar los thresholds del consumidor; baseline recomendado: `85%` lines/statements/functions.
@@ -37,3 +24,4 @@
 - Los datos son deterministas y paralelizables.
 - Se ejecutaron las capas afectadas y se reportan bloqueos reales.
 - OpenAPI no introduce breaking change no aprobado.
+- Los status, schemas, required/nullability y security schemes coinciden con el comportamiento probado.

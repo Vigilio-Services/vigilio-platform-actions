@@ -79,7 +79,7 @@ export async function readOpenSpecContext(input: {
     canonicalReferences.push(changeReference);
     out[`canonical-reference:change:${input.change}`] = changeReference.content;
   }
-  for (const file of ['proposal.md', 'design.md', 'tasks.md']) {
+  for (const file of ['proposal.md', 'design.md', 'tasks.md', 'execution-memory.md']) {
     const content = await readOptional(path.join(base, file));
     if (content) out[`change-${file}`] = content;
   }

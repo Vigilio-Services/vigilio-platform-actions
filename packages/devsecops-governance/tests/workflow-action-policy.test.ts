@@ -7,6 +7,7 @@ import { validateWorkflows } from '../src/workflow-policy.js';
 const requiredWorkflows = [
   'shared-backend-node-nest-ci.yml',
   'shared-backend-node-nest-deploy-cdk.yml',
+  'shared-container-build-push.yml',
   'shared-web-mfe-preact-ci.yml',
   'shared-web-mfe-deploy-s3-cloudfront.yml',
   'shared-mobile-expo-ci.yml',
@@ -14,6 +15,13 @@ const requiredWorkflows = [
   'shared-mobile-expo-security.yml',
   'shared-desktop-tauri-ci.yml',
   'shared-desktop-tauri-build.yml',
+  'shared-dora-metrics.yml',
+  'shared-gitops-promote.yml',
+  'shared-governance-audit.yml',
+  'shared-helm-kubernetes-ci.yml',
+  'shared-terraform-apply.yml',
+  'shared-terraform-drift.yml',
+  'shared-terraform-plan.yml',
 ];
 
 const requiredActions = [
@@ -221,6 +229,46 @@ describe('workflow and action policies', () => {
     );
 
     expect(validateWorkflows(directory, { profile: 'consumer' })).toEqual([]);
+  });
+
+  it('allows organization-owned platform workflows and rejects lookalike forks', () => {
+    const directory = join(process.cwd(), 'coverage', `wf-org-trust-${Date.now()}`);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(
+      join(directory, 'trusted.yml'),
+      [
+        'name: trusted',
+        'on: workflow_dispatch',
+        'permissions:',
+        '  contents: read',
+        '  id-token: write',
+        'jobs:',
+        '  delivery:',
+        '    uses: Vigilio-Services/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@0000000000000000000000000000000000000000',
+      ].join('\n'),
+    );
+
+    expect(validateWorkflows(directory, { profile: 'consumer' })).toEqual([]);
+
+    writeFileSync(
+      join(directory, 'lookalike.yml'),
+      [
+        'name: lookalike',
+        'on: workflow_dispatch',
+        'permissions:',
+        '  contents: read',
+        '  id-token: write',
+        'jobs:',
+        '  delivery:',
+        '    uses: attacker/vigilio-platform-actions/.github/workflows/shared-container-build-push.yml@0000000000000000000000000000000000000000',
+      ].join('\n'),
+    );
+
+    expect(
+      validateWorkflows(directory, { profile: 'consumer' }).some(
+        (error) => error.includes('lookalike.yml') && error.includes('id-token'),
+      ),
+    ).toBe(true);
   });
 
   it('allows the pinned Terraform drift workflow to receive OIDC', () => {

@@ -73,6 +73,7 @@ export type TargetProfilesFile = {
 
 export type ResolvedTargetProfile = TargetProfile & {
   id: string;
+  implementation_root: string;
   materialized: {
     backend: boolean;
     frontend: boolean;

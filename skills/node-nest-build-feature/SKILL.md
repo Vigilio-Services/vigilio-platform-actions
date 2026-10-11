@@ -16,6 +16,10 @@ afirmar cumplimiento ni cerrar el gate que dependa de ella.
 
 Priorizar `src/` y tests ejecutables sobre `docs/`. Usar documentos para decisiones y contexto; no copiar ejemplos sin compararlos con un modulo vecino actual.
 
+Resolver y leer completa `backend-engineering-quality` para reglas transversales. En cambios HTTP,
+BFF u OpenAPI, seguir su referencia de contratos; esta skill conserva únicamente las decisiones
+específicas de NestJS, Zod y Drizzle.
+
 ## Flujo obligatorio
 
 1. Leer un modulo vecino completo antes de editar. Elegir uno equivalente en complejidad y sensibilidad.

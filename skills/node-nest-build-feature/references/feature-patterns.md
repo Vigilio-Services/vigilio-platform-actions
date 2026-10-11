@@ -68,5 +68,6 @@ Evita `types/index.ts` y `constants/index.ts` globales.
 - DB tiene constraints equivalentes a invariantes criticas.
 - AuthN/AuthZ es explicita y private-by-default.
 - OpenAPI refleja seguridad, request, response y errores.
+- La matriz contrato-runtime no contiene drift entre owner, implementación y consumidor.
 - Unit, integration y E2E se agregan segun el riesgo.
 - Pasan `pnpm lint`, `pnpm typecheck`, `pnpm test:coverage` y `pnpm openapi:diff`.

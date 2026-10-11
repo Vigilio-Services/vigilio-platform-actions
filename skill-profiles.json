@@ -14,6 +14,7 @@
       "token-context-compression"
     ],
     "node-nest": [
+      "backend-engineering-quality",
       "node-nest-technologies",
       "node-nest-build-feature",
       "node-nest-realtime",
@@ -53,8 +54,11 @@
     ],
     "platform": [
       "architecture-traceability",
+      "container-supply-chain",
+      "devsecops-gitops-delivery",
       "platform-observability-sre",
-      "kubernetes-eks-delivery"
+      "kubernetes-eks-delivery",
+      "terraform-aws-platform"
     ],
     "openspec": [
       "openspec-apply-change",
