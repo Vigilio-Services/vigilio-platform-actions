@@ -7,9 +7,9 @@ description: Aplica calidad backend reutilizable e independiente del framework p
 
 # Calidad De Ingeniería Backend
 
-Esta skill concentra reglas transversales para evitar copiarlas en cada stack. No reemplaza las
-convenciones ejecutables, herramientas, estructura ni comandos de la skill específica de Node/Nest,
-Laravel u otro framework.
+Esta skill enruta hacia las reglas transversales canonicas de `vigilio-docs` y coordina su aplicacion.
+No conserva una segunda copia ni reemplaza las convenciones ejecutables, herramientas, estructura o
+comandos de la skill especifica de Node/Nest, Laravel u otro framework.
 
 ## Precedencia
 
@@ -29,8 +29,9 @@ Antes de actuar, leer completa únicamente la referencia aplicable al cambio:
 - Tests, regresiones o gates de calidad: [references/testing-strategy.md](references/testing-strategy.md).
 - SQL, schema, migraciones, backfill o rollback: [references/data-sql.md](references/data-sql.md).
 
-Si intervienen varias superficies, leer todas las referencias correspondientes. Después seguir la
-skill del stack para elegir librerías, layout, comandos, thresholds y patrones concretos.
+Cada referencia enlaza su documento canonico de `vigilio-docs`. Si intervienen varias superficies,
+leer todas las referencias correspondientes. Despues seguir la skill del stack para elegir librerias,
+layout, comandos, thresholds y patrones concretos.
 
 ## Flujo
 

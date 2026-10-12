@@ -11,3 +11,6 @@ documentation header as scoped corporate profiles rather than universal framewor
 Add the equivalent NestJS/Zod decorator pattern, including use-case-derived descriptions, runtime
 security, reusable documentation DTOs and exported-contract validation without duplicating the shared
 OpenAPI rules.
+Route backend and review skills to the canonical standards in `vigilio-docs`; keep only operational
+workflow and stack-specific resolution inside the distributed skills, with tests preventing the links
+from drifting.

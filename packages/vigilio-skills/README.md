@@ -6,9 +6,9 @@ prevent backend-specific knowledge from being installed into web, mobile, or des
 The synchronizer is authored in strict TypeScript and publishes compiled ESM JavaScript plus type
 declarations. Skill assets remain immutable package data and are not executable source.
 
-The `node-nest` profile includes `backend-engineering-quality`: a framework-independent owner for
-API/OpenAPI fidelity, risk-based testing and SQL/data quality. Stack skills keep only their own
-libraries, layout and commands, so future backend profiles can reuse the baseline without copying it.
+The `node-nest` profile includes `backend-engineering-quality`, which routes to the framework-independent
+standards owned by `vigilio-docs`. Stack skills retain only operational workflow, libraries, layout and
+commands, so future backend profiles can reuse those standards without copying them.
 
 ```bash
 pnpm exec vigilio-skills sync --profile core --profile node-nest --profile openspec
