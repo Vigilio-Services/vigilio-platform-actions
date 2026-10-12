@@ -41,7 +41,8 @@ cuando aporte contexto durable.
 
 No agregar:
 
-- nombre del autor, fecha o historial manual de modificaciones: Git ya es la autoridad;
+- nombre del autor, fecha o historial manual en código de aplicación cuando Git ya es la autoridad;
+  exceptuar plantillas corporativas obligatorias para objetos de BD y otros artefactos auditables;
 - comentarios que repiten literalmente la instrucción siguiente;
 - código muerto comentado;
 - secretos, payloads reales o PII;
@@ -67,7 +68,31 @@ function toSettlementAmount(value: string): SettlementAmount {
 }
 ```
 
-Mal — repite la instrucción, agrega historial manual o deja una deuda sin owner:
+Cuando el checklist corporativo IC sea una autoridad explícita del repositorio, conservar además su
+trazabilidad obligatoria. El bloque documenta identidad corporativa, proyecto, fecha y motivo real:
+
+```ts
+/**
+ * Nombre usuario: nombre_apellido
+ * Cod Proyecto: PROY-0042
+ * Fecha: 11/10/2026
+ * Detalle: Preserva la idempotencia al reprocesar eventos del proveedor.
+ */
+await ledger.applyOnce(event.externalId, event.amount);
+```
+
+Para un cambio corto, si la convención permite comentario de una línea:
+
+```ts
+// nombre_apellido - PROY-0042 - 11/10/2026 - Evita duplicados durante el replay autorizado.
+await ledger.applyOnce(event.externalId, event.amount);
+```
+
+No inventar usuario, ticket o fecha. Obtenerlos del contexto autorizado; si faltan y el gate realmente
+los exige, registrarlo como evidencia pendiente. El detalle explica impacto o motivo, no repite la línea.
+
+Mal en código de aplicación sin una plantilla corporativa obligatoria — repite la instrucción, agrega
+historial manual o deja una deuda sin owner:
 
 ```ts
 // Incrementa el contador.
@@ -78,8 +103,9 @@ attempts += 1;
 ```
 
 Para APIs públicas, documentar semántica, restricciones, seguridad y errores en el contrato ejecutable;
-no trasladar una especificación completa a comentarios del controller. Para migraciones, documentar
-forward, verificación y recovery en su owner operativo, no como un bloque histórico pegado al SQL.
+no trasladar una especificación completa a comentarios del controller. Para procedimientos/funciones de
+BD sujetos al checklist IC, usar la cabecera auditada definida en `backend-engineering-quality` y los
+delimitadores del dialecto (`--` en línea, `/* ... */` multilínea).
 
 ## Excepciones Y Flujo
 
@@ -105,7 +131,8 @@ forward, verificación y recovery en su owner operativo, no como un bloque hist�
 - `default` obligatorio en todo `switch`;
 - dogmas de rendimiento SQL sin semántica ni plan; el criterio detallado pertenece a la referencia
   `data-sql.md` de `backend-engineering-quality`;
-- cabeceras de autor/fecha/ticket dentro de cada fragmento;
+- cabeceras de autor/fecha/ticket en cada fragmento de aplicación sin autoridad corporativa; no confundir
+  esta regla con la plantilla obligatoria de procedimientos/funciones de BD cuando el proyecto la adopte;
 - porcentajes de cobertura o listas fijas de status HTTP sin autoridad del proyecto.
 
 Aplicar la intención útil detrás de esas reglas —legibilidad, trazabilidad, rendimiento y calidad— con

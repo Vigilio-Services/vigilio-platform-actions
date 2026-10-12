@@ -28,6 +28,39 @@
   operación destruye información; usar backup, expand-contract o forward-fix probado.
 - Mantener seeders idempotentes y separados de migraciones estructurales cuando el stack lo soporte.
 
+### Ejemplo De Documentación IC Para Procedimientos Y Funciones
+
+Cuando el checklist corporativo IC sea autoridad del proyecto, documentar cada procedimiento o función
+con su plantilla auditable. Para SQL, usar `--` en comentarios de una línea y `/* ... */` en bloques:
+
+```sql
+/*
+Nombre SP        : spx_calcular_salario_base
+Propósito        : Calcula el salario base aplicando las reglas vigentes del período.
+Input            : @id_empleado - identificador del empleado.
+                   @periodo     - período de cálculo en formato YYYYMM.
+Output           : result set con salario_base y moneda.
+Creado por       : equipo-rrhh
+Fec Creación     : 2026-10-11
+Fec Actualización: 2026-10-11
+Actualizado por  : equipo-rrhh
+Ticket/Proyecto  : PROY-0042
+Detalle cambios  : Implementación inicial con validación de período activo.
+*/
+CREATE PROCEDURE rrhh.spx_calcular_salario_base
+  @id_empleado bigint,
+  @periodo char(6)
+AS
+BEGIN
+  -- El período debe existir antes de calcular para evitar resultados parciales.
+  -- La validación y el error concreto dependen del dialecto y estándar del repositorio.
+END;
+```
+
+La cabecera debe describir claramente propósito, inputs, output y cambio. Mantenerla sincronizada con la
+firma y el comportamiento. No copiarla en queries ordinarias ni código de aplicación si la autoridad no
+la exige; allí Git, ADRs y el contrato ejecutable conservan la trazabilidad.
+
 ### Ejemplo De Plan De Migración Documentado
 
 ```markdown

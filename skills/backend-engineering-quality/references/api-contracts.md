@@ -40,45 +40,89 @@ versionado y migración coordinada.
 - Ejecutar lint, bundle/export y diff breaking con las herramientas y severidades del repositorio.
 - Tratar Swagger o Scalar como representaciones del contrato, no como evidencia de funcionamiento.
 
-### Ejemplo Mínimo De Documentación OpenAPI
+### Ejemplo Corporativo RRLL Entregado Por El Usuario
 
-El contrato declara comportamiento observable y evita ejemplos con datos reales:
+Usar este formato cuando el repositorio consumidor adopte la convención `bus-dsg`/`ch-dsg`. No trasladar
+automáticamente sus emojis, carpetas, `sigv4` o status a proyectos con otra autoridad.
 
 ```yaml
-paths:
-  /tenants/{tenantId}/settlements:
-    post:
-      operationId: createSettlement
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: tenantId
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/CreateSettlementRequest' }
-      responses:
-        '201':
-          description: Liquidación creada
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SettlementResponse' }
-        '409':
-          description: La referencia idempotente ya existe
-        '422':
-          description: El importe o período viola una regla de negocio
+# openapi/paths/endoso/registrar-endoso.yaml
+post:
+  tags:
+    - Endosos RRLL
+  summary: Registrar Endoso RRLL
+  operationId: crearEndoso
+  description: |
+    📦 Proceso: Registrar Endoso
+
+    🔧 Funcionalidad: Servicio que permite registrar endosos RRLL.
+  parameters:
+    - $ref: ../../components/parameters/TraceId.yaml
+  requestBody:
+    $ref: ../../components/requestBodies/endoso/RegistrarEndosoReq.yaml
+  responses:
+    '200':
+      $ref: ../../components/responses/endoso/RegistrarEndosoRes.yaml
+    '400':
+      $ref: ../../components/responses/common/BadRequest.yaml
+    '500':
+      $ref: ../../components/responses/common/InternalServerError.yaml
+  security:
+    - sigv4: []
 ```
 
-El runtime debe implementar exactamente ese método, path, auth, required/nullability, status y schemas.
-Si el repositorio genera OpenAPI desde código, documentar en los decoradores/DTOs propietarios y validar
-el artefacto exportado; si contract-first es la autoridad, generar o adaptar el runtime desde ese owner.
+Los atributos reutilizables documentan significado, ejemplo y restricciones, no solo el tipo:
 
-Evitar descripciones vacías (`"error"`), respuestas genéricas copiadas, ejemplos con PII, schemas inline
-duplicados y status que el controller nunca devuelve.
+```yaml
+# openapi/components/schemas/attributes/Fecha.yaml
+type: string
+format: date
+description: >
+  Fecha de vigencia con formato YYYY-MM-DD.
+maxLength: 10
+minLength: 10
+example: '2026-10-11'
+```
+
+El `requestBody` agrega propósito y un caso de prueba sanitizado, reutilizando el modelo propietario:
+
+```yaml
+# openapi/components/requestBodies/endoso/RegistrarEndosoReq.yaml
+description: Entidad para registrar un endoso RRLL.
+required: true
+content:
+  application/json:
+    schema:
+      title: Registrar Endoso RRLL
+      allOf:
+        - description: Entidad de entrada para registrar el endoso.
+          title: Registrar Endoso Request
+        - $ref: ../../schemas/model_request/RegistrarEndosoReq.yaml
+    examples:
+      Caso-Prueba-01:
+        summary: Registro válido de endoso
+        value:
+          numeroPoliza: '0001234567'
+          fechaVigencia: '2026-10-11'
+```
+
+En este perfil, comprobar expresamente:
+
+- `tags` del dominio, `summary` breve y ortografía correcta;
+- `operationId` camelCase y único en toda la API;
+- `description` con `📦 Proceso` y `🔧 Funcionalidad`;
+- `type`, `description`, `example` y constraints aplicables en cada atributo;
+- request/response/parameters reutilizados mediante `$ref` relativo y resoluble;
+- respuestas mínimas exigidas por el linter del consumidor —en la guía RRLL: `200`, `400`, `500`— y
+  cualquier otro status realmente observable;
+- security scheme real del repositorio y ejemplos sin secretos ni PII.
+
+El runtime debe implementar exactamente método, path, auth, required/nullability, status y schemas. Si
+el repositorio genera OpenAPI desde código, expresar la misma información en sus decoradores/DTOs y
+validar el artefacto exportado; si contract-first es autoridad, el YAML y sus componentes son el owner.
+
+Evitar descripciones vacías, respuestas genéricas no implementadas, ejemplos con datos reales, schemas
+inline duplicados, referencias absolutas y status que el runtime nunca devuelve.
 
 ## Fronteras, Errores Y Observabilidad
 
