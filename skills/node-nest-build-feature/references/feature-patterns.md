@@ -25,5 +25,5 @@ Las reglas y ejemplos viven en `vigilio-docs`; esta referencia no los duplica.
 6. Ejecutar los gates reales del consumidor y reportar evidencia.
 
 En contract-first, el YAML aprobado conserva autoridad. En code-first, exportar y validar el OpenAPI.
-Usar nombres CRUD genericos solo cuando el repositorio los adopte; un caso de uso con contrato propio
-conserva nombres semanticos estables como `crearEndoso`.
+Para Node/Nest, controller, application service, repository y `operationId` conservan la convencion
+`index/show/store/update/destroy`; `summary`, `📦 Proceso` y `🔧 Funcionalidad` expresan el negocio.

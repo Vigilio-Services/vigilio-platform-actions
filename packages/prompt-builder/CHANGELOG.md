@@ -1,21 +1,16 @@
 # @vigilioyonatan/prompt-builder
 
-## Unreleased
+## 0.6.2
 
-- Scaffold a fail-closed, configurable runtime preflight for PostgreSQL, Redis/Valkey,
-  Docker, HTTP/TCP dependencies, required processes and ChatGPT UI assets. Existing
-  consumer scripts/configuration are preserved by `init-project`.
-- Harden phase prompts so repairable build/lint/type/test/migration failures are fixed and
-  revalidated in the same step, while terminal `BLOCKED` is reserved for real authority,
-  access, external-dependency or scope impediments. Referenced template/shared directories
-  are treated as reusable source material instead of missing-project blockers.
-- Add a shared senior execution protocol: mandatory full skill/routed-reference reading,
-  stable-ID OpenSpec task checklists, compact `execution-memory.md` handoffs, evidence-backed
-  APPLY completion and independent REVIEW reconciliation across chats.
-- Support a reviewed `implementation_root` for split docs/code workspaces, record it in locks and
-  prompts, validate frontend app materialization, and let preflight use the same explicit local CLI.
-- Add configurable writable-directory readiness probes and no-progress remediation guidance so a
-  repeated BLOCKED response must change hypothesis and gather new gate evidence without advancing.
+### Patch Changes
+
+- Scaffold a fail-closed configurable runtime preflight for PostgreSQL, Redis/Valkey, Docker, HTTP/TCP
+  dependencies, required processes, writable directories and ChatGPT UI assets while preserving existing
+  consumer configuration. Harden phase prompts so repairable quality failures are fixed and revalidated
+  in the same step, terminal `BLOCKED` is reserved for real impediments, and referenced template/shared
+  directories remain reusable inputs. Add the shared senior execution protocol with complete routed-skill
+  reading, stable OpenSpec task IDs, compact execution-memory handoffs, evidence-backed APPLY, independent
+  REVIEW reconciliation and no-progress remediation.
 
 ## 0.6.1
 
