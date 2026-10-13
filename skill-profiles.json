@@ -2,6 +2,7 @@
   "schema_version": 1,
   "profiles": {
     "core": [
+      "skill-create-docs",
       "shared-technologies",
       "commit-ai-change",
       "coderabbit-compliance",

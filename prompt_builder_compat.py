@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.1.
+"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.2.
 
 This module is intentionally UI-agnostic.  Both ChatGPT automation scripts use
 it so version checks, command execution, JSON parsing and execution-plan
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.1"
+SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.2"
 SUPPORTED_PLAN_SCHEMA_VERSION = 2
 SUPPORTED_PHASES = ("explore", "propose", "apply", "review", "fix")
 MUTATING_PHASES = frozenset({"apply", "review", "fix"})
@@ -121,13 +121,13 @@ def _relative_artifact(project_root: Path, value: Any, *, label: str) -> Path:
     raw = Path(value)
     if raw.is_absolute():
         raise PromptBuilderCompatibilityError(
-            f"{label} must be project-relative for portable Prompt Builder 0.6.1 locks"
+            f"{label} must be project-relative for portable Prompt Builder 0.6.2 locks"
         )
     return _inside(project_root, project_root / raw, label=label)
 
 
 def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
-    """Load and strictly validate a Prompt Builder 0.6.1 execution plan."""
+    """Load and strictly validate a Prompt Builder 0.6.2 execution plan."""
 
     project_root = project_root.resolve()
     prompts_dir = _inside(project_root, prompts_dir, label="prompts directory")
@@ -259,7 +259,7 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
     steps.sort(key=lambda step: step.sequence)
     if [step.sequence for step in steps] != list(range(1, len(steps) + 1)):
         raise PromptBuilderCompatibilityError(
-            "Prompt Builder 0.6.1 execution steps must use contiguous numeric order"
+            "Prompt Builder 0.6.2 execution steps must use contiguous numeric order"
         )
 
     if raw.get("prompt_count") not in (None, len(steps)):
@@ -322,12 +322,18 @@ class PromptBuilderClient:
         package_manager: str = "pnpm",
         executable: str = "vigilio-prompt",
         timeout_seconds: int = 180,
+        cli_path: Path | None = None,
+        node_executable: Path | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
         self.expected_version = expected_version
         self.package_manager = package_manager
         self.executable = executable
         self.timeout_seconds = timeout_seconds
+        self.cli_path = cli_path.resolve() if cli_path is not None else None
+        self.node_executable = (
+            node_executable.resolve() if node_executable is not None else None
+        )
         self._command_prefix = self._resolve_command_prefix()
 
     @staticmethod
@@ -349,6 +355,12 @@ class PromptBuilderClient:
 
     def _resolve_node24(self) -> Path | None:
         candidates: list[Path] = []
+        if self.node_executable is not None:
+            if not self.node_executable.is_file():
+                raise PromptBuilderCompatibilityError(
+                    f"Configured Node.js executable is missing: {self.node_executable}"
+                )
+            candidates.append(self.node_executable)
         explicit = os.environ.get("VIGILIO_NODE24_BIN")
         if explicit:
             candidates.append(Path(explicit))
@@ -394,7 +406,15 @@ class PromptBuilderClient:
             / "dist"
             / "cli.js"
         )
-        cli = Path(explicit_cli).resolve() if explicit_cli else installed_cli.resolve()
+        cli = (
+            self.cli_path
+            if self.cli_path is not None
+            else Path(explicit_cli).resolve() if explicit_cli else installed_cli.resolve()
+        )
+        if self.cli_path is not None and not cli.is_file():
+            raise PromptBuilderCompatibilityError(
+                f"Configured Prompt Builder CLI is missing: {cli}"
+            )
         if cli.is_file():
             node24 = self._resolve_node24()
             if node24 is None:
@@ -405,9 +425,9 @@ class PromptBuilderClient:
             return [str(node24), str(cli)]
 
         manager = shutil.which(self.package_manager) or self.package_manager
-        if os.name == "nt" and str(manager).lower().endswith((".cmd", ".bat")):
-            command_processor = os.environ.get("COMSPEC", "cmd.exe")
-            return [command_processor, "/d", "/s", "/c", str(manager), "exec", self.executable]
+        # subprocess can execute .cmd/.bat launchers directly on Windows. Routing
+        # through `cmd /c` splits package-manager paths containing spaces (for
+        # example "Author Software\\nvm") and makes every queue preflight fail.
         return [str(manager), "exec", self.executable]
 
     @property
@@ -632,6 +652,7 @@ class PromptBuilderClient:
         architecture: Path,
         mode: str,
         brief_file: Path | None = None,
+        implementation_root: Path | None = None,
         refresh_baseline: bool = False,
     ) -> Mapping[str, Any]:
         if mode not in {"greenfield", "migration"}:
@@ -647,6 +668,8 @@ class PromptBuilderClient:
         ]
         if brief_file:
             args.extend(["--brief-file", str(brief_file)])
+        if implementation_root:
+            args.extend(["--implementation-root", str(implementation_root)])
         if refresh_baseline:
             args.append("--refresh-baseline")
         _, report = self._json_command(args)

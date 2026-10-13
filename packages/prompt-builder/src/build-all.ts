@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assertDecisionReadiness, evaluateDecisionReadiness } from './answers.js';
 import { preparePrompt, writePreparedPrompt } from './builder.js';
@@ -33,6 +34,126 @@ type PreparedStep = {
   outputBase: string;
   prepared: PreparedPrompt;
 };
+
+function isMissing(error: unknown) {
+  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
+}
+
+async function pathExists(target: string) {
+  try {
+    await lstat(target);
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+
+const GENERATED_ARTIFACT =
+  /^\d{4}-[A-Za-z0-9._-]+\.(?:explore|propose|apply|review|fix)\.(?:md|lock\.json)$/;
+
+async function assertReplaceableOutput(
+  outputDirectory: string,
+  projectRoot: string,
+  planId: string,
+) {
+  const relative = path.relative(projectRoot, outputDirectory);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('OUTPUT_DIRECTORY_UNSAFE: build-all output must be a project subdirectory');
+  }
+  let stats: Awaited<ReturnType<typeof lstat>>;
+  try {
+    stats = await lstat(outputDirectory);
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+  if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    throw new Error('OUTPUT_DIRECTORY_UNSAFE: existing output must be a real directory');
+  }
+  const entries = await readdir(outputDirectory, { withFileTypes: true });
+  if (entries.length === 0) return true;
+  if (entries.some((entry) => !entry.isFile())) {
+    throw new Error('OUTPUT_DIRECTORY_UNSAFE: generated plan directories must contain files only');
+  }
+  const unknown = entries
+    .map((entry) => entry.name)
+    .filter((name) => name !== 'execution-plan.json' && !GENERATED_ARTIFACT.test(name));
+  if (unknown.length > 0) {
+    throw new Error(`OUTPUT_DIRECTORY_UNSAFE: unowned files present: ${unknown.join(', ')}`);
+  }
+  try {
+    const existingPlan = JSON.parse(
+      await readFile(path.join(outputDirectory, 'execution-plan.json'), 'utf8'),
+    ) as { plan_id?: unknown };
+    if (existingPlan.plan_id !== planId) {
+      throw new Error(
+        `OUTPUT_DIRECTORY_UNSAFE: existing plan ${String(existingPlan.plan_id)} does not match ${planId}`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('OUTPUT_DIRECTORY_UNSAFE:')) throw error;
+    throw new Error(
+      'OUTPUT_DIRECTORY_UNSAFE: non-empty output has no readable matching execution-plan.json',
+      { cause: error },
+    );
+  }
+  return true;
+}
+
+async function publishExactOutput(input: {
+  outputDirectory: string;
+  projectRoot: string;
+  planId: string;
+  steps: PreparedStep[];
+  executionPlan: object;
+  planSelection: PlanSelectionEvidence;
+}) {
+  const parent = path.dirname(input.outputDirectory);
+  const base = path.basename(input.outputDirectory);
+  await mkdir(parent, { recursive: true });
+  const suffix = randomUUID();
+  const staging = path.join(parent, `.${base}.staging-${suffix}`);
+  const backup = path.join(parent, `.${base}.previous-${suffix}`);
+  const hadExisting = await assertReplaceableOutput(
+    input.outputDirectory,
+    input.projectRoot,
+    input.planId,
+  );
+  await mkdir(staging, { recursive: false });
+  try {
+    for (const step of input.steps) {
+      await writePreparedPrompt({
+        prepared: step.prepared,
+        outputBase: path.join(staging, path.basename(step.outputBase)),
+        planId: input.planId,
+        sequence: step.sequence,
+        level: step.level,
+        planSelection: input.planSelection,
+        selectionReason: step.selectionReason,
+      });
+    }
+    await writeFile(
+      path.join(staging, 'execution-plan.json'),
+      JSON.stringify(input.executionPlan, null, 2),
+      'utf8',
+    );
+
+    if (hadExisting) await rename(input.outputDirectory, backup);
+    try {
+      await rename(staging, input.outputDirectory);
+    } catch (error) {
+      if (hadExisting && (await pathExists(backup)) && !(await pathExists(input.outputDirectory))) {
+        await rename(backup, input.outputDirectory);
+      }
+      throw error;
+    }
+    if (hadExisting) await rm(backup, { recursive: true, force: true });
+  } catch (error) {
+    if (await pathExists(staging)) await rm(staging, { recursive: true, force: true });
+    throw error;
+  }
+}
 
 export async function buildAll(input: {
   projectRoot: string;
@@ -180,23 +301,14 @@ export async function buildAll(input: {
   };
 
   if (!input.dryRun) {
-    await mkdir(outputDirectory, { recursive: true });
-    for (const step of steps) {
-      await writePreparedPrompt({
-        prepared: step.prepared,
-        outputBase: step.outputBase,
-        planId,
-        sequence: step.sequence,
-        level: step.level,
-        planSelection,
-        selectionReason: step.selectionReason,
-      });
-    }
-    await writeFile(
-      path.join(outputDirectory, 'execution-plan.json'),
-      JSON.stringify(executionPlan, null, 2),
-      'utf8',
-    );
+    await publishExactOutput({
+      outputDirectory,
+      projectRoot: path.resolve(input.projectRoot),
+      planId,
+      steps,
+      executionPlan,
+      planSelection,
+    });
   }
 
   return { outputDirectory, executionPlan };

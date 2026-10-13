@@ -1,0 +1,50 @@
+schema_version: 1
+id: chatgpt-custom-example
+version: 1
+display_name: ChatGPT custom safe example
+steps:
+  - id: focus-chatgpt-window
+    action: focus_window
+    enabled: true
+  - id: locate-composer-anchor
+    action: wait_for_asset
+    enabled: true
+    target:
+      mode: visual_anchor
+      asset_id: chat-gpt-search-1.png
+      confidence: 0.80
+      offset: {x: 0, y: 0}
+  - id: optional-pre-paste-scroll
+    action: scroll
+    enabled: true
+    target: {mode: window_relative, x: 0.50, y: 0.50}
+    amount: -500
+    repetitions: 1
+    pause_ms: 200
+  - id: paste-current-prompt
+    action: replace_draft_and_paste_prompt
+    enabled: true
+    protected: true
+  - id: confirm-send-control
+    action: wait_for_asset
+    enabled: true
+    target:
+      mode: visual_anchor
+      asset_id: chat-gpt-button-send.png
+      confidence: 0.80
+      offset: {x: 0, y: 0}
+  - id: submit-current-prompt
+    action: submit_prompt
+    enabled: true
+    protected: true
+  - id: optional-post-submit-scroll
+    action: scroll
+    enabled: true
+    target: {mode: window_relative, x: 0.50, y: 0.50}
+    amount: -300
+    repetitions: 1
+    pause_ms: 150
+  - id: await-current-result
+    action: wait_for_status
+    enabled: true
+    protected: true

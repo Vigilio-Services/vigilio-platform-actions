@@ -61,6 +61,55 @@ describe('project inception and human decision gate', () => {
       assert.match(prompt, /provider_adapters/);
       const lock = JSON.parse(await readFile(path.join(root, first.lockfile), 'utf8'));
       assert.equal(lock.migration.access_policy, 'READ_ONLY_DISCOVERY');
+      const preflight = await readFile(path.join(root, 'scripts/preflight-env.sh'), 'utf8');
+      assert.match(preflight, /PREFLIGHT-ENV:/);
+      assert.match(preflight, /Redis\/Valkey/);
+      assert.match(preflight, /PREFLIGHT_REQUIRED_PROCESSES/);
+      assert.match(preflight, /PREFLIGHT_REQUIRED_DIRECTORIES/);
+      assert.match(preflight, /PREFLIGHT_REQUIRED_FILES/);
+      assert.match(preflight, /PREFLIGHT_REQUIRE_TARGET_PROFILES/);
+      assert.match(preflight, /PREFLIGHT_ASSETS_DIR/);
+      assert.match(preflight, /VIGILIO_PROMPT_BUILDER_CLI/);
+      assert.match(preflight, /VIGILIO_RUNNER_OS.*windows/);
+      assert.match(preflight, /pack eligibility remains authoritative/);
+      const packageManifest = JSON.parse(
+        await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+      ) as { version: string };
+      assert.match(
+        preflight,
+        new RegExp(
+          `PREFLIGHT_PROMPT_BUILDER_VERSION:-${packageManifest.version.replaceAll('.', '\\.')}`,
+        ),
+      );
+      const preflightPowerShell = await readFile(
+        path.join(root, 'scripts/preflight-env.ps1'),
+        'utf8',
+      );
+      assert.match(preflightPowerShell, /PREFLIGHT_REQUIRE_TARGET_PROFILES/);
+      assert.match(preflightPowerShell, /PREFLIGHT_ASSETS_DIR/);
+      assert.match(preflightPowerShell, /VIGILIO_PROMPT_BUILDER_CLI/);
+      assert.match(preflightPowerShell, /VIGILIO_RUNNER_OS -eq "windows"/);
+      assert.match(
+        preflightPowerShell,
+        new RegExp(
+          `PREFLIGHT_PROMPT_BUILDER_VERSION = "${packageManifest.version.replaceAll('.', '\\.')}"`,
+        ),
+      );
+      const preflightPolicy = await readFile(
+        path.join(root, 'scripts/preflight-services.env.example'),
+        'utf8',
+      );
+      assert.match(preflightPolicy, /PREFLIGHT_REQUIRE_TARGET_PROFILES=auto/);
+      assert.match(preflightPolicy, /PREFLIGHT_ASSETS_DIR=assets/);
+      assert.match(
+        preflightPolicy,
+        new RegExp(
+          `PREFLIGHT_PROMPT_BUILDER_VERSION=${packageManifest.version.replaceAll('.', '\\.')}`,
+        ),
+      );
+      assert.doesNotMatch(preflight, /\{\{PROMPT_BUILDER_VERSION\}\}/);
+      assert.doesNotMatch(preflightPowerShell, /\{\{PROMPT_BUILDER_VERSION\}\}/);
+      assert.doesNotMatch(preflightPolicy, /\{\{PROMPT_BUILDER_VERSION\}\}/);
 
       const readiness = await evaluateDecisionReadiness({
         projectRoot: root,
