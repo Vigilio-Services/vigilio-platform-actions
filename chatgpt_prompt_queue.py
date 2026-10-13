@@ -91,7 +91,7 @@ unset XAUTHORITY; export DISPLAY=:1; export VIGILIO_NODE24_BIN=/tmp/opencode/nod
 
 By default the runner:
 
-    1. requires Prompt Builder 0.6.2, execution-plan.json schema v2 and valid locks;
+    1. requires Prompt Builder 0.6.3, execution-plan.json schema v2 and valid locks;
     2. opens a NEW ChatGPT chat for every generated prompt;
     3. executes the next dependency-ready prompt;
     4. on PROPOSE success, saves `awaiting_approval` and STOPS by default;
@@ -620,7 +620,7 @@ def discover_prompts(
     if gaps:
         logging.warning("Queue has numeric gaps: %s", gaps[:10])
 
-    # Validate phase order per pack for whatever 0.6.2 phases the plan selected.
+    # Validate phase order per pack for whatever 0.6.3 phases the plan selected.
     by_pack: dict[str, list[PromptItem]] = {}
     for item in items:
         by_pack.setdefault(item.pack, []).append(item)
@@ -770,7 +770,7 @@ class StateStore:
                 record = self.ensure_record(item)
 
                 # Context packs may be included so their non-mutating discovery/
-                # proposal prompts run, but Prompt Builder 0.6.2 can deliberately
+                # proposal prompts run, but Prompt Builder 0.6.3 can deliberately
                 # expose APPLY/REVIEW/FIX artifacts while execution.enabled=false.
                 # Those phases are context, not implementation jobs: never call
                 # check-eligibility for them and never convert that canonical
@@ -1214,7 +1214,7 @@ def try_auto_rebuild_for_blocked(
     plan: ExecutionPlan,
     token_budget: int,
 ) -> bool:
-    """Regenerate the owning 0.6.2 plan without creating an orphan single build."""
+    """Regenerate the owning 0.6.3 plan without creating an orphan single build."""
     try:
         logging.warning(
             "Regenerating Prompt Builder plan=%s before retrying %s",
@@ -1233,13 +1233,13 @@ def try_auto_rebuild_for_blocked(
 
 
 def ensure_senior_answer_placeholder(item: PromptItem, prompts_dir: Path) -> bool:
-    """Deprecated compatibility hook; 0.6.2 forbids automatic human answers.
+    """Deprecated compatibility hook; 0.6.3 forbids automatic human answers.
 
     Kept so older callers do not crash. It intentionally performs no write.
     """
     del prompts_dir
     logging.warning(
-        "Decision placeholder suppressed for %s: Prompt Builder 0.6.2 requires explicit human answers",
+        "Decision placeholder suppressed for %s: Prompt Builder 0.6.3 requires explicit human answers",
         item.logical_id,
     )
     return False
@@ -1393,7 +1393,7 @@ def dependency_phase_satisfied(candidate: PromptItem, store: StateStore) -> bool
 
 
 def enforce_phase_gate(item: PromptItem, items: list[PromptItem], store: StateStore) -> None:
-    """Honor 0.6.2 previous-phase and transitive pack dependency barriers."""
+    """Honor 0.6.3 previous-phase and transitive pack dependency barriers."""
     by_sequence = {candidate.seq: candidate for candidate in items}
     if item.previous_phase_sequence is not None:
         previous = by_sequence.get(item.previous_phase_sequence)
@@ -1545,7 +1545,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--expected-prompt-builder-version",
         default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact Prompt Builder version required for execution (default: 0.6.2).",
+        help="Exact Prompt Builder version required for execution (default: 0.6.3).",
     )
     parser.add_argument(
         "--package-manager",
@@ -1636,7 +1636,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--regenerate-plan",
         action="store_true",
-        help="Explicitly rebuild the complete owning 0.6.2 plan, reconcile hashes, then stop.",
+        help="Explicitly rebuild the complete owning 0.6.3 plan, reconcile hashes, then stop.",
     )
     parser.add_argument("--max-prompts", type=int, default=None, help="Maximum prompts to execute this run.")
     parser.add_argument(
@@ -2126,7 +2126,7 @@ def main() -> int:
                 try:
                     client.verify_lock(item.lock_path)
                     # PROPOSE/EXPLORE are self-contained discovery preflights in
-                    # 0.6.2. Mutating phases are intentionally strict and may
+                    # 0.6.3. Mutating phases are intentionally strict and may
                     # require artifacts produced by an approved previous phase;
                     # validate those only when their execution barriers are met.
                     should_preflight = item.phase in {"explore", "propose"}
@@ -2218,7 +2218,7 @@ def main() -> int:
     if current_status == "blocked" and args.auto_apply_recommended:
         logging.warning(
             "AUTO-APPLY-RECOMMENDED cannot clear pre-existing BLOCKED %s %s. "
-            "Prompt Builder 0.6.2 requires the real source/decision to be resolved first.",
+            "Prompt Builder 0.6.3 requires the real source/decision to be resolved first.",
             current.display_seq,
             current.logical_id,
         )
@@ -2520,7 +2520,7 @@ def main() -> int:
                         item,
                         status="blocked",
                         blocked_at=now_iso(),
-                        note=f"Prompt Builder 0.6.2 preflight failed: {exc}",
+                        note=f"Prompt Builder 0.6.3 preflight failed: {exc}",
                     )
                     logging.error(
                         "BLOCKED before UI execution %s %s: %s",

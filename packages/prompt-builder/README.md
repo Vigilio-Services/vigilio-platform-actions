@@ -8,7 +8,7 @@ The package is published privately in GitHub Packages and requires Node.js 24.
 
 ```ini
 # .npmrc
-@vigilioyonatan:registry=https://npm.pkg.github.com
+@vigilio-services:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
 always-auth=true
 ```

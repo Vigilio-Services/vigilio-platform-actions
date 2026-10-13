@@ -10,7 +10,7 @@
 from typing import Protocol, runtime_checkable
 
 
-PROMPT_BUILDER_VERSION = "0.6.2"
+PROMPT_BUILDER_VERSION = "0.6.3"
 
 
 @runtime_checkable

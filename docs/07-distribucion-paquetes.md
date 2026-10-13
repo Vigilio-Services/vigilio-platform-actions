@@ -47,7 +47,7 @@ pnpm add -D --save-exact \
   @vigilio-services/devsecops-evidence@0.3.1 \
   @vigilio-services/devsecops-governance@0.5.2 \
   @vigilio-services/node-nest-tooling@0.3.1 \
-  @vigilio-services/vigilio-skills@0.6.2
+  @vigilio-services/vigilio-skills@0.7.0
 
 pnpm exec vigilio-skills sync
 pnpm exec vigilio-skills check

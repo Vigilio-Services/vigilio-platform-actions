@@ -1,6 +1,6 @@
 {
   "name": "@vigilio-services/vigilio-skills",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Versioned AI skills with explicit, conflict-safe synchronization.",
   "type": "module",
   "private": false,

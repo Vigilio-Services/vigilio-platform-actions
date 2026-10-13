@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.2.
+"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.3.
 
 This module is intentionally UI-agnostic.  Both ChatGPT automation scripts use
 it so version checks, command execution, JSON parsing and execution-plan
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.2"
+SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.3"
 SUPPORTED_PLAN_SCHEMA_VERSION = 2
 SUPPORTED_PHASES = ("explore", "propose", "apply", "review", "fix")
 MUTATING_PHASES = frozenset({"apply", "review", "fix"})
@@ -121,13 +121,13 @@ def _relative_artifact(project_root: Path, value: Any, *, label: str) -> Path:
     raw = Path(value)
     if raw.is_absolute():
         raise PromptBuilderCompatibilityError(
-            f"{label} must be project-relative for portable Prompt Builder 0.6.2 locks"
+            f"{label} must be project-relative for portable Prompt Builder 0.6.3 locks"
         )
     return _inside(project_root, project_root / raw, label=label)
 
 
 def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
-    """Load and strictly validate a Prompt Builder 0.6.2 execution plan."""
+    """Load and strictly validate a Prompt Builder 0.6.3 execution plan."""
 
     project_root = project_root.resolve()
     prompts_dir = _inside(project_root, prompts_dir, label="prompts directory")
@@ -259,7 +259,7 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
     steps.sort(key=lambda step: step.sequence)
     if [step.sequence for step in steps] != list(range(1, len(steps) + 1)):
         raise PromptBuilderCompatibilityError(
-            "Prompt Builder 0.6.2 execution steps must use contiguous numeric order"
+            "Prompt Builder 0.6.3 execution steps must use contiguous numeric order"
         )
 
     if raw.get("prompt_count") not in (None, len(steps)):
@@ -401,7 +401,7 @@ class PromptBuilderClient:
         installed_cli = (
             self.project_root
             / "node_modules"
-            / "@vigilioyonatan"
+            / "@vigilio-services"
             / "prompt-builder"
             / "dist"
             / "cli.js"

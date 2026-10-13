@@ -1,4 +1,4 @@
-# ChatGPT automation + Prompt Builder 0.6.2
+# ChatGPT automation + Prompt Builder 0.6.3
 
 These scripts are adapters around the published Prompt Builder contract. They
 do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
@@ -7,7 +7,7 @@ do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
 
 ```text
 chatgpt_docs_automation.py  -> helps materialize docs/rules targets
-vigilio-prompt 0.6.2        -> validates and compiles plan/prompts/locks
+vigilio-prompt 0.6.3        -> validates and compiles plan/prompts/locks
 chatgpt_prompt_queue.py     -> sends verified plan steps to the ChatGPT UI
 chatgpt_automation_lock.py  -> owns the cross-process lock for that visible UI
 prompt_templates.py         -> owns reusable, product-neutral prompt text
@@ -23,18 +23,18 @@ plans.
 ## Prerequisites
 
 - Node.js 24 and pnpm.
-- `@vigilio-services/prompt-builder@0.6.2` resolved in the consumer project, or the reviewed local
-  `0.6.2` CLI declared with `PREFLIGHT_PROMPT_BUILDER_CLI`.
+- `@vigilio-services/prompt-builder@0.6.3` resolved in the consumer project, or the reviewed local
+  `0.6.3` CLI declared with `PREFLIGHT_PROMPT_BUILDER_CLI`.
 - Python 3.11+.
 - UI dependencies and image assets documented in `chatgpt_docs_automation.py`.
 - A project-local `.npmrc`/token that can read the private GitHub package.
 
 ```bash
-pnpm add -D @vigilio-services/prompt-builder@0.6.2
+pnpm add -D @vigilio-services/prompt-builder@0.6.3
 pnpm exec vigilio-prompt --version
 ```
 
-The second command must print `0.6.2`. During workspace development, use a `file:` dependency on the local
+The second command must print `0.6.3`. During workspace development, use a `file:` dependency on the local
 package instead of inventing a registry lock before the release exists. Version drift fails closed by default.
 
 ## 1. Initialize and build documentation

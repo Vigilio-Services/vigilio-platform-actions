@@ -1,5 +1,12 @@
 # @vigilio-services/vigilio-skills
 
+## 0.7.0
+
+### Minor Changes
+
+- 21d7881: Add the cross-project `skill-create-docs` workflow for decision-first, Prompt Builder-compatible
+  documentation and include it in the core skill profile.
+
 ## 0.6.2
 
 ### Patch Changes

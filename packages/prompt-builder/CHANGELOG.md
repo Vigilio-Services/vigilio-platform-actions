@@ -1,5 +1,20 @@
 # @vigilio-services/prompt-builder
 
+## 0.6.3
+
+### Patch Changes
+
+- 21d7881: Make generated runtime preflight compatible with desktop and other projects that do not adopt
+  backend/frontend target profiles, add an explicit target-profile readiness policy, and align the scaffolded
+  Prompt Builder version dynamically with the package manifest. Allow profiles to validate the same configurable
+  asset directory passed to the queue runner.
+- 21d7881: Publish `build-all` outputs as an exact guarded directory snapshot so stale owned prompts and lockfiles cannot remain
+  in a regenerated plan. Refuse to replace directories containing unowned files and restore the prior output if the
+  atomic directory swap fails.
+
+  Make runtime preflight UI checks truly profile-driven and consume the same explicitly exported local Prompt Builder
+  CLI used by the Python adapter, avoiding false asset failures during docs-only generation.
+
 ## 0.6.2
 
 ### Patch Changes

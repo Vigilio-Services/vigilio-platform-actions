@@ -2744,12 +2744,12 @@ def parse_args():
         "--prompt-builder-mode",
         choices=("strict", "version-only", "off"),
         default="strict",
-        help="0.6.2 integration level. strict is fail-closed and recommended.",
+        help="0.6.3 integration level. strict is fail-closed and recommended.",
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
         default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact supported Prompt Builder version (default: 0.6.2).",
+        help="Exact supported Prompt Builder version (default: 0.6.3).",
     )
     parser.add_argument("--package-manager", default="pnpm")
     parser.add_argument(
