@@ -87,24 +87,24 @@ jobs:
     steps:
       - name: Checkout frontend at repository root
         if: inputs.frontend-checkout-path == ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - name: Checkout frontend at configured path
         if: inputs.frontend-checkout-path != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           path: ${{ inputs.frontend-checkout-path }}
           persist-credentials: false
       - name: Checkout backend contract source
         if: inputs.backend-repository != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           repository: ${{ inputs.backend-repository }}
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@dd079500832c8b9cadefcd6dff90223aa7922ed3 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -159,24 +159,24 @@ jobs:
     steps:
       - name: Checkout frontend at repository root
         if: inputs.frontend-checkout-path == ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - name: Checkout frontend at configured path
         if: inputs.frontend-checkout-path != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           path: ${{ inputs.frontend-checkout-path }}
           persist-credentials: false
       - name: Checkout backend contract source
         if: inputs.backend-repository != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           repository: ${{ inputs.backend-repository }}
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@dd079500832c8b9cadefcd6dff90223aa7922ed3 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -199,7 +199,7 @@ jobs:
           name: web-sbom
           path: ${{ inputs.working-directory }}/reports/sbom.cdx.json
           retention-days: 30
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: |
             ${{ inputs.working-directory }}/dist/**
@@ -217,31 +217,31 @@ jobs:
     steps:
       - name: Checkout frontend at repository root
         if: inputs.frontend-checkout-path == ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - name: Checkout frontend at configured path
         if: inputs.frontend-checkout-path != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           path: ${{ inputs.frontend-checkout-path }}
           persist-credentials: false
       - name: Checkout backend contract source
         if: inputs.backend-repository != ''
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           repository: ${{ inputs.backend-repository }}
           path: ${{ inputs.backend-checkout-path }}
           persist-credentials: false
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@dd079500832c8b9cadefcd6dff90223aa7922ed3 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           github-packages-token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
           working-directory: ${{ inputs.working-directory }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@dd079500832c8b9cadefcd6dff90223aa7922ed3 # v1
         with:
           working-directory: ${{ inputs.working-directory }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
