@@ -1,0 +1,4 @@
+# braces 3.0.3 is used only by trusted build/release glob tooling. No patched npm
+# release exists for CVE-2026-93687. Reassess upstream or replace the dependency
+# before this temporary exception expires.
+CVE-2026-93687 exp:2026-11-12
