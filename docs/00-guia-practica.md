@@ -65,14 +65,14 @@ Changesets coordina las versiones de los cuatro paquetes del workspace.
 
 ## 4. Cómo consumir los paquetes
 
-Configura el scope `@vigilioyonatan` en el `.npmrc` versionado y la credencial en `~/.npmrc` o CI.
+Configura el scope `@vigilio-services` en el `.npmrc` versionado y la credencial en `~/.npmrc` o CI.
 Instala solo paquetes compatibles con el stack y fija versiones exactas:
 
 ```bash
 pnpm add -D --save-exact \
   @vigilio-services/devsecops-governance@0.5.2 \
   @vigilio-services/devsecops-evidence@0.3.1 \
-  @vigilio-services/vigilio-skills@0.6.2
+  @vigilio-services/vigilio-skills@0.7.0
 ```
 
 Agrega `@vigilio-services/node-nest-tooling` únicamente en backends Node/Nest. Migra comandos

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Create Docs"
+  short_description: "Create implementation-ready Prompt Builder docs"
+  default_prompt: "Use $skill-create-docs to create or audit an implementation-ready docs/rules package."

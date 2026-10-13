@@ -113,9 +113,9 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             client = FakeVersionClient(
                 Path(temp),
-                "Already up to date\n0.6.1\nDone in 300ms using pnpm v11.22.0\n",
+                "Already up to date\n0.6.3\nDone in 300ms using pnpm v11.22.0\n",
             )
-            self.assertEqual(client.assert_compatible(), "0.6.1")
+            self.assertEqual(client.assert_compatible(), "0.6.3")
 
     def test_json_parser_returns_outer_report_not_nested_object(self):
         report = _extract_json('pnpm notice\n{"valid": true, "checks": [{"passed": true}]}\n')
@@ -172,7 +172,7 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
             self.assertEqual(store.status(regenerated), "pending")
             self.assertIsNone(store.ensure_record(regenerated)["evidence_ref"])
 
-    def test_templates_support_all_prompt_builder_061_phases(self):
+    def test_templates_support_all_prompt_builder_063_phases(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for phase in ("explore", "propose", "apply", "review", "fix"):
@@ -270,11 +270,11 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
 
     def test_queue_refuses_stale_status_adapter(self):
         class FreshDriver:
-            def wait_status_fresh(self):
+            def wait_status_current_response(self):
                 return 6
 
         self.assertEqual(wait_for_fresh_status(FreshDriver()), 6)
-        with self.assertRaisesRegex(RuntimeError, "wait_status_fresh"):
+        with self.assertRaisesRegex(RuntimeError, "wait_status_current_response"):
             wait_for_fresh_status(object())
 
     def test_run_lock_is_exclusive_at_a_stable_byte_offset(self):

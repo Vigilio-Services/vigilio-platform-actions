@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,13 +33,20 @@ async function exists(file: string) {
   }
 }
 
-async function writeIfMissing(file: string, content: string, created: string[], skipped: string[]) {
+async function writeIfMissing(
+  file: string,
+  content: string,
+  created: string[],
+  skipped: string[],
+  mode?: number,
+) {
   await mkdir(path.dirname(file), { recursive: true });
   if (await exists(file)) {
     skipped.push(file);
     return;
   }
-  await writeFile(file, content, 'utf8');
+  await writeFile(file, content, { encoding: 'utf8', ...(mode ? { mode } : {}) });
+  if (mode) await chmod(file, mode);
   created.push(file);
 }
 
@@ -76,6 +83,16 @@ async function loadTemplate(name: string) {
   return readFile(path.join(TOOL_ROOT, 'templates', name), 'utf8');
 }
 
+async function loadPackageVersion() {
+  const manifest = JSON.parse(await readFile(path.join(TOOL_ROOT, 'package.json'), 'utf8')) as {
+    version?: unknown;
+  };
+  if (typeof manifest.version !== 'string' || !manifest.version.trim()) {
+    throw new Error('Package version is unavailable');
+  }
+  return manifest.version;
+}
+
 export async function initializeProject(input: {
   projectRoot: string;
   architectureFile: string;
@@ -94,6 +111,7 @@ export async function initializeProject(input: {
   const created: string[] = [];
   const skipped: string[] = [];
   const updated: string[] = [];
+  const packageVersion = await loadPackageVersion();
 
   const architectureRelative = portableRelative(projectRoot, architectureSource);
   const baseline = [
@@ -166,6 +184,34 @@ export async function initializeProject(input: {
   await writeIfMissing(
     path.resolve(projectRoot, 'docs/rules/registry.yaml'),
     'version: 1\npacks: {}\n',
+    created,
+    skipped,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-env.sh'),
+    (await loadTemplate('preflight-env.sh')).replaceAll(
+      '{{PROMPT_BUILDER_VERSION}}',
+      packageVersion,
+    ),
+    created,
+    skipped,
+    0o755,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-env.ps1'),
+    (await loadTemplate('preflight-env.ps1')).replaceAll(
+      '{{PROMPT_BUILDER_VERSION}}',
+      packageVersion,
+    ),
+    created,
+    skipped,
+  );
+  await writeIfMissing(
+    path.resolve(projectRoot, 'scripts/preflight-services.env.example'),
+    (await loadTemplate('preflight-services.env.example')).replaceAll(
+      '{{PROMPT_BUILDER_VERSION}}',
+      packageVersion,
+    ),
     created,
     skipped,
   );

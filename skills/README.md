@@ -35,7 +35,7 @@ Skills compartidos para todos los proyectos Vigilio. Se instalan vía npm packag
 ## Instalación en proyectos
 
 ```bash
-pnpm add -D @vigilio-services/vigilio-skills@0.6.2
+pnpm add -D @vigilio-services/vigilio-skills@0.7.0
 pnpm exec vigilio-skills sync
 pnpm exec vigilio-skills check
 ```

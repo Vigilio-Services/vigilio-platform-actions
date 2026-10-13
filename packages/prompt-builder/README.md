@@ -8,7 +8,7 @@ The package is published privately in GitHub Packages and requires Node.js 24.
 
 ```ini
 # .npmrc
-@vigilioyonatan:registry=https://npm.pkg.github.com
+@vigilio-services:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
 always-auth=true
 ```
@@ -123,6 +123,10 @@ pnpm exec vigilio-prompt plan --project-root . --phases propose,apply,review
 # Generate the complete ordered project prompt set
 pnpm exec vigilio-prompt build-all --project-root . --plan-id full-project --phases propose,apply,review
 ```
+
+`build-all` publishes one exact guarded snapshot. A successful regeneration removes stale Prompt Builder-owned
+prompts/locks from that plan directory through a staged directory swap. If the destination contains an unowned file,
+has a different `plan_id`, is a symlink or escapes the project root, publication fails without replacing it.
 
 ### Batch eligibility and versioned plans
 

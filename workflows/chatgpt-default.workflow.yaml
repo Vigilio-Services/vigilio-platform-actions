@@ -1,0 +1,17 @@
+schema_version: 1
+id: chatgpt-default
+version: 1
+display_name: ChatGPT default protected flow
+steps:
+  - id: paste-current-prompt
+    action: replace_draft_and_paste_prompt
+    enabled: true
+    protected: true
+  - id: submit-current-prompt
+    action: submit_prompt
+    enabled: true
+    protected: true
+  - id: await-current-result
+    action: wait_for_status
+    enabled: true
+    protected: true

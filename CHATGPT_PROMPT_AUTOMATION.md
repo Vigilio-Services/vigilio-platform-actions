@@ -1,4 +1,4 @@
-# ChatGPT automation + Prompt Builder 0.6.0
+# ChatGPT automation + Prompt Builder 0.6.3
 
 These scripts are adapters around the published Prompt Builder contract. They
 do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
@@ -7,11 +7,13 @@ do not replace `docs/rules`, OpenSpec, quality gates or a coding-agent runner.
 
 ```text
 chatgpt_docs_automation.py  -> helps materialize docs/rules targets
-vigilio-prompt 0.6.0        -> validates and compiles plan/prompts/locks
+vigilio-prompt 0.6.3        -> validates and compiles plan/prompts/locks
 chatgpt_prompt_queue.py     -> sends verified plan steps to the ChatGPT UI
 chatgpt_automation_lock.py  -> owns the cross-process lock for that visible UI
 prompt_templates.py         -> owns reusable, product-neutral prompt text
 prompt_builder_compat.py    -> owns the Python/CLI compatibility boundary
+preflight_runner.py         -> blocks until profile-declared runtime dependencies are ready
+notification_audio.py       -> owns short READY/BLOCKED audio notifications and mute behavior
 ```
 
 The scripts contain no project bounded contexts. Product customization belongs
@@ -21,17 +23,19 @@ plans.
 ## Prerequisites
 
 - Node.js 24 and pnpm.
-- `@vigilio-services/prompt-builder@0.6.2` installed in the consumer project.
+- `@vigilio-services/prompt-builder@0.6.3` resolved in the consumer project, or the reviewed local
+  `0.6.3` CLI declared with `PREFLIGHT_PROMPT_BUILDER_CLI`.
 - Python 3.11+.
 - UI dependencies and image assets documented in `chatgpt_docs_automation.py`.
 - A project-local `.npmrc`/token that can read the private GitHub package.
 
 ```bash
-pnpm add -D @vigilio-services/prompt-builder@0.6.2
+pnpm add -D @vigilio-services/prompt-builder@0.6.3
 pnpm exec vigilio-prompt --version
 ```
 
-The second command must print `0.6.0`. Version drift fails closed by default.
+The second command must print `0.6.3`. During workspace development, use a `file:` dependency on the local
+package instead of inventing a registry lock before the release exists. Version drift fails closed by default.
 
 ## 1. Initialize and build documentation
 
@@ -78,6 +82,9 @@ pnpm exec vigilio-prompt build-all --project-root . \
 
 Use `--dry-run` first. It validates version, execution plan, canonical
 references, eligibility and prompt locks without interacting with the UI.
+Before those checks, the runner executes the platform-appropriate project preflight (`.ps1` on Windows,
+`.sh` on Linux/Webtop). The service policy, asset directory and local Prompt Builder CLI come from the active
+profile/config; PostgreSQL, Redis, Docker and Base Code Memory are required only when that profile declares them.
 
 ```bash
 python platform-actions/chatgpt_prompt_queue.py \
@@ -99,7 +106,9 @@ python platform-actions/chatgpt_prompt_queue.py \
 
 For the explicit unattended mode, use `--automation` (or `--automatizacion`): a fresh
 `READY`/❤️ advances `PROPOSE → APPLY → REVIEW` and then the next dependency-ready pack. A
-`BLOCKED`/👎 always writes the blocker state/ticket and stops. The mode still validates root
+`BLOCKED`/👎 writes the blocker state/ticket and may issue the bounded same-chat repair prompt configured by
+`--blocked-repair-rounds`; it never advances until the current step returns a fresh READY marker. Exhausted or
+non-repairable blockers stop the run. The mode still validates root
 OpenSpec, decisions, dependencies and locks; it is incompatible with `--force-block` and does
 not independently prove CI/release evidence. Its state stores a separate
 `automation_ready_marker`, never an `evidence_ref`; a real quality report/run ID remains required
@@ -174,3 +183,5 @@ also enforces previous-phase and cross-pack dependency barriers from
 
 Runtime state lives under `.prompt-runner/` and is ignored by Git. Generated
 prompts, backups and UI status markers are never sources of truth.
+Only ALTA/CRITICAL causes are appended to the high-severity blocker log; ordinary repairable test failures stay
+in the per-step state/report instead of polluting that escalation log.

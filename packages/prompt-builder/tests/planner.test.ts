@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'vitest';
@@ -243,6 +243,60 @@ describe('planner', () => {
       await rm(root, { recursive: true, force: true });
     }
   }, 30000);
+
+  it('publishes the exact generated set and removes stale owned artifacts', async () => {
+    const root = await createFixture();
+    try {
+      const first = await buildAll({
+        projectRoot: root,
+        phases: ['propose', 'apply', 'review'],
+        tokenBudget: 60_000,
+        planId: 'exact-output',
+      });
+      await buildAll({
+        projectRoot: root,
+        phases: ['apply'],
+        tokenBudget: 60_000,
+        planId: 'exact-output',
+      });
+      const files = await readdir(first.outputDirectory);
+      assert.equal(files.length, 9);
+      assert.equal(files.filter((file) => file.endsWith('.md')).length, 4);
+      assert.equal(files.filter((file) => file.endsWith('.lock.json')).length, 4);
+      assert.equal(files.includes('execution-plan.json'), true);
+      assert.equal(
+        files.some((file) => file.includes('.propose.')),
+        false,
+      );
+      assert.equal(
+        files.some((file) => file.includes('.review.')),
+        false,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  }, 30000);
+
+  it('refuses to replace an output directory containing unowned files', async () => {
+    const root = await createFixture();
+    try {
+      const output = path.join(root, 'generated/prompts/guarded');
+      await write(root, 'generated/prompts/guarded/operator-notes.md', 'keep me\n');
+      await assert.rejects(
+        () =>
+          buildAll({
+            projectRoot: root,
+            phases: ['apply'],
+            tokenBudget: 60_000,
+            planId: 'guarded',
+          }),
+        /OUTPUT_DIRECTORY_UNSAFE: unowned files present/,
+      );
+      assert.equal(await readFile(path.join(output, 'operator-notes.md'), 'utf8'), 'keep me\n');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 
   it('fails closed when target profile contract does not match backend owner manifest', async () => {
     const root = await createFixture();

@@ -67,29 +67,40 @@ and then retry.
 Typical Linux/Webtop run
 ------------------------
 
-    unset XAUTHORITY
-    export DISPLAY=:1
-    python3 chatgpt_prompt_queue.py \
-      --retry-interrupted \
-      --project-root . \
-      --linux \
-      --display :1 \
-      --ui-module ./chatgpt_docs_automation.py \
-      --prompts-dir ./generated/prompts/full-project \
-      --assets ./assets \
-      --send-with-enter \
-      --new-chat-mode each
+unset XAUTHORITY
+export DISPLAY=:1
+export VIGILIO_NODE24_BIN="$HOME/.nvm/versions/node/v24.21.0/bin/node"
+python3 chatgpt_prompt_queue.py \
+  --project-root . \
+  --linux \
+  --display :1 \
+  --ui-module ./chatgpt_docs_automation.py \
+  --prompts-dir ./generated/prompts/full-project \
+  --assets ./opencode-assets \
+  --send-with-enter \
+  --new-chat-mode each \
+  --automation \
+  --auto-apply-recommended \
+  --retry-blocked \
+  --retry-interrupted
+
+
+
+# complete
+unset XAUTHORITY; export DISPLAY=:1; export VIGILIO_NODE24_BIN=/tmp/opencode/node-v24.11.0-linux-x64/bin/node; python3 chatgpt_prompt_queue.py --project-root . --linux --display :1 --ui-module ./chatgpt_docs_automation.py --prompts-dir ./generated --assets ./opencode-assets --send-with-enter --new-chat-mode never --automation --auto-apply-recommended --retry-blocked --retry-interrupted
 
 By default the runner:
 
-    1. requires Prompt Builder 0.6.1, execution-plan.json schema v2 and valid locks;
+    1. requires Prompt Builder 0.6.3, execution-plan.json schema v2 and valid locks;
     2. opens a NEW ChatGPT chat for every generated prompt;
     3. executes the next dependency-ready prompt;
     4. on PROPOSE success, saves `awaiting_approval` and STOPS by default;
     5. after `--approve-next`, continues with APPLY;
     6. with `--automation`, every READY/❤️ checkpoint continues unattended;
-    7. on BLOCKED/👎, saves state and STOPS even in automation mode;
-    8. on restart, resumes at the first unfinished item.
+    7. on BLOCKED/👎, repairs/retries the SAME step by default until READY or a fresh report
+       identifies a required human/external action; `--no-retry-blocked` stops immediately;
+    8. only after READY/❤️ does automation advance to the next dependency-ready prompt;
+    9. on restart, resumes at the first unfinished item.
 
 Useful commands
 ---------------
@@ -114,7 +125,7 @@ Rewind from a sequence after REVIEW found implementation problems:
 
     python3 chatgpt_prompt_queue.py --rewind-from 0002
 
-Run the complete queue unattended. READY/❤️ continues; BLOCKED/👎 stops:
+Run the complete queue unattended. READY/❤️ continues; add --retry-blocked to repair BLOCKED/👎 in-place:
 
     python3 chatgpt_prompt_queue.py --automation [normal UI args...]
 
@@ -123,7 +134,9 @@ Safety notes
 
 - A previous `running` item becomes `interrupted` after restart.  The runner
   does NOT automatically resend it, because duplicating an APPLY may be unsafe.
-- A BLOCKED item stops by default. With --force-block it is recorded as deferred_blocked, later phases of the same pack are blocked_by_phase, and the runner continues.
+- A BLOCKED item is repaired in place by default and never advances without READY. An explicit
+  human/external blocker stops fail-closed. With --force-block it may be recorded as deferred_blocked,
+  later phases of the same pack are blocked_by_phase, and the runner continues.
 - If a blocked prompt file changes after regeneration, it is automatically
   eligible for retry because the source changed.
 - If an already completed prompt or queue ordering changes, the runner rewinds
@@ -134,9 +147,12 @@ Safety notes
 - Every prompt is checked with `vigilio-prompt verify-lock` immediately before
   UI execution. APPLY/REVIEW/FIX additionally require closed human decisions.
 - `--automation` is an explicit operator policy: it treats a fresh READY/❤️
-  marker as approval to advance PROPOSE/APPLY/REVIEW. It never converts a
-  BLOCKED/👎 marker, stale lock, incomplete OpenSpec or failed preflight to done.
-- `--auto-apply-recommended` never closes Q-* decisions or HIGH/CRITICAL blockers.
+  marker as approval to advance PROPOSE/APPLY/REVIEW. A BLOCKED/👎 marker remains
+  fail-closed unless `--retry-blocked` is also active; then the SAME step is
+  repaired/retried without advancing. Stale locks, incomplete OpenSpec and failed
+  preflight are never converted to done.
+- `--auto-apply-recommended` never closes Q-* decisions or missing authority/access. Severity alone
+  does not prevent an authorized repair whose solution is canonical and inside scope.
 
 Senior mode anti-rewind (2026-08-30):
 - `build-all --include-context-packs` with a global `answers.md`/`global.core` change rewrites 200+ hashes → `reconcile()` rewinds from 0001. This is intentional fail-closed.
@@ -154,6 +170,7 @@ import hashlib
 import importlib.util
 import json
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import re
 import sys
@@ -164,9 +181,15 @@ from types import ModuleType
 from typing import Any, Iterable, Optional
 
 from chatgpt_automation_lock import RunLock
+from execution_evidence import EvidenceError, evidence_filename, validate_execution_evidence
+from notification_audio import NotificationAudio, add_audio_arguments
+from preflight_runner import add_preflight_arguments, run_runtime_preflight
 from prompt_templates import (
+    build_blocked_repair_prompt,
     build_blocked_ticket_text,
     build_execution_envelope,
+    build_execution_evidence_instruction,
+    build_high_blocker_report_instruction,
     build_propose_artifact_repair_prompt,
 )
 from prompt_builder_compat import (
@@ -179,21 +202,42 @@ from prompt_builder_compat import (
     PromptBuilderCompatibilityError,
     load_execution_plan,
 )
+from runner_events import RunnerEventEmitter
 
 
-SCRIPT_VERSION = "2026.09.19-v5-prompt-builder-0.6.1"
+SCRIPT_VERSION = "2026.10.12-v18-gui-contracts"
 # The persisted shape did not change; retain v1 so existing resumable queues stay valid.
 STATE_SCHEMA_VERSION = 1
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_PROMPTS_DIR = Path("generated/prompts/full-project")
 DEFAULT_UI_MODULE = SCRIPT_DIR / "chatgpt_docs_automation.py"
-DEFAULT_ASSETS_DIR = SCRIPT_DIR / "assets"
+# assets/ is retained for backwards compatibility but mixes footer captures
+# from different UI generations.  Default to the coherent current dark-theme
+# profile; callers on the light theme can pass --assets ./chatgpt-assets.
+DEFAULT_ASSETS_DIR = SCRIPT_DIR / "opencode-assets"
 DEFAULT_STATE_DIR = Path(".prompt-runner")
 DEFAULT_PROPOSE_REPAIR_ROUNDS = 2
+DEFAULT_BLOCKED_REPAIR_ROUNDS = 0
+MAX_BLOCKED_REPAIR_ROUNDS = 50
+DEFAULT_RESPONSE_TIMEOUT_SECONDS = 45 * 60
+DEFAULT_KEEPALIVE_INTERVAL_SECONDS = 30.0
+BLOCKED_RESPONSE_CONTEXT_CHARS = 8_000
 OPENSPEC_TODO_MARKER = "PROMPT_BUILDER_TODO"
-OPENSPEC_REQUIRED_FILES = ("proposal.md", "design.md", "tasks.md")
+OPENSPEC_REQUIRED_FILES = ("proposal.md", "design.md", "tasks.md", "execution-memory.md")
 OPENSPEC_CONTEXT_MAX_FILE_CHARS = 6_000
+
+
+def _configure_utf8_console() -> None:
+    """Make emoji/status output safe on Windows consoles using legacy CP1252."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="backslashreplace")
+            except (OSError, ValueError):
+                # Test captures and already-closed streams may reject changes.
+                pass
 OPENSPEC_CONTEXT_MAX_TOTAL_CHARS = 16_000
 
 PROMPT_RE = re.compile(
@@ -204,6 +248,7 @@ PROMPT_RE = re.compile(
 PHASE_ORDER = {phase: index for index, phase in enumerate(SUPPORTED_PHASES)}
 TERMINAL_OK = {"done", "skipped", "deferred_blocked", "blocked_by_phase"}
 CONTEXT_ONLY_PREFIXES = ("global.", "module.")
+CONTEXT_ONLY_NON_EXECUTABLE_PHASES = {"apply", "review", "fix"}
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +394,18 @@ def ensure_propose_openspec_scaffold(project_root: Path, item: PromptItem) -> Pa
         ),
         "tasks.md": (
             f"# Tasks — {openspec_change_id(item)}\n\nStatus: DRAFT\n\n"
-            f"- [ ] {OPENSPEC_TODO_MARKER}: replace with ordered, verifiable tasks.\n"
+            f"- [ ] TASK-001 {OPENSPEC_TODO_MARKER}: replace with ordered, verifiable tasks.\n"
+        ),
+        "execution-memory.md": (
+            f"# Execution Memory — {openspec_change_id(item)}\n\nStatus: DRAFT\n\n"
+            "## Objective and authority\n\n"
+            f"- {OPENSPEC_TODO_MARKER}: summarize objective; docs/rules remains canonical.\n\n"
+            "## Skills and required references read\n\n"
+            f"- {OPENSPEC_TODO_MARKER}: record exact skill names and required paths/URLs.\n\n"
+            "## Invariants, reusable inputs and risks\n\n"
+            f"- {OPENSPEC_TODO_MARKER}: compact facts only; do not copy whole files.\n\n"
+            "## Checklist evidence and handoff\n\n"
+            f"- {OPENSPEC_TODO_MARKER}: map task IDs to commands, exit codes, artifacts and commits.\n"
         ),
     }
     for filename, content in scaffolds.items():
@@ -372,6 +428,12 @@ def validate_propose_openspec(project_root: Path, item: PromptItem) -> list[str]
             problems.append(f"{file.relative_to(project_root)} still contains {OPENSPEC_TODO_MARKER}")
         if len(content.strip()) < 180:
             problems.append(f"{file.relative_to(project_root)} is not substantive")
+        if filename == "tasks.md" and not re.search(
+            r"(?mi)^\s*-\s*\[(?: |x)\]\s+[A-Z][A-Z0-9_-]*-\d+\b", content
+        ):
+            problems.append(
+                f"{file.relative_to(project_root)} needs stable task IDs and checklist items"
+            )
     reference = target / "canonical-reference.yaml"
     if not reference.is_file():
         problems.append(f"missing {reference.relative_to(project_root)}")
@@ -558,7 +620,7 @@ def discover_prompts(
     if gaps:
         logging.warning("Queue has numeric gaps: %s", gaps[:10])
 
-    # Validate phase order per pack for whatever 0.6.1 phases the plan selected.
+    # Validate phase order per pack for whatever 0.6.3 phases the plan selected.
     by_pack: dict[str, list[PromptItem]] = {}
     for item in items:
         by_pack.setdefault(item.pack, []).append(item)
@@ -576,6 +638,11 @@ def executable_items(items: Iterable[PromptItem], include_context_only: bool) ->
     if include_context_only:
         return list(items)
     return [item for item in items if not item.context_only]
+
+
+def is_non_executable_context_phase(item: PromptItem) -> bool:
+    """Context packs may propose context, but never execute mutating phases."""
+    return item.context_only and item.phase in CONTEXT_ONLY_NON_EXECUTABLE_PHASES
 
 
 # ---------------------------------------------------------------------------
@@ -690,6 +757,87 @@ class StateStore:
         current_order = [item.logical_id for item in items]
         stored_order = self.data.get("queue_order") or []
         rewind_candidates: list[tuple[int, str]] = []
+
+        # If context-only execution is explicitly enabled now, undo ONLY the
+        # automatic skip created by an earlier run without --include-context-only.
+        # Never revive a manually skipped/completed/blocker record by accident.
+        if include_context_only:
+            reactivated = 0
+            context_mutating_skipped = 0
+            for item in items:
+                if not item.context_only:
+                    continue
+                record = self.ensure_record(item)
+
+                # Context packs may be included so their non-mutating discovery/
+                # proposal prompts run, but Prompt Builder 0.6.3 can deliberately
+                # expose APPLY/REVIEW/FIX artifacts while execution.enabled=false.
+                # Those phases are context, not implementation jobs: never call
+                # check-eligibility for them and never convert that canonical
+                # non-executability into a BLOCKED queue item.
+                if is_non_executable_context_phase(item):
+                    if record.get("status") != "done":
+                        if not (
+                            record.get("status") == "skipped"
+                            and record.get("note")
+                            == "context-only non-executable phase skipped"
+                        ):
+                            record.update(
+                                {
+                                    "status": "skipped",
+                                    "attempts": 0,
+                                    "started_at": None,
+                                    "completed_at": now_iso(),
+                                    "approved_at": None,
+                                    "blocked_at": None,
+                                    "interrupted_at": None,
+                                    "evidence_approved_at": None,
+                                    "evidence_ref": None,
+                                    "automation_ready_marker": None,
+                                    "note": "context-only non-executable phase skipped",
+                                    "seq": item.seq,
+                                    "prompt_file": item.path.name,
+                                    "prompt_sha256": item.prompt_sha256,
+                                    "lock_sha256": item.lock_sha256,
+                                }
+                            )
+                            context_mutating_skipped += 1
+                    continue
+
+                if (
+                    record.get("status") == "skipped"
+                    and record.get("note") == "context-only pack skipped by default"
+                ):
+                    record.update(
+                        {
+                            "status": "pending",
+                            "attempts": 0,
+                            "started_at": None,
+                            "completed_at": None,
+                            "approved_at": None,
+                            "blocked_at": None,
+                            "interrupted_at": None,
+                            "evidence_approved_at": None,
+                            "evidence_ref": None,
+                            "automation_ready_marker": None,
+                            "note": "reactivated by explicit --include-context-only",
+                            "seq": item.seq,
+                            "prompt_file": item.path.name,
+                            "prompt_sha256": item.prompt_sha256,
+                            "lock_sha256": item.lock_sha256,
+                        }
+                    )
+                    reactivated += 1
+            if reactivated:
+                logging.info(
+                    "Reactivated %d non-mutating context-only queue items previously auto-skipped.",
+                    reactivated,
+                )
+            if context_mutating_skipped:
+                logging.info(
+                    "Skipped %d context-only APPLY/REVIEW/FIX item(s) because they are non-executable context phases.",
+                    context_mutating_skipped,
+                )
 
         # If queue ordering changed, find earliest divergence.
         if stored_order and stored_order != current_order:
@@ -849,13 +997,27 @@ def ui_status_markers(ui: ModuleType) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def capture_blocked_screenshot(ui: ModuleType, state_dir: Path, item: PromptItem) -> Optional[Path]:
+def capture_blocked_screenshot(
+    ui: ModuleType,
+    driver: Any,
+    state_dir: Path,
+    item: PromptItem,
+    *,
+    attempt: int,
+) -> Optional[Path]:
     try:
         blocked_dir = state_dir / "blocked"
         blocked_dir.mkdir(parents=True, exist_ok=True)
-        name = f"{item.display_seq}-{safe_slug(item.pack)}.{item.phase}.png"
+        name = f"{item.display_seq}-{safe_slug(item.pack)}.{item.phase}.attempt-{attempt}.png"
         path = blocked_dir / name
-        ui.pyautogui.screenshot().save(path)
+        bounds = getattr(driver, "_chat_x_bounds", lambda: None)()
+        if not bounds or len(bounds) != 2:
+            raise RuntimeError("ChatGPT pane bounds are unavailable; refusing full-screen capture")
+        x0, x1 = map(int, bounds)
+        _, screen_height = ui.pyautogui.size()
+        if x0 < 0 or x1 <= x0:
+            raise RuntimeError(f"Invalid ChatGPT pane bounds: {bounds}")
+        ui.pyautogui.screenshot(region=(x0, 0, x1 - x0, int(screen_height))).save(path)
         logging.info("BLOCKED screenshot saved: %s", path)
         return path
     except Exception:
@@ -879,6 +1041,171 @@ def write_blocked_ticket(state_dir: Path, item: PromptItem, screenshot: Optional
     return ticket
 
 
+def high_blocker_report_path(project_root: Path, item: PromptItem) -> Path:
+    filename = f"{item.display_seq}-{safe_slug(item.pack)}-{item.phase}.json"
+    return project_root / ".prompt-runner" / "blocked-reports" / filename
+
+
+def _redact_blocker_text(value: Any, *, limit: int = 2_000) -> str:
+    text = str(value or "").strip()[:limit]
+    text = re.sub(r"(?i)(password|token|secret|cookie|authorization)\s*[:=]\s*\S+", r"\1=[REDACTED]", text)
+    text = re.sub(r"(?i)(postgres(?:ql)?|redis)://[^\s]+", r"\1://[REDACTED]", text)
+    text = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "[REDACTED_AWS_KEY]", text)
+    return text
+
+
+def append_high_severity_blockers(
+    *,
+    project_root: Path,
+    state_dir: Path,
+    item: PromptItem,
+    attempts: int,
+    execution_id: str,
+    fallback_response: str = "",
+) -> int:
+    """Append only ALTA/CRITICAL causes to the durable runner log."""
+    report_path = high_blocker_report_path(project_root, item)
+    blockers: list[dict[str, str]] = []
+    if report_path.is_file():
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            if (
+                report.get("prompt_sha256") == item.prompt_sha256
+                and report.get("execution_id") == execution_id
+            ):
+                for blocker in report.get("blockers", []):
+                    if not isinstance(blocker, dict):
+                        continue
+                    severity = str(blocker.get("severity", "")).strip().upper()
+                    if severity not in {"ALTA", "CRITICAL"}:
+                        continue
+                    blockers.append(
+                        {
+                            "severity": severity,
+                            "category": _redact_blocker_text(blocker.get("category"), limit=80),
+                            "cause": _redact_blocker_text(blocker.get("cause")),
+                            "recommended_action": _redact_blocker_text(
+                                blocker.get("recommended_action")
+                            ),
+                        }
+                    )
+            else:
+                logging.warning("Ignored stale high-blocker report: %s", report_path)
+        except (OSError, json.JSONDecodeError) as exc:
+            logging.warning("Invalid high-blocker report %s: %s", report_path, exc)
+
+    if not blockers and fallback_response:
+        lines = [line.strip() for line in fallback_response.splitlines() if line.strip()]
+        for line in lines:
+            if not re.search(r"\b(ALTA|CRITICAL)\b", line, re.IGNORECASE):
+                continue
+            severity = "CRITICAL" if re.search(r"\bCRITICAL\b", line, re.IGNORECASE) else "ALTA"
+            blockers.append(
+                {
+                    "severity": severity,
+                    "category": "unknown",
+                    "cause": _redact_blocker_text(line),
+                    "recommended_action": "Review the BLOCKED response and resolve its canonical owner.",
+                }
+            )
+
+    if not blockers:
+        logging.warning(
+            "BLOCKED had no machine-readable ALTA/CRITICAL report: %s",
+            report_path,
+        )
+        return 0
+
+    log_path = state_dir / "high-severity-blockers.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8", newline="\n") as handle:
+        for blocker in blockers:
+            handle.write(
+                json.dumps(
+                    {
+                        "detected_at": now_iso(),
+                        "sequence": item.display_seq,
+                        "pack": item.pack,
+                        "phase": item.phase,
+                        "attempts": attempts,
+                        "execution_id": execution_id,
+                        "prompt_sha256": item.prompt_sha256,
+                        **blocker,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
+    logging.error("Recorded %d ALTA/CRITICAL blocker(s) in %s", len(blockers), log_path)
+    return len(blockers)
+
+
+def current_blocker_requires_human(
+    *,
+    report_path: Path,
+    item: PromptItem,
+    execution_id: str,
+) -> bool:
+    """Stop automatic repair only for a fresh, explicit human/external blocker report."""
+    if not report_path.is_file():
+        return False
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if (
+        report.get("prompt_sha256") != item.prompt_sha256
+        or report.get("execution_id") != execution_id
+    ):
+        return False
+    blockers = report.get("blockers", [])
+    if not isinstance(blockers, list):
+        return False
+    return any(
+        isinstance(blocker, dict)
+        and (
+            blocker.get("requires_human") is True
+            or blocker.get("auto_remediable") is False
+        )
+        for blocker in blockers
+    )
+
+
+def current_blocker_summary(
+    *,
+    report_path: Path,
+    item: PromptItem,
+    execution_id: str,
+) -> str:
+    """Return fresh redacted causes for no-progress comparison."""
+    if not report_path.is_file():
+        return ""
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if (
+        report.get("prompt_sha256") != item.prompt_sha256
+        or report.get("execution_id") != execution_id
+    ):
+        return ""
+    blockers = report.get("blockers", [])
+    if not isinstance(blockers, list):
+        return ""
+    return "\n".join(
+        _redact_blocker_text(blocker.get("cause"))
+        for blocker in blockers
+        if isinstance(blocker, dict) and str(blocker.get("cause", "")).strip()
+    )
+
+
+def blocked_response_fingerprint(response: str) -> str:
+    """Fingerprint semantic whitespace-insensitive BLOCKED text for no-progress detection."""
+    normalized = " ".join((response or "").casefold().split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
 def try_auto_rebuild_for_blocked(
     item: PromptItem,
     prompts_dir: Path,
@@ -887,7 +1214,7 @@ def try_auto_rebuild_for_blocked(
     plan: ExecutionPlan,
     token_budget: int,
 ) -> bool:
-    """Regenerate the owning 0.6.1 plan without creating an orphan single build."""
+    """Regenerate the owning 0.6.3 plan without creating an orphan single build."""
     try:
         logging.warning(
             "Regenerating Prompt Builder plan=%s before retrying %s",
@@ -906,13 +1233,13 @@ def try_auto_rebuild_for_blocked(
 
 
 def ensure_senior_answer_placeholder(item: PromptItem, prompts_dir: Path) -> bool:
-    """Deprecated compatibility hook; 0.6.1 forbids automatic human answers.
+    """Deprecated compatibility hook; 0.6.3 forbids automatic human answers.
 
     Kept so older callers do not crash. It intentionally performs no write.
     """
     del prompts_dir
     logging.warning(
-        "Decision placeholder suppressed for %s: Prompt Builder 0.6.1 requires explicit human answers",
+        "Decision placeholder suppressed for %s: Prompt Builder 0.6.3 requires explicit human answers",
         item.logical_id,
     )
     return False
@@ -1043,8 +1370,30 @@ def defer_blocked_item_and_later_phases(
     )
 
 
+def dependency_phase_satisfied(candidate: PromptItem, store: StateStore) -> bool:
+    """Return True only for a completed phase or a canonical context-only skip.
+
+    A generic/manual ``skipped`` status must never satisfy a dependency gate.
+    The exception is deliberately narrow: Prompt Builder may include APPLY,
+    REVIEW, or FIX artifacts for a context-only pack even though those phases
+    are non-executable by design. The runner itself records those phases with
+    the canonical note below, and only that exact state is dependency-safe.
+    """
+    status = store.status(candidate)
+    if status == "done":
+        return True
+    if status != "skipped":
+        return False
+
+    record = store.ensure_record(candidate)
+    return (
+        is_non_executable_context_phase(candidate)
+        and record.get("note") == "context-only non-executable phase skipped"
+    )
+
+
 def enforce_phase_gate(item: PromptItem, items: list[PromptItem], store: StateStore) -> None:
-    """Honor 0.6.1 previous-phase and transitive pack dependency barriers."""
+    """Honor 0.6.3 previous-phase and transitive pack dependency barriers."""
     by_sequence = {candidate.seq: candidate for candidate in items}
     if item.previous_phase_sequence is not None:
         previous = by_sequence.get(item.previous_phase_sequence)
@@ -1066,10 +1415,26 @@ def enforce_phase_gate(item: PromptItem, items: list[PromptItem], store: StateSt
             raise RuntimeError(
                 f"Cannot execute {item.logical_id}: dependency pack is absent: {dependency}"
             )
+
+        canonical_skips = [
+            candidate.logical_id
+            for candidate in dependency_steps
+            if (
+                store.status(candidate) == "skipped"
+                and dependency_phase_satisfied(candidate, store)
+            )
+        ]
+        if canonical_skips:
+            logging.info(
+                "Dependency %s accepts canonical context-only non-executable skip(s): %s",
+                dependency,
+                ", ".join(canonical_skips),
+            )
+
         incomplete = [
             f"{candidate.logical_id}={store.status(candidate)}"
             for candidate in dependency_steps
-            if store.status(candidate) != "done"
+            if not dependency_phase_satisfied(candidate, store)
         ]
         if incomplete:
             raise RuntimeError(
@@ -1084,7 +1449,11 @@ def ready_checkpoint(
     automation: bool,
     auto_approve_propose: bool,
 ) -> str | None:
-    """Return the manual checkpoint required after a fresh READY marker."""
+    """Return the manual checkpoint required after a fresh READY marker.
+
+    Automation is deliberately fail-open only for READY: BLOCKED handling does
+    not call this function and remains fail-closed elsewhere in the runner.
+    """
     if automation:
         return None
     if phase == "propose" and not auto_approve_propose:
@@ -1095,13 +1464,65 @@ def ready_checkpoint(
 
 
 def wait_for_fresh_status(driver: Any) -> int:
-    """Fail closed unless the UI adapter can prove the marker is from this send."""
-    wait_status_fresh = getattr(driver, "wait_status_fresh", None)
-    if not callable(wait_status_fresh):
+    """Compatibility helper: wait for this response, then accept newest bounded marker."""
+    wait_status_current = getattr(driver, "wait_status_current_response", None)
+    if not callable(wait_status_current):
         raise RuntimeError(
-            "UI adapter lacks wait_status_fresh(); refusing to accept a potentially stale READY/BLOCKED marker"
+            "UI adapter lacks wait_status_current_response(); use chatgpt_docs_automation.py v29+."
         )
-    return int(wait_status_fresh())
+    return int(wait_status_current())
+
+
+def _mark_response_complete(driver: Any) -> None:
+    commit = getattr(driver, "mark_response_complete", None)
+    if callable(commit):
+        commit()
+
+
+def wait_for_visual_status(
+    driver: Any,
+    timeout: float = DEFAULT_RESPONSE_TIMEOUT_SECONDS,
+) -> int:
+    """Senior gate: advance ONLY on a NEW bounded marker for this send.
+
+    - Each prompt is pasted+submitted EXACTLY ONCE by send_prompt().
+    - The baseline coordinates are snapshotted BEFORE that single send.
+    - A marker at the SAME coordinates is STALE (old response still on
+      screen): ignored, never advances, never unlocks the next prompt.
+    - First NEW ❤️ wins (6 preferred); NEW 👎 triggers same-step repair.
+    - The transaction commits (mark_response_complete) only on NEW.
+    """
+    logging.info(
+        "Visual gate active: waiting for NEW bounded ❤️/👎 marker; "
+        "no nonce/copy/count/re-baseline protocol."
+    )
+    wait_status_current = getattr(driver, "wait_status_current_response", None)
+    if not callable(wait_status_current):
+        raise RuntimeError(
+            "UI adapter lacks wait_status_current_response(); use chatgpt_docs_automation.py v30+."
+        )
+    result = int(wait_status_current(timeout=timeout))
+    _mark_response_complete(driver)
+    return result
+
+
+def read_latest_response_text(driver: Any, *, limit: int = BLOCKED_RESPONSE_CONTEXT_CHARS) -> str:
+    """Best-effort latest-response capture for the next same-item repair prompt."""
+    copy_text = getattr(driver, "copy_latest_response_text", None)
+    if not callable(copy_text):
+        return ""
+    try:
+        text = copy_text()
+    except Exception as exc:
+        logging.debug("Could not capture latest response text for repair: %s", exc)
+        return ""
+    if not isinstance(text, str):
+        return ""
+    text = text.strip()
+    if len(text) > limit:
+        text = text[-limit:]
+    return text
+
 
 
 # ---------------------------------------------------------------------------
@@ -1124,13 +1545,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--expected-prompt-builder-version",
         default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact Prompt Builder version required for execution (default: 0.6.1).",
+        help="Exact Prompt Builder version required for execution (default: 0.6.3).",
     )
     parser.add_argument(
         "--package-manager",
         default="pnpm",
         help="Package manager used to invoke vigilio-prompt.",
     )
+    parser.add_argument("--prompt-builder-cli", type=Path, default=None)
+    parser.add_argument("--node-executable", type=Path, default=None)
+    parser.add_argument("--prompt-builder-timeout-seconds", type=int, default=180)
     parser.add_argument(
         "--token-budget",
         type=int,
@@ -1145,16 +1569,56 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ui-module", type=Path, default=DEFAULT_UI_MODULE)
     parser.add_argument("--assets", type=Path, default=DEFAULT_ASSETS_DIR)
     parser.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR)
+    parser.add_argument(
+        "--workflow-file",
+        type=Path,
+        default=None,
+        help="Optional validated YAML/JSON UI workflow overlay.",
+    )
+    parser.add_argument(
+        "--events-file",
+        type=Path,
+        default=None,
+        help="Append versioned JSONL runner events for GUI supervision.",
+    )
+    parser.add_argument("--events-stdout", action="store_true")
+    parser.add_argument("--run-id", default=None)
+    parser.add_argument("--log-max-bytes", type=int, default=10 * 1024 * 1024)
+    parser.add_argument("--log-backup-count", type=int, default=5)
 
     os_group = parser.add_mutually_exclusive_group()
     os_group.add_argument("--linux", action="store_true")
     os_group.add_argument("--windows", action="store_true")
     parser.add_argument("--display", type=str, default=None, help="Linux X11 DISPLAY, e.g. :1")
+    parser.add_argument(
+        "--chat-pane",
+        choices=("left", "right", "auto"),
+        default="left",
+        help="Screen pane containing ChatGPT (default: left).",
+    )
     parser.add_argument("--allow-resolution-mismatch", action="store_true")
     parser.add_argument(
         "--send-with-enter",
         action="store_true",
         help="Send the prompt with Enter instead of clicking the Send button.",
+    )
+    parser.add_argument(
+        "--response-timeout-seconds",
+        type=float,
+        default=DEFAULT_RESPONSE_TIMEOUT_SECONDS,
+        help="Maximum wait for a fresh READY/BLOCKED marker (default: 2700 / 45 minutes).",
+    )
+    parser.add_argument(
+        "--keepalive-click",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Keep the bounded ChatGPT pane active during long generations (default: enabled).",
+    )
+    parser.add_argument(
+        "--keepalive-interval-seconds",
+        type=float,
+        default=DEFAULT_KEEPALIVE_INTERVAL_SECONDS,
+        help="Seconds between keepalive clicks inside the ChatGPT pane (default: 30).",
     )
 
     parser.add_argument(
@@ -1172,7 +1636,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--regenerate-plan",
         action="store_true",
-        help="Explicitly rebuild the complete owning 0.6.1 plan, reconcile hashes, then stop.",
+        help="Explicitly rebuild the complete owning 0.6.3 plan, reconcile hashes, then stop.",
     )
     parser.add_argument("--max-prompts", type=int, default=None, help="Maximum prompts to execute this run.")
     parser.add_argument(
@@ -1191,8 +1655,8 @@ def parse_args() -> argparse.Namespace:
         dest="automation",
         action="store_true",
         help=(
-            "Run unattended: READY/heart advances PROPOSE/APPLY/REVIEW; "
-            "BLOCKED/dislike always persists and stops the queue."
+            "Run unattended: READY/heart advances to the next dependency-ready prompt. "
+            "BLOCKED/dislike triggers same-step repair by default and never advances that step."
         ),
     )
     parser.add_argument(
@@ -1207,8 +1671,34 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--retry-blocked",
-        action="store_true",
-        help="Explicitly retry the current BLOCKED prompt even if its generated hash did not change.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Retry BLOCKED work in the same chat/step (default: enabled). Use "
+            "--no-retry-blocked only for manual diagnosis."
+        ),
+    )
+    parser.add_argument(
+        "--blocked-repair-rounds",
+        type=int,
+        default=DEFAULT_BLOCKED_REPAIR_ROUNDS,
+        metavar="N",
+        help=(
+            "Maximum same-step repair sends after a fresh BLOCKED/👎 when --retry-blocked is active; "
+            f"0 retries until READY or an explicit human/external blocker (default: 0, max finite: {MAX_BLOCKED_REPAIR_ROUNDS})."
+        ),
+    )
+    parser.add_argument(
+        "--same-blocker-limit",
+        type=int,
+        default=3,
+        help="Repeated identical BLOCKED responses before no-progress policy applies (default: 3).",
+    )
+    parser.add_argument(
+        "--same-blocker-policy",
+        choices=("continue", "stop"),
+        default="continue",
+        help="Continue preserves legacy retry-until-heart behavior; stop records an interrupted stall.",
     )
     parser.add_argument(
         "--force-block",
@@ -1223,8 +1713,9 @@ def parse_args() -> argparse.Namespace:
         "--auto-apply-recommended",
         action="store_true",
         help=(
-            "Auto-remediate only LOW/MEDIUM blockers whose solution is already determined by "
-            "canonical rules and allowed_paths. Decisions and HIGH/CRITICAL blockers remain BLOCKED."
+            "Auto-remediate engineering blockers whose concrete solution is already determined by "
+            "canonical rules and allowed_paths. Severity alone never forbids a safe repair; missing "
+            "human authority, credentials/access or destructive approval remains BLOCKED."
         ),
     )
     parser.add_argument(
@@ -1238,6 +1729,18 @@ def parse_args() -> argparse.Namespace:
         "--evidence-ref",
         default=None,
         help="Required immutable evidence reference for --approve-evidence or mutating --mark-done.",
+    )
+    parser.add_argument(
+        "--automation-evidence-mode",
+        choices=("trust-marker", "require-file"),
+        default="trust-marker",
+        help="Evidence policy for unattended APPLY/REVIEW/FIX (GUI should use require-file).",
+    )
+    parser.add_argument(
+        "--evidence-dir",
+        type=Path,
+        default=Path("generated/evidence"),
+        help="Project-relative directory for machine-verifiable execution evidence.",
     )
     parser.add_argument(
         "--retry-interrupted",
@@ -1258,10 +1761,24 @@ def parse_args() -> argparse.Namespace:
         metavar="SEQ",
         help="Reset this sequence and all later work prompts to pending.",
     )
+    add_preflight_arguments(parser)
+    add_audio_arguments(parser)
 
     args = parser.parse_args()
     if args.automation and args.force_block:
         parser.error("--automation cannot be combined with --force-block; BLOCKED must stop")
+    if args.response_timeout_seconds < 60:
+        parser.error("--response-timeout-seconds must be at least 60")
+    if args.keepalive_interval_seconds < 10:
+        parser.error("--keepalive-interval-seconds must be at least 10")
+    if args.same_blocker_limit < 1 or args.same_blocker_limit > 100:
+        parser.error("--same-blocker-limit must be between 1 and 100")
+    if args.log_max_bytes < 1024:
+        parser.error("--log-max-bytes must be at least 1024")
+    if args.log_backup_count < 1 or args.log_backup_count > 100:
+        parser.error("--log-backup-count must be between 1 and 100")
+    if args.prompt_builder_timeout_seconds < 1:
+        parser.error("--prompt-builder-timeout-seconds must be at least 1")
     if args.dry_run and any(
         (
             args.regenerate_plan,
@@ -1275,20 +1792,41 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def configure_logging(log_file: Path) -> None:
+def configure_logging(
+    log_file: Path,
+    *,
+    max_bytes: int = 10 * 1024 * 1024,
+    backup_count: int = 5,
+) -> None:
     log_file.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler(log_file, encoding="utf-8"),
+            RotatingFileHandler(
+                log_file,
+                maxBytes=max_bytes,
+                backupCount=backup_count,
+                encoding="utf-8",
+            ),
         ],
     )
 
 
 def main() -> int:
+    _configure_utf8_console()
     args = parse_args()
+    notification_audio = NotificationAudio.from_args(args)
+    if args.blocked_repair_rounds < 0 or args.blocked_repair_rounds > MAX_BLOCKED_REPAIR_ROUNDS:
+        raise SystemExit(
+            f"--blocked-repair-rounds must be between 0 and {MAX_BLOCKED_REPAIR_ROUNDS}"
+        )
+    if args.force_block and args.retry_blocked:
+        logging.warning(
+            "--force-block and --retry-blocked were both supplied; --retry-blocked takes precedence "
+            "for fresh UI BLOCKED results, while --force-block remains available for persisted blockers."
+        )
 
     if args.project_root is not None:
         project_root = args.project_root.resolve()
@@ -1300,10 +1838,105 @@ def main() -> int:
     else:
         prompts_dir = args.prompts_dir.resolve()
         project_root = infer_project_root(prompts_dir)
+    state_dir = (
+        args.state_dir.resolve()
+        if args.state_dir.is_absolute()
+        else (project_root / args.state_dir).resolve()
+    )
+    workflow_file = (
+        None
+        if args.workflow_file is None
+        else args.workflow_file.resolve()
+        if args.workflow_file.is_absolute()
+        else (project_root / args.workflow_file).resolve()
+    )
+    evidence_dir = (
+        args.evidence_dir.resolve()
+        if args.evidence_dir.is_absolute()
+        else (project_root / args.evidence_dir).resolve()
+    )
+    try:
+        evidence_dir.relative_to(project_root)
+    except ValueError as exc:
+        raise RuntimeError(f"--evidence-dir must stay inside project root: {evidence_dir}") from exc
+    events_file = (
+        None
+        if args.events_file is None
+        else args.events_file.resolve()
+        if args.events_file.is_absolute()
+        else (project_root / args.events_file).resolve()
+    )
+    prompt_builder_cli = (
+        None
+        if args.prompt_builder_cli is None
+        else args.prompt_builder_cli.resolve()
+        if args.prompt_builder_cli.is_absolute()
+        else (project_root / args.prompt_builder_cli).resolve()
+    )
+    node_executable = (
+        None
+        if args.node_executable is None
+        else args.node_executable.resolve()
+        if args.node_executable.is_absolute()
+        else (project_root / args.node_executable).resolve()
+    )
+    plan_name = prompts_dir.name or "prompt-plan"
+    state_file = state_dir / f"{safe_slug(plan_name)}.state.json"
+    log_file = state_dir / f"{safe_slug(plan_name)}.log"
+    lock_file = state_dir / "chatgpt-ui.runner.lock"
+    configure_logging(
+        log_file,
+        max_bytes=args.log_max_bytes,
+        backup_count=args.log_backup_count,
+    )
+    events = RunnerEventEmitter(
+        events_file,
+        run_id=args.run_id,
+        stdout=args.events_stdout,
+    )
+    events.emit(
+        "run.started",
+        data={
+            "runner_version": SCRIPT_VERSION,
+            "project_root": str(project_root),
+            "prompts_dir": str(prompts_dir),
+            "workflow_file": str(workflow_file) if workflow_file else None,
+        },
+    )
+
+    # Own the project UI session before preflight so concurrent starts cannot
+    # race on the same latest-log/state paths.
+    run_lock: Optional[RunLock] = None
+    if not args.dry_run:
+        run_lock = RunLock(lock_file)
+        run_lock.__enter__()
+        atexit.register(run_lock.__exit__, None, None, None)
+
+    if args.display:
+        os.environ["DISPLAY"] = args.display
+    runner_os = "windows" if args.windows else "linux"
+    if args.skip_preflight:
+        events.emit("preflight.skipped", severity="WARNING")
+        run_runtime_preflight(args, project_root=project_root, runner_os=runner_os)
+    else:
+        events.emit("preflight.started", data={"runner_os": runner_os})
+        try:
+            run_runtime_preflight(args, project_root=project_root, runner_os=runner_os)
+        except Exception as exc:
+            events.emit(
+                "preflight.failed",
+                severity="ERROR",
+                data={"error_type": type(exc).__name__, "reason": str(exc)},
+            )
+            raise
+        events.emit("preflight.ready")
     client = PromptBuilderClient(
         project_root,
         expected_version=args.expected_prompt_builder_version,
         package_manager=args.package_manager,
+        timeout_seconds=args.prompt_builder_timeout_seconds,
+        cli_path=prompt_builder_cli,
+        node_executable=node_executable,
     )
     installed_builder_version = client.assert_compatible()
     plan = (
@@ -1311,19 +1944,6 @@ def main() -> int:
         if args.allow_legacy_without_plan
         else load_execution_plan(project_root, prompts_dir)
     )
-    plan_name = prompts_dir.name or "prompt-plan"
-    state_dir = (
-        args.state_dir.resolve()
-        if args.state_dir.is_absolute()
-        else (project_root / args.state_dir).resolve()
-    )
-    state_file = state_dir / f"{safe_slug(plan_name)}.state.json"
-    log_file = state_dir / f"{safe_slug(plan_name)}.log"
-    # Both runners control the same ChatGPT window, so the lock is global to
-    # the project UI session rather than one generated plan.
-    lock_file = state_dir / "chatgpt-ui.runner.lock"
-
-    configure_logging(log_file)
     logging.info("Prompt Queue Runner version=%s", SCRIPT_VERSION)
     logging.info(
         "Prompt Builder version=%s project_root=%s plan=%s",
@@ -1331,16 +1951,6 @@ def main() -> int:
         project_root,
         plan.plan_id if plan else "legacy-explicit",
     )
-
-    # Take the process-wide lock before any StateStore reconciliation or state
-    # transition. A dry run remains read-only for queue state, so it does not
-    # take/create the runtime lock. The CLI lock releases at normal process exit
-    # and the operating system releases it after a crash.
-    run_lock: Optional[RunLock] = None
-    if not args.dry_run:
-        run_lock = RunLock(lock_file)
-        run_lock.__enter__()
-        atexit.register(run_lock.__exit__, None, None, None)
 
     items = discover_prompts(
         prompts_dir,
@@ -1355,6 +1965,10 @@ def main() -> int:
         store.reconcile(items, include_context_only=args.include_context_only)
 
     work_items = executable_items(items, args.include_context_only)
+    events.emit(
+        "queue.loaded",
+        data={"items": len(work_items), "plan_id": plan.plan_id if plan else "legacy-explicit"},
+    )
 
     if args.regenerate_plan:
         if plan is None:
@@ -1502,6 +2116,7 @@ def main() -> int:
         preview = [
             item for item in work_items
             if store.status(item) not in TERMINAL_OK
+            and not is_non_executable_context_phase(item)
         ]
         if args.max_prompts is not None:
             preview = preview[: max(0, args.max_prompts)]
@@ -1510,6 +2125,10 @@ def main() -> int:
             for item in preview:
                 try:
                     client.verify_lock(item.lock_path)
+                    # PROPOSE/EXPLORE are self-contained discovery preflights in
+                    # 0.6.3. Mutating phases are intentionally strict and may
+                    # require artifacts produced by an approved previous phase;
+                    # validate those only when their execution barriers are met.
                     should_preflight = item.phase in {"explore", "propose"}
                     if not should_preflight:
                         try:
@@ -1599,12 +2218,13 @@ def main() -> int:
     if current_status == "blocked" and args.auto_apply_recommended:
         logging.warning(
             "AUTO-APPLY-RECOMMENDED cannot clear pre-existing BLOCKED %s %s. "
-            "Prompt Builder 0.6.1 requires the real source/decision to be resolved first.",
+            "Prompt Builder 0.6.3 requires the real source/decision to be resolved first.",
             current.display_seq,
             current.logical_id,
         )
 
     if current_status == "blocked" and not args.retry_blocked:
+        notification_audio.blocked_signal()
         print(
             f"STOP: {current.display_seq} {current.pack} {current.phase} is BLOCKED.\n"
             "Resolve the blocker in its real source and regenerate the affected prompt.\n"
@@ -1637,6 +2257,20 @@ def main() -> int:
         raise RuntimeError("Choose only one OS mode.")
 
     ui = load_ui_module(args.ui_module)
+    configure_ui_runtime = getattr(ui, "configure_ui_runtime", None)
+    if callable(configure_ui_runtime):
+        configure_ui_runtime(
+            response_timeout_seconds=args.response_timeout_seconds,
+            keepalive_click_enabled=args.keepalive_click,
+            keepalive_interval_seconds=args.keepalive_interval_seconds,
+            workflow_file=workflow_file,
+            chat_pane_policy=args.chat_pane,
+        )
+    else:
+        logging.warning(
+            "UI adapter has no configure_ui_runtime(); queue timeout applies, "
+            "but adapter keepalive settings cannot be overridden."
+        )
     need_new_chat = args.new_chat_mode == "each"
 
     if not args.dry_run:
@@ -1671,9 +2305,15 @@ def main() -> int:
                 ]
                 if unresolved:
                     logging.error("QUEUE EXHAUSTED WITH %d UNRESOLVED BLOCKERS.", len(unresolved))
+                    events.emit(
+                        "run.completed",
+                        severity="ERROR",
+                        data={"outcome": "BLOCKED", "unresolved": len(unresolved)},
+                    )
                     print(f"Queue exhausted with {len(unresolved)} unresolved blocker state(s).")
                     return 3
                 logging.info("ALL WORK PROMPTS COMPLETED.")
+                events.emit("run.completed", data={"outcome": "READY", "executed": executed})
                 print("Queue complete.")
                 return 0
 
@@ -1770,6 +2410,19 @@ def main() -> int:
                 return 2
 
             if status == "blocked":
+                if args.retry_blocked:
+                    store.update(
+                        item,
+                        status="pending",
+                        blocked_at=None,
+                        note="BLOCKED requeued by explicit --retry-blocked",
+                    )
+                    logging.info(
+                        "RETRY-BLOCKED requeued same step: %s %s",
+                        item.display_seq,
+                        item.logical_id,
+                    )
+                    continue
                 if args.auto_apply_recommended:
                     logging.warning(
                         "AUTO-APPLY-RECOMMENDED does not override BLOCKED %s %s; "
@@ -1777,7 +2430,7 @@ def main() -> int:
                         item.display_seq,
                         item.logical_id,
                     )
-                if args.force_block:
+                if args.force_block and not args.retry_blocked:
                     defer_blocked_item_and_later_phases(
                         item,
                         work_items,
@@ -1795,12 +2448,36 @@ def main() -> int:
             if status in TERMINAL_OK:
                 continue
 
+            # Defense-in-depth: reconcile() normally turns these into SKIPPED.
+            # If state was externally edited or an old state bypassed migration,
+            # never run Prompt Builder eligibility/UI for a context-only mutating phase.
+            if is_non_executable_context_phase(item):
+                store.update(
+                    item,
+                    status="skipped",
+                    attempts=0,
+                    started_at=None,
+                    completed_at=now_iso(),
+                    blocked_at=None,
+                    interrupted_at=None,
+                    note="context-only non-executable phase skipped",
+                )
+                logging.info(
+                    "SKIP context-only non-executable phase %s %s",
+                    item.display_seq,
+                    item.logical_id,
+                )
+                continue
+
             enforce_phase_gate(item, work_items, store)
 
             if args.max_prompts is not None and executed >= args.max_prompts:
                 logging.info("Reached --max-prompts=%d; stopping cleanly.", args.max_prompts)
                 return 0
 
+            # PROPOSE owns creation of the root OpenSpec change. A missing change at
+            # the beginning of PROPOSE is therefore an expected input state, not a
+            # blocker. Later phases must consume a complete, human-approved change.
             if item.phase == "propose":
                 ensure_propose_openspec_scaffold(project_root, item)
             elif item.phase in {"apply", "review", "fix"}:
@@ -1843,7 +2520,7 @@ def main() -> int:
                         item,
                         status="blocked",
                         blocked_at=now_iso(),
-                        note=f"Prompt Builder 0.6.1 preflight failed: {exc}",
+                        note=f"Prompt Builder 0.6.3 preflight failed: {exc}",
                     )
                     logging.error(
                         "BLOCKED before UI execution %s %s: %s",
@@ -1870,6 +2547,21 @@ def main() -> int:
                 if item.phase in {"propose", "apply", "review", "fix"}
                 else ""
             )
+            record = store.ensure_record(item)
+            attempts = int(record.get("attempts") or 0) + 1
+            execution_id = f"{item.display_seq}-{attempts}-{time.time_ns()}"
+            blocker_report = high_blocker_report_path(project_root, item)
+            blocker_report.parent.mkdir(parents=True, exist_ok=True)
+            item_evidence = evidence_dir / evidence_filename(
+                item.display_seq,
+                item.pack,
+                item.phase,
+            )
+            require_item_evidence = (
+                args.automation
+                and args.automation_evidence_mode == "require-file"
+                and item.phase in MUTATING_PHASES
+            )
             wrapped_prompt = build_execution_envelope(
                 item,
                 raw_prompt,
@@ -1877,10 +2569,13 @@ def main() -> int:
                 blocked_marker=blocked_marker,
                 auto_apply_recommended=args.auto_apply_recommended,
                 openspec_context=openspec_context,
+                blocked_report_path=blocker_report.relative_to(project_root).as_posix(),
+                blocked_report_execution_id=execution_id,
+                evidence_path=item_evidence.relative_to(project_root).as_posix(),
+                evidence_execution_id=execution_id,
+                require_execution_evidence=require_item_evidence,
             )
 
-            record = store.ensure_record(item)
-            attempts = int(record.get("attempts") or 0) + 1
             store.update(
                 item,
                 status="running",
@@ -1891,6 +2586,18 @@ def main() -> int:
                 interrupted_at=None,
                 note="prompt sent/in-flight",
             )
+            events.emit(
+                "step.started",
+                pack=item.pack,
+                phase=item.phase,
+                data={
+                    "sequence": item.display_seq,
+                    "attempt": attempts,
+                    "logical_id": item.logical_id,
+                    "prompt_sha256": item.prompt_sha256,
+                },
+            )
+            forced_blocked_response = ""
 
             try:
                 if need_new_chat:
@@ -1898,13 +2605,39 @@ def main() -> int:
 
                 print(f"--> Enviado {item.display_seq} a ChatGPT, esperando ❤️/👎 ...", flush=True)
                 driver.send_prompt(wrapped_prompt)
-                result = wait_for_fresh_status(driver)
+                events.emit(
+                    "step.prompt_sent",
+                    pack=item.pack,
+                    phase=item.phase,
+                    data={"sequence": item.display_seq, "attempt": attempts},
+                )
+                result = wait_for_visual_status(
+                    driver,
+                    timeout=args.response_timeout_seconds,
+                )
+                if result == 4:
+                    notification_audio.blocked_signal()
+                    events.emit(
+                        "step.blocked",
+                        severity="WARNING",
+                        pack=item.pack,
+                        phase=item.phase,
+                        data={"sequence": item.display_seq, "attempt": attempts},
+                    )
+                elif result == 6:
+                    events.emit(
+                        "step.ready",
+                        pack=item.pack,
+                        phase=item.phase,
+                        data={"sequence": item.display_seq, "attempt": attempts},
+                    )
                 print(f"<-- Respuesta {item.display_seq} recibida: {'READY ❤️' if result==6 else 'BLOCKED 👎' if result==4 else f'code={result}'}", flush=True)
 
-                # A UI marker does not make a PROPOSE usable by itself. The root
-                # OpenSpec change must be complete before either a manual or an
-                # automated checkpoint can advance to APPLY.
-                if item.phase == "propose" and result in {4, 6}:
+                # The UI marker alone is not sufficient for PROPOSE. Repair or
+                # reclassify automatically when the physical root change is absent,
+                # skeletal, or when an old prompt incorrectly treats APPLY gaps as
+                # PROPOSE blockers. A genuinely material blocker remains BLOCKED.
+                if item.phase == "propose" and (result == 6 or (result == 4 and args.retry_blocked)):
                     problems = validate_propose_openspec(project_root, item)
                     if result == 4 and not problems:
                         problems = [
@@ -1912,9 +2645,12 @@ def main() -> int:
                             "Missing future implementation/evidence belongs in tasks.md."
                         ]
                     repair_round = 0
+                    previous_repair_base_prompt: Optional[str] = None
+                    previous_problem_signature: Optional[tuple[str, ...]] = None
                     while problems and repair_round < DEFAULT_PROPOSE_REPAIR_ROUNDS:
                         repair_round += 1
-                        repair_prompt = build_propose_artifact_repair_prompt(
+                        problem_signature = tuple(str(problem).strip() for problem in problems)
+                        repair_base_prompt = build_propose_artifact_repair_prompt(
                             item,
                             openspec_change_dir(project_root, item)
                             .relative_to(project_root)
@@ -1923,15 +2659,69 @@ def main() -> int:
                             success_marker=success_marker,
                             blocked_marker=blocked_marker,
                         )
+                        repair_prompt = repair_base_prompt
+
+                        # The local OpenSpec validator may still report the exact same
+                        # structural problem after ChatGPT returned READY. Replaying the
+                        # byte-identical repair prompt immediately is both useless and is
+                        # correctly rejected by the UI duplicate-send guard. Keep that
+                        # guard intact and make the continuation semantically explicit.
+                        repeated_repair = (
+                            repair_round > 1
+                            and (
+                                repair_base_prompt == previous_repair_base_prompt
+                                or problem_signature == previous_problem_signature
+                            )
+                        )
+                        if repeated_repair:
+                            remaining = "\n".join(
+                                f"- {problem}" for problem in problem_signature
+                            )
+                            repair_prompt = (
+                                repair_base_prompt
+                                + "\n\n"
+                                + "REPAIR CONTINUATION — LOCAL VALIDATOR STILL FAILING\n"
+                                + f"This is PROPOSE repair round {repair_round}. The previous repair "
+                                  "returned a terminal marker, but the local OpenSpec validator still "
+                                  "reports the same unresolved problem(s):\n"
+                                + remaining
+                                + "\n\nDo not repeat the previous explanation. Inspect and modify the "
+                                  "actual root OpenSpec artifacts so these exact validator findings "
+                                  "are resolved before returning the final READY/BLOCKED marker."
+                            )
+                            logging.warning(
+                                "PROPOSE validator still reports the same problem set after repair %d; "
+                                "sending a distinct continuation prompt instead of replaying an identical UI send.",
+                                repair_round - 1,
+                            )
+
+                        execution_id = f"{item.display_seq}-{attempts}-{time.time_ns()}"
+                        repair_prompt += build_high_blocker_report_instruction(
+                            item,
+                            blocked_report_path=blocker_report.relative_to(project_root).as_posix(),
+                            execution_id=execution_id,
+                        )
+
+                        previous_repair_base_prompt = repair_base_prompt
+                        previous_problem_signature = problem_signature
+
                         print(
                             f"--> Reparación PROPOSE {repair_round}/{DEFAULT_PROPOSE_REPAIR_ROUNDS} "
                             f"para {item.display_seq}...",
                             flush=True,
                         )
                         driver.send_prompt(repair_prompt)
-                        result = wait_for_fresh_status(driver)
+                        result = wait_for_visual_status(
+                            driver,
+                            timeout=args.response_timeout_seconds,
+                        )
+                        if result == 4:
+                            notification_audio.blocked_signal()
                         problems = validate_propose_openspec(project_root, item)
                         if result == 4 and not problems:
+                            # A complete physical change can still contain a real
+                            # access/authority blocker. Ask only once more; never
+                            # silently convert a BLOCKED marker into READY.
                             problems = [
                                 "The root change is physically complete, but BLOCKED persisted. "
                                 "Confirm whether a material authority/access/safety blocker exists; "
@@ -1950,6 +2740,253 @@ def main() -> int:
                             "; ".join(final_problems),
                         )
                         result = 4
+
+                if result == 6 and require_item_evidence:
+                    try:
+                        validate_execution_evidence(
+                            item_evidence,
+                            logical_id=item.logical_id,
+                            prompt_sha256=item.prompt_sha256,
+                            execution_id=execution_id,
+                        )
+                    except EvidenceError as exc:
+                        forced_blocked_response = (
+                            "READY visual recibido, pero la evidencia objetiva requerida es inválida: "
+                            + str(exc)
+                        )
+                        logging.error("%s", forced_blocked_response)
+                        events.emit(
+                            "step.evidence_failed",
+                            severity="ERROR",
+                            pack=item.pack,
+                            phase=item.phase,
+                            data={"reason": str(exc), "path": str(item_evidence)},
+                        )
+                        result = 4
+                    else:
+                        events.emit(
+                            "step.evidence_passed",
+                            pack=item.pack,
+                            phase=item.phase,
+                            data={"path": str(item_evidence)},
+                        )
+
+                # Generic same-step remediation. This is intentionally separate
+                # from PROPOSE's structural OpenSpec repair above: it applies to
+                # EXPLORE/PROPOSE/APPLY/REVIEW/FIX whenever the model returns a
+                # fresh BLOCKED/👎 and the operator explicitly enabled
+                # --retry-blocked. We NEVER advance to the next item while this
+                # loop is active.
+                if result == 4 and args.retry_blocked:
+                    repair_round = 0
+                    blocked_response = (
+                        read_latest_response_text(driver)
+                        or current_blocker_summary(
+                            report_path=blocker_report,
+                            item=item,
+                            execution_id=execution_id,
+                        )
+                        or forced_blocked_response
+                    )
+                    blocker_fingerprint = blocked_response_fingerprint(blocked_response)
+                    repeated_blocker_count = 1
+                    no_progress_stalled = False
+                    terminal_blocker = current_blocker_requires_human(
+                        report_path=blocker_report,
+                        item=item,
+                        execution_id=execution_id,
+                    )
+
+                    while (
+                        result == 4
+                        and not terminal_blocker
+                        and (
+                            args.blocked_repair_rounds == 0
+                            or repair_round < args.blocked_repair_rounds
+                        )
+                    ):
+                        repair_round += 1
+                        attempts += 1
+                        execution_id = f"{item.display_seq}-{attempts}-{time.time_ns()}"
+                        round_limit = (
+                            "READY/humano"
+                            if args.blocked_repair_rounds == 0
+                            else str(args.blocked_repair_rounds)
+                        )
+                        repair_prompt = build_blocked_repair_prompt(
+                            item,
+                            blocked_response=blocked_response,
+                            repair_round=repair_round,
+                            max_rounds=args.blocked_repair_rounds,
+                            repeated_blocker_count=repeated_blocker_count,
+                            success_marker=success_marker,
+                            blocked_marker=blocked_marker,
+                        )
+                        repair_prompt += build_high_blocker_report_instruction(
+                            item,
+                            blocked_report_path=blocker_report.relative_to(project_root).as_posix(),
+                            execution_id=execution_id,
+                        )
+                        if require_item_evidence:
+                            repair_prompt += build_execution_evidence_instruction(
+                                item,
+                                evidence_path=item_evidence.relative_to(project_root).as_posix(),
+                                execution_id=execution_id,
+                            )
+                        store.update(
+                            item,
+                            status="running",
+                            attempts=attempts,
+                            started_at=now_iso(),
+                            completed_at=None,
+                            blocked_at=None,
+                            interrupted_at=None,
+                            note=(
+                                f"same-step BLOCKED repair {repair_round}/"
+                                f"{round_limit} sent/in-flight"
+                            ),
+                        )
+                        print(
+                            f"--> 👎 Reparando MISMO prompt {item.display_seq} "
+                            f"ronda {repair_round}/{round_limit}...",
+                            flush=True,
+                        )
+
+                        # One call == one paste + one submit. The UI adapter has
+                        # no internal resend fallback, so a failed interaction is
+                        # surfaced as interrupted instead of duplicating APPLY.
+                        driver.send_prompt(repair_prompt)
+                        result = wait_for_visual_status(
+                            driver,
+                            timeout=args.response_timeout_seconds,
+                        )
+                        if result == 4:
+                            notification_audio.blocked_signal()
+
+                        if result == 6 and require_item_evidence:
+                            try:
+                                validate_execution_evidence(
+                                    item_evidence,
+                                    logical_id=item.logical_id,
+                                    prompt_sha256=item.prompt_sha256,
+                                    execution_id=execution_id,
+                                )
+                            except EvidenceError as exc:
+                                blocked_response = (
+                                    "READY visual recibido, pero la evidencia requerida sigue inválida: "
+                                    + str(exc)
+                                )
+                                logging.error("%s", blocked_response)
+                                events.emit(
+                                    "step.evidence_failed",
+                                    severity="ERROR",
+                                    pack=item.pack,
+                                    phase=item.phase,
+                                    data={"reason": str(exc), "path": str(item_evidence)},
+                                )
+                                result = 4
+
+                        # PROPOSE still has a machine-verifiable physical gate:
+                        # READY is not accepted if root OpenSpec remains skeletal.
+                        if item.phase == "propose" and result == 6:
+                            final_problems = validate_propose_openspec(project_root, item)
+                            if final_problems:
+                                blocked_response = (
+                                    "La respuesta devolvió READY pero la validación física de OpenSpec falló:\n- "
+                                    + "\n- ".join(final_problems)
+                                )
+                                logging.warning(
+                                    "PROPOSE repair round %d returned READY but OpenSpec is incomplete: %s",
+                                    repair_round,
+                                    "; ".join(final_problems),
+                                )
+                                result = 4
+
+                        if result == 4:
+                            latest = (
+                                read_latest_response_text(driver)
+                                or current_blocker_summary(
+                                    report_path=blocker_report,
+                                    item=item,
+                                    execution_id=execution_id,
+                                )
+                            )
+                            if latest:
+                                latest_fingerprint = blocked_response_fingerprint(latest)
+                                repeated_blocker_count = (
+                                    repeated_blocker_count + 1
+                                    if latest_fingerprint == blocker_fingerprint
+                                    else 1
+                                )
+                                blocker_fingerprint = latest_fingerprint
+                                blocked_response = latest
+                            if (
+                                repeated_blocker_count >= args.same_blocker_limit
+                                and args.same_blocker_policy == "stop"
+                            ):
+                                no_progress_stalled = True
+                                logging.error(
+                                    "No-progress policy stopped %s after %d identical blockers.",
+                                    item.logical_id,
+                                    repeated_blocker_count,
+                                )
+                                events.emit(
+                                    "step.stalled",
+                                    severity="ERROR",
+                                    pack=item.pack,
+                                    phase=item.phase,
+                                    data={
+                                        "sequence": item.display_seq,
+                                        "repeated_blockers": repeated_blocker_count,
+                                    },
+                                )
+                                break
+                            terminal_blocker = current_blocker_requires_human(
+                                report_path=blocker_report,
+                                item=item,
+                                execution_id=execution_id,
+                            )
+                            if terminal_blocker:
+                                logging.error(
+                                    "Automatic repair stopped for %s: fresh report requires human/external action.",
+                                    item.logical_id,
+                                )
+
+                        print(
+                            f"<-- Reparación {item.display_seq} ronda {repair_round}: "
+                            f"{'READY ❤️' if result == 6 else 'BLOCKED 👎' if result == 4 else f'code={result}'}",
+                            flush=True,
+                        )
+
+                    if result == 4 and terminal_blocker:
+                        logging.error(
+                            "Same-step repair is BLOCKED by explicit human/external action for %s %s.",
+                            item.display_seq,
+                            item.logical_id,
+                        )
+                    elif result == 4 and args.blocked_repair_rounds > 0:
+                        logging.error(
+                            "Same-step repair limit exhausted for %s %s after %d rounds.",
+                            item.display_seq,
+                            item.logical_id,
+                            args.blocked_repair_rounds,
+                        )
+                    if result == 4 and no_progress_stalled:
+                        store.update(
+                            item,
+                            status="interrupted",
+                            interrupted_at=now_iso(),
+                            note=(
+                                "No progress: identical BLOCKED response repeated "
+                                f"{repeated_blocker_count} times"
+                            ),
+                        )
+                        events.emit(
+                            "run.completed",
+                            severity="WARNING",
+                            data={"outcome": "STALLED", "sequence": item.display_seq},
+                        )
+                        return 5
             except KeyboardInterrupt:
                 store.update(
                     item,
@@ -1958,6 +2995,18 @@ def main() -> int:
                     note="KeyboardInterrupt while prompt was in-flight",
                 )
                 logging.warning("Interrupted by user at %s %s", item.display_seq, item.logical_id)
+                events.emit(
+                    "step.interrupted",
+                    severity="WARNING",
+                    pack=item.pack,
+                    phase=item.phase,
+                    data={"reason": "KeyboardInterrupt"},
+                )
+                events.emit(
+                    "run.completed",
+                    severity="WARNING",
+                    data={"outcome": "INTERRUPTED", "sequence": item.display_seq},
+                )
                 return 130
             except Exception as exc:
                 store.update(
@@ -1967,19 +3016,53 @@ def main() -> int:
                     note=f"UI/runtime exception while in-flight: {type(exc).__name__}: {exc}",
                 )
                 logging.exception("Automation failed at %s %s", item.display_seq, item.logical_id)
+                events.emit(
+                    "step.interrupted",
+                    severity="ERROR",
+                    pack=item.pack,
+                    phase=item.phase,
+                    data={"error_type": type(exc).__name__, "reason": str(exc)},
+                )
+                events.emit(
+                    "run.completed",
+                    severity="ERROR",
+                    data={"outcome": "INTERRUPTED", "sequence": item.display_seq},
+                )
                 return 1
 
             executed += 1
 
             if result == 4:
-                screenshot = None if args.dry_run else capture_blocked_screenshot(ui, state_dir, item)
+                blocked_response = read_latest_response_text(driver)
+                append_high_severity_blockers(
+                    project_root=project_root,
+                    state_dir=state_dir,
+                    item=item,
+                    attempts=attempts,
+                    execution_id=execution_id,
+                    fallback_response=blocked_response,
+                )
+                screenshot = (
+                    None
+                    if args.dry_run
+                    else capture_blocked_screenshot(
+                        ui,
+                        driver,
+                        state_dir,
+                        item,
+                        attempt=attempts,
+                    )
+                )
                 ticket = write_blocked_ticket(state_dir, item, screenshot)
-                blocker_note = f"ChatGPT returned BLOCKED; ticket={ticket}"
+                blocker_note = (
+                    f"ChatGPT returned BLOCKED; same-step repair rounds="
+                    f"{args.blocked_repair_rounds if args.retry_blocked else 0}; ticket={ticket}"
+                )
 
                 if args.auto_apply_recommended:
                     logging.warning(
-                        "AUTO-APPLY-RECOMMENDED exhausted safe LOW/MEDIUM remediation for %s %s. "
-                        "BLOCKED remains fail-closed; ticket=%s",
+                        "AUTO-APPLY-RECOMMENDED did not produce READY for %s %s. "
+                        "BLOCKED remains fail-closed after configured same-step repair policy; ticket=%s",
                         item.display_seq,
                         item.logical_id,
                         ticket,
@@ -2012,6 +3095,13 @@ def main() -> int:
                     blocked_at=now_iso(),
                     note=blocker_note,
                 )
+                events.emit(
+                    "step.blocked_terminal",
+                    severity="ERROR",
+                    pack=item.pack,
+                    phase=item.phase,
+                    data={"ticket": str(ticket), "attempts": attempts},
+                )
                 logging.error(
                     "BLOCKED %s %s. Queue stopped fail-closed. Ticket: %s",
                     item.display_seq,
@@ -2022,7 +3112,12 @@ def main() -> int:
                     f"BLOCKED at {item.display_seq} {item.pack} {item.phase}.\n"
                     f"State persisted: {state_file}\n"
                     f"Ticket: {ticket}\n"
-                    "Resolve -> validate -> regenerate -> rerun."
+                    "Same-step repair exhausted or was not enabled. Resolve the remaining real blocker, then rerun."
+                )
+                events.emit(
+                    "run.completed",
+                    severity="ERROR",
+                    data={"outcome": "BLOCKED", "sequence": item.display_seq},
                 )
                 return 3
 
@@ -2055,6 +3150,8 @@ def main() -> int:
                     )
                     return 3
 
+            notification_audio.ready_signal()
+
             checkpoint = ready_checkpoint(
                 item.phase,
                 automation=args.automation,
@@ -2084,6 +3181,10 @@ def main() -> int:
                     "Queue paused for human approval. After reviewing the proposal/OpenSpec, run:\n\n"
                     "  python3 chatgpt_prompt_queue.py --approve-next\n"
                 )
+                events.emit(
+                    "run.completed",
+                    data={"outcome": "AWAITING_APPROVAL", "sequence": item.display_seq},
+                )
                 return 2
 
             if checkpoint == "evidence":
@@ -2106,6 +3207,10 @@ def main() -> int:
                     "The UI marker is not proof of quality gates. Verify immutable evidence, then run:\n\n"
                     f"  python3 chatgpt_prompt_queue.py --approve-evidence {item.display_seq} "
                     "--evidence-ref <immutable-report-or-run-id>"
+                )
+                events.emit(
+                    "run.completed",
+                    data={"outcome": "AWAITING_EVIDENCE", "sequence": item.display_seq},
                 )
                 return 2
 
@@ -2131,7 +3236,11 @@ def main() -> int:
                     record.get("evidence_approved_at")
                 ),
                 evidence_ref=(
-                    None if args.automation and item.phase in MUTATING_PHASES else record.get("evidence_ref")
+                    str(item_evidence)
+                    if require_item_evidence
+                    else None
+                    if args.automation and item.phase in MUTATING_PHASES
+                    else record.get("evidence_ref")
                 ),
                 automation_ready_marker=(
                     f"automation-ready-marker:{item.logical_id}"
@@ -2141,8 +3250,22 @@ def main() -> int:
                 note=completion_note,
             )
             logging.info("DONE %s %s", item.display_seq, item.logical_id)
+            events.emit(
+                "step.completed",
+                pack=item.pack,
+                phase=item.phase,
+                data={
+                    "sequence": item.display_seq,
+                    "attempts": attempts,
+                    "evidence_ref": str(item_evidence) if require_item_evidence else None,
+                },
+            )
+            logging.info(
+                "READY transaction committed for %s; next prompt selection is now unlocked.",
+                item.logical_id,
+            )
 
-            # Small settle between clean-chat prompts.
+            # Small settle between completed transactions.
             time.sleep(1.0)
 
 
