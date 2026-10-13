@@ -14,7 +14,7 @@ Designed for:
 Default mode is Linux.
 
 Install Python packages:
-    python3 -m pip install --upgrade opencv-python-headless pyautogui pyperclip
+    python3 -m pip install --upgrade opencv-python-headless pyautogui pyperclip PyYAML
 
 Linux/webtop packages:
     sudo apt-get update

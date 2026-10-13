@@ -141,12 +141,13 @@ class DocsAutomationDryRunTests(unittest.TestCase):
         driver.dismiss_always_allow = MagicMock(return_value=False)
         driver._remember_chat_surface_from_anchor = MagicMock()
 
-        with patch.object(runner.pyautogui, "click") as click:
+        pyautogui = SimpleNamespace(click=MagicMock())
+        with patch.object(runner, "pyautogui", pyautogui):
             driver._focus_composer()
 
         driver._activate_chatgpt_window.assert_called_once()
         self.assertEqual(driver.ensure_bottom.call_count, 2)
-        click.assert_called_once_with(400, 830)
+        pyautogui.click.assert_called_once_with(400, 830)
 
     def test_dry_run_never_marks_master_or_persists_progress(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
