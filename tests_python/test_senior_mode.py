@@ -5,6 +5,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -13,7 +14,13 @@ from prompt_builder_compat import PromptBuilderCompatibilityError, load_executio
 from senior_queue import SeniorCoordinator
 from senior_scheduler import ResourceClaims, SeniorJob, SeniorPlanError, SeniorScheduler
 from senior_state import SeniorStateError, SeniorStateStore
-from senior_worker import SeniorWorkerResultError, validate_worker_result
+from senior_worker import (
+    SeniorWorkerResultError,
+    run_managed_command,
+    validate_worker_heartbeat,
+    validate_worker_result,
+    write_worker_heartbeat,
+)
 
 
 def claims(path: str, *, resource: str | None = None) -> ResourceClaims:
@@ -86,6 +93,22 @@ class SeniorSchedulerTests(unittest.TestCase):
         self.assertEqual(
             [item.job_id for item in scheduler.ready_batch({}, max_workers=1)],
             ["a:propose"],
+        )
+
+    def test_worker_limit_counts_jobs_already_running(self) -> None:
+        jobs = [
+            job(1, "a", "propose", "openspec/changes/a/**"),
+            job(2, "b", "propose", "openspec/changes/b/**"),
+        ]
+        scheduler = SeniorScheduler(jobs, phase_order=("propose",))
+
+        self.assertEqual(scheduler.ready_batch({"a:propose": "running"}, max_workers=1), ())
+        self.assertEqual(
+            [
+                item.job_id
+                for item in scheduler.ready_batch({"a:propose": "running"}, max_workers=2)
+            ],
+            ["b:propose"],
         )
 
     def test_phase_barrier_requires_every_propose_to_finish(self) -> None:
@@ -165,6 +188,45 @@ class SeniorStateTests(unittest.TestCase):
         store.retry("a:propose")
         self.assertEqual(store.statuses(), {"a:propose": "pending", "b:propose": "produced"})
 
+    def test_stalled_job_observes_grace_and_retry_limit(self) -> None:
+        store = self.store()
+        [lease] = store.lease(["a:propose"], ttl_seconds=30)
+        stalled_at = datetime.now(timezone.utc)
+        store.mark_stalled(
+            "a:propose",
+            token=lease["token"],
+            reason="heartbeat timeout",
+            now=stalled_at,
+        )
+
+        early = store.recover_stalled(
+            grace_seconds=30,
+            max_attempts=2,
+            now=stalled_at + timedelta(seconds=29),
+        )
+        self.assertEqual(early, {"retried": (), "exhausted": ()})
+        recovered = store.recover_stalled(
+            grace_seconds=30,
+            max_attempts=2,
+            now=stalled_at + timedelta(seconds=30),
+        )
+        self.assertEqual(recovered["retried"], ("a:propose",))
+
+        [second] = store.lease(["a:propose"], ttl_seconds=30)
+        store.mark_stalled(
+            "a:propose",
+            token=second["token"],
+            reason="heartbeat timeout",
+            now=stalled_at,
+        )
+        exhausted = store.recover_stalled(
+            grace_seconds=0,
+            max_attempts=2,
+            now=stalled_at,
+        )
+        self.assertEqual(exhausted["exhausted"], ("a:propose",))
+        self.assertEqual(store.statuses()["a:propose"], "failed")
+
     def test_changed_plan_never_silently_reuses_history(self) -> None:
         self.store()
         with self.assertRaisesRegex(SeniorStateError, "execution plan changed"):
@@ -184,6 +246,83 @@ class SeniorStateTests(unittest.TestCase):
 
 
 class SeniorWorkerTests(unittest.TestCase):
+    def test_heartbeat_contract_and_managed_command(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = root / "request.json"
+            heartbeat_path = root / "heartbeat.json"
+            request = {
+                "schema_version": 1,
+                "job_id": "a:apply",
+                "attempt_id": "attempt-0001",
+                "lease_token": "lease",
+                "project_root": str(root),
+                "heartbeat_file": str(heartbeat_path),
+                "cancel_file": str(root / "cancel.json"),
+            }
+            request_path.write_text(json.dumps(request), encoding="utf-8")
+
+            write_worker_heartbeat(
+                request_path,
+                status="running",
+                current_command="unit tests",
+                processes=({"pid": 123, "kind": "foreground"},),
+            )
+            heartbeat = validate_worker_heartbeat(
+                heartbeat_path,
+                job_id="a:apply",
+                attempt_id="attempt-0001",
+                lease_token="lease",
+            )
+            self.assertEqual(heartbeat["current_command"], "unit tests")
+
+            returncode = run_managed_command(
+                request_path,
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                heartbeat_seconds=1,
+                timeout_seconds=5,
+                cancel_grace_seconds=1,
+            )
+            self.assertEqual(returncode, 0)
+            completed = json.loads(heartbeat_path.read_text(encoding="utf-8"))
+            self.assertEqual(completed["status"], "completed")
+
+    def test_managed_command_honors_supervisor_cancellation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = root / "request.json"
+            cancel_path = root / "cancel.json"
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "job_id": "a:apply",
+                        "attempt_id": "attempt-0001",
+                        "lease_token": "lease",
+                        "project_root": str(root),
+                        "heartbeat_file": str(root / "heartbeat.json"),
+                        "cancel_file": str(cancel_path),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            timer = threading.Timer(
+                0.2,
+                lambda: cancel_path.write_text("{}\n", encoding="utf-8"),
+            )
+            timer.start()
+            try:
+                returncode = run_managed_command(
+                    request_path,
+                    [sys.executable, "-c", "import time; time.sleep(30)"],
+                    heartbeat_seconds=1,
+                    timeout_seconds=10,
+                    cancel_grace_seconds=1,
+                )
+            finally:
+                timer.cancel()
+            self.assertEqual(returncode, 125)
+
     def test_result_requires_current_lease_and_claimed_changes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             result = Path(directory) / "result.json"
@@ -349,6 +488,40 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             request = json.loads(requests[0].read_text(encoding="utf-8"))
             self.assertEqual(request["job_id"], "a:propose")
             self.assertEqual(request["attempt_id"], "attempt-0001")
+
+            write_worker_heartbeat(
+                requests[0],
+                status="running",
+                current_command="implementing",
+                progress="step 1",
+            )
+            observed_at = datetime.now(timezone.utc)
+            first_tick = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                now=observed_at,
+            )
+            self.assertEqual(first_tick["heartbeats_observed"], ["a:propose"])
+            self.assertEqual(first_tick["leased_requests"], [])
+
+            second_tick = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                now=observed_at + timedelta(seconds=121),
+            )
+            self.assertEqual(second_tick["stalled"], ["a:propose"])
+            self.assertEqual(second_tick["retried"], ["a:propose"])
+            self.assertEqual(len(second_tick["leased_requests"]), 1)
+            self.assertTrue(
+                (requests[0].parent / "cancel.json").is_file(),
+                "the stale attempt must receive a cancellation marker",
+            )
 
 
 if __name__ == "__main__":

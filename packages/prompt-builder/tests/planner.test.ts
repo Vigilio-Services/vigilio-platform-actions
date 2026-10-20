@@ -237,6 +237,8 @@ describe('planner', () => {
       assert.match(firstPrompt, /verify executable evidence before enabling execution/);
       assert.match(firstPrompt, /profile: k8s-v2/);
       assert.match(firstPrompt, /@vigilioyonatan\/bus-v2-contracts/);
+      assert.match(firstPrompt, /Terminal safety contract/);
+      assert.match(firstPrompt, /Never leave an unmanaged watch process/);
       assert.match(firstPrompt, /apps\/bus-impl-v2\/src\/\*\*/);
       assert.match(firstPrompt, /openspec\/changes\/identity-users-store\/\*\*/);
       assert.match(firstPrompt, /apps\/web-mfe-v2\/apps\/salud\/backoffice\/src\/\*\*/);

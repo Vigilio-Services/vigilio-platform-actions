@@ -6,6 +6,17 @@ import type { LoadedDocument, OpenSpecContext, Phase, ResolvedTargetProfile } fr
 
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+const TERMINAL_SAFETY_CONTRACT = `
+
+## Terminal safety contract
+
+- Never leave an unmanaged watch process, development server, or interactive command running.
+- When a Senior Mode request is present, use its heartbeat and cancellation contract throughout the job.
+- Run bounded terminal commands through the provided Senior Mode managed-command wrapper.
+- Register every required background service, keep reporting progress, and stop it during cleanup.
+- A task is complete only after its managed child processes have exited or been explicitly cleaned up.
+`;
+
 export async function loadTemplate(phase: Phase) {
   return readFile(path.join(TOOL_ROOT, 'templates', `${phase}.md`), 'utf8');
 }
@@ -31,7 +42,7 @@ export function assemble(input: {
     .map(([name, content]) => `\n## OpenSpec: ${name}\n\n${content}`)
     .join('\n');
 
-  return input.template
+  const assembled = input.template
     .replaceAll('{{PACK_ID}}', input.packId)
     .replaceAll('{{CHANGE}}', input.change ?? 'none')
     .replaceAll('{{SKILLS}}', input.skills.map((s) => `- $${s}`).join('\n') || '- none declared')
@@ -62,4 +73,5 @@ export function assemble(input: {
     .replaceAll('{{TARGET_PROFILE}}', formatTargetProfile(input.targetProfile))
     .replaceAll('{{DOCUMENTS}}', docs)
     .replaceAll('{{OPENSPEC}}', spec || 'No OpenSpec artifacts found for this invocation.');
+  return `${assembled.trimEnd()}${TERMINAL_SAFETY_CONTRACT}`;
 }

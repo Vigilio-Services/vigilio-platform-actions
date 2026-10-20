@@ -145,6 +145,8 @@ class SeniorStateStore:
                     "phase": job.phase,
                     "sequence": job.sequence,
                     "lease": None,
+                    "activity": None,
+                    "stalled_at": None,
                     "result": None,
                     "integrated_commit": None,
                     "last_error": None,
@@ -210,19 +212,45 @@ class SeniorStateStore:
                 "heartbeat_at": _timestamp(now),
                 "expires_at": _timestamp(now + timedelta(seconds=ttl_seconds)),
             }
-            record.update(status="leased", attempt=attempt, lease=lease, last_error=None)
+            record.update(
+                status="leased",
+                attempt=attempt,
+                lease=lease,
+                activity=None,
+                stalled_at=None,
+                last_error=None,
+            )
             leases.append({"job_id": job_id, **lease})
         if leases:
             self._commit("jobs.leased", data={"job_ids": [lease["job_id"] for lease in leases]})
         return leases
 
-    def heartbeat(self, job_id: str, *, token: str, ttl_seconds: int = 900) -> None:
+    def heartbeat(
+        self,
+        job_id: str,
+        *,
+        token: str,
+        ttl_seconds: int = 900,
+        activity: Mapping[str, Any] | None = None,
+        now: datetime | None = None,
+    ) -> bool:
         record = self._leased_record(job_id, token)
-        now = _now()
+        heartbeat_id = activity.get("heartbeat_id") if activity else None
+        previous = record.get("activity")
+        if (
+            heartbeat_id
+            and isinstance(previous, dict)
+            and previous.get("heartbeat_id") == heartbeat_id
+        ):
+            return False
+        current = now or _now()
         record["status"] = "running"
-        record["lease"]["heartbeat_at"] = _timestamp(now)
-        record["lease"]["expires_at"] = _timestamp(now + timedelta(seconds=ttl_seconds))
+        record["lease"]["heartbeat_at"] = _timestamp(current)
+        record["lease"]["expires_at"] = _timestamp(current + timedelta(seconds=ttl_seconds))
+        if activity is not None:
+            record["activity"] = dict(activity)
         self._commit("job.heartbeat", job_id=job_id)
+        return True
 
     def _leased_record(self, job_id: str, token: str) -> dict[str, Any]:
         record = self.jobs.get(job_id)
@@ -254,6 +282,7 @@ class SeniorStateStore:
             record["last_error"] = str(result.get("error", "worker failed"))[:2000]
             event = "job.failed"
         record["lease"] = None
+        record["stalled_at"] = None
         self._commit(event, job_id=job_id)
 
     def mark_validated(self, job_id: str) -> None:
@@ -279,10 +308,62 @@ class SeniorStateStore:
         return record
 
     def retry(self, job_id: str) -> None:
-        record = self._transition(job_id, {"failed", "blocked"}, "pending")
+        record = self._transition(job_id, {"failed", "blocked", "stalled"}, "pending")
         record["lease"] = None
         record["result"] = None
+        record["activity"] = None
+        record["stalled_at"] = None
         self._commit("job.retry_scheduled", job_id=job_id)
+
+    def mark_stalled(
+        self,
+        job_id: str,
+        *,
+        token: str,
+        reason: str,
+        now: datetime | None = None,
+    ) -> None:
+        record = self._leased_record(job_id, token)
+        record["status"] = "stalled"
+        record["stalled_at"] = _timestamp(now)
+        record["last_error"] = reason[:2000]
+        self._commit("job.stalled", job_id=job_id, data={"reason": reason[:2000]})
+
+    def recover_stalled(
+        self,
+        *,
+        grace_seconds: int,
+        max_attempts: int,
+        now: datetime | None = None,
+    ) -> dict[str, tuple[str, ...]]:
+        if grace_seconds < 0:
+            raise SeniorStateError("stall grace must not be negative")
+        if max_attempts < 1:
+            raise SeniorStateError("max attempts must be at least 1")
+        current = now or _now()
+        retried: list[str] = []
+        exhausted: list[str] = []
+        for job_id, record in self.jobs.items():
+            if record.get("status") != "stalled":
+                continue
+            stalled_at = _parse_timestamp(record.get("stalled_at"))
+            if stalled_at + timedelta(seconds=grace_seconds) > current:
+                continue
+            record["lease"] = None
+            record["activity"] = None
+            record["stalled_at"] = None
+            if int(record.get("attempt", 0)) < max_attempts:
+                record["status"] = "pending"
+                retried.append(job_id)
+            else:
+                record["status"] = "failed"
+                exhausted.append(job_id)
+        if retried or exhausted:
+            self._commit(
+                "jobs.stall_recovered",
+                data={"retried": retried, "exhausted": exhausted},
+            )
+        return {"retried": tuple(retried), "exhausted": tuple(exhausted)}
 
     def recover_expired(self, *, now: datetime | None = None) -> tuple[str, ...]:
         current = now or _now()

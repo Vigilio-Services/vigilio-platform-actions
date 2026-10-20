@@ -14,8 +14,9 @@ from typing import Any, Iterable, Mapping, Sequence
 
 PHASE_ORDER = ("explore", "propose", "apply", "review", "fix")
 ACTIVE_STATUSES = frozenset(
-    {"leased", "running", "produced", "validated", "merge_pending"}
+    {"leased", "running", "stalled", "produced", "validated", "merge_pending"}
 )
+WORKER_ACTIVE_STATUSES = frozenset({"leased", "running", "stalled"})
 COMPLETE_STATUSES = frozenset({"done", "skipped"})
 
 
@@ -213,9 +214,15 @@ class SeniorScheduler:
         if phase is None:
             return ()
         active = [job for job in self.jobs if _status(statuses, job.job_id) in ACTIVE_STATUSES]
+        occupied_workers = sum(
+            _status(statuses, job.job_id) in WORKER_ACTIVE_STATUSES for job in self.jobs
+        )
+        available_workers = max_workers - occupied_workers
+        if available_workers <= 0:
+            return ()
         selected: list[SeniorJob] = []
         for job in self.jobs:
-            if len(selected) >= max_workers:
+            if len(selected) >= available_workers:
                 break
             if job.phase != phase or _status(statuses, job.job_id) != "pending":
                 continue
