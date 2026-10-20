@@ -2744,12 +2744,12 @@ def parse_args():
         "--prompt-builder-mode",
         choices=("strict", "version-only", "off"),
         default="strict",
-        help="0.6.3 integration level. strict is fail-closed and recommended.",
+        help="Prompt Builder integration level. strict is fail-closed and recommended.",
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
-        default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact supported Prompt Builder version (default: 0.6.3).",
+        default="0.6.3,0.7.0",
+        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0).",
     )
     parser.add_argument("--package-manager", default="pnpm")
     parser.add_argument(
@@ -2885,6 +2885,13 @@ def parse_args():
         parser.error("--log-backup-count must be between 1 and 100")
     if args.prompt_builder_timeout_seconds < 1:
         parser.error("--prompt-builder-timeout-seconds must be at least 1")
+    args.expected_prompt_builder_version = tuple(
+        value.strip()
+        for value in args.expected_prompt_builder_version.split(",")
+        if value.strip()
+    )
+    if not args.expected_prompt_builder_version:
+        parser.error("--expected-prompt-builder-version cannot be empty")
     return args
 
 

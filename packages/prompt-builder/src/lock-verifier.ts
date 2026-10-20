@@ -92,9 +92,13 @@ export async function verifyPromptLock(input: { projectRoot: string; lockFile: s
 
   const expectedBuilderVersion = lock['builder_version'];
   const actualBuilderVersion = await installedVersion();
+  const legacyV2Compatible =
+    lock['schema_version'] === 2 &&
+    expectedBuilderVersion === '0.6.3' &&
+    actualBuilderVersion === '0.7.0';
   checks.push({
     name: 'builder_version',
-    passed: expectedBuilderVersion === actualBuilderVersion,
+    passed: expectedBuilderVersion === actualBuilderVersion || legacyV2Compatible,
     detail: `${String(expectedBuilderVersion ?? '<missing>')} -> ${actualBuilderVersion}`,
   });
 

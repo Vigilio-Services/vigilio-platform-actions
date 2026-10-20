@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assertDecisionReadiness, evaluateDecisionReadiness } from './answers.js';
@@ -21,6 +21,20 @@ function safeSegment(value: string) {
     .replace(/^-+|-+$/g, '');
   if (!safe) throw new Error(`Unsafe or empty output segment: ${value}`);
   return safe;
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(',')}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
+    .join(',')}}`;
+}
+
+function sha256(value: unknown) {
+  return createHash('sha256').update(stableJson(value)).digest('hex');
 }
 
 type PreparedStep = {
@@ -245,12 +259,53 @@ export async function buildAll(input: {
     }
   }
 
-  const executionPlan = {
-    schema_version: 2,
+  const stepByPackPhase = new Map(steps.map((step) => [`${step.pack}:${step.phase}`, step]));
+  const stepsForPlan = steps.map((step) => {
+    const stepId = `${step.pack}:${step.phase}`;
+    const prerequisites: string[] = [];
+    if (step.previousPhaseSequence !== undefined) {
+      const previous = steps.find((candidate) => candidate.sequence === step.previousPhaseSequence);
+      if (!previous) throw new Error(`Missing previous phase step for ${stepId}`);
+      prerequisites.push(`${previous.pack}:${previous.phase}`);
+    }
+    for (const dependency of step.dependencies) {
+      const samePhase = stepByPackPhase.get(`${dependency}:${step.phase}`);
+      if (samePhase) prerequisites.push(`${samePhase.pack}:${samePhase.phase}`);
+    }
+    return {
+      sequence: step.sequence,
+      step_id: stepId,
+      dependency_level: step.level,
+      phase_wave: input.phases.indexOf(step.phase),
+      pack: step.pack,
+      selection_reason: step.selectionReason,
+      phase: step.phase,
+      depends_on: step.dependencies,
+      depends_on_previous_phase_step: step.previousPhaseSequence ?? null,
+      prerequisite_step_ids: [...new Set(prerequisites)],
+      concurrency: step.prepared.concurrency,
+      prompt: path.relative(input.projectRoot, `${step.outputBase}.md`).replaceAll(path.sep, '/'),
+      lockfile: path
+        .relative(input.projectRoot, `${step.outputBase}.lock.json`)
+        .replaceAll(path.sep, '/'),
+      prompt_status: input.dryRun ? 'VALIDATED' : 'GENERATED',
+      execution_status:
+        step.previousPhaseSequence !== undefined
+          ? 'BLOCKED_BY_PREVIOUS_PHASE'
+          : step.dependencies.length === 0
+            ? 'READY'
+            : 'BLOCKED_BY_DEPENDENCIES',
+    };
+  });
+  const dependencyBatches = [...new Set(packs.map((pack) => pack.level))].map((level) => ({
+    level,
+    packs: packs.filter((pack) => pack.level === level).map((pack) => pack.id),
+  }));
+  const semanticPlan = {
+    schema_version: 3,
     plan_id: planId,
     change: input.change ?? null,
     phases: input.phases,
-    generated_at: new Date().toISOString(),
     prompt_count: steps.length,
     pack_count: packs.length,
     selection: planSelection,
@@ -273,31 +328,22 @@ export async function buildAll(input: {
       ).values(),
     ],
     rule: 'A dependent pack may execute only after every depends_on pack passes its required quality gates.',
-    batches: [...new Set(packs.map((pack) => pack.level))].map((level) => ({
-      level,
-      packs: packs.filter((pack) => pack.level === level).map((pack) => pack.id),
-    })),
+    dependency_batches: dependencyBatches,
+    // Compatibility alias. These are dependency levels, not safe parallel cohorts.
+    batches: dependencyBatches,
     packs,
-    steps: steps.map((step) => ({
-      sequence: step.sequence,
-      dependency_level: step.level,
-      pack: step.pack,
-      selection_reason: step.selectionReason,
-      phase: step.phase,
-      depends_on: step.dependencies,
-      depends_on_previous_phase_step: step.previousPhaseSequence ?? null,
-      prompt: path.relative(input.projectRoot, `${step.outputBase}.md`).replaceAll(path.sep, '/'),
-      lockfile: path
-        .relative(input.projectRoot, `${step.outputBase}.lock.json`)
-        .replaceAll(path.sep, '/'),
-      prompt_status: input.dryRun ? 'VALIDATED' : 'GENERATED',
-      execution_status:
-        step.previousPhaseSequence !== undefined
-          ? 'BLOCKED_BY_PREVIOUS_PHASE'
-          : step.dependencies.length === 0
-            ? 'READY'
-            : 'BLOCKED_BY_DEPENDENCIES',
-    })),
+    steps: stepsForPlan,
+  };
+  // Generation mode is operational metadata, not part of the plan identity.
+  // A dry-run must fingerprint the same executable plan as a materialized build.
+  const fingerprintPlan = {
+    ...semanticPlan,
+    steps: stepsForPlan.map(({ prompt_status: _promptStatus, ...step }) => step),
+  };
+  const executionPlan = {
+    ...semanticPlan,
+    generated_at: new Date().toISOString(),
+    plan_fingerprint: sha256(fingerprintPlan),
   };
 
   if (!input.dryRun) {

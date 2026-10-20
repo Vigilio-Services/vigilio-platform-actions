@@ -1,5 +1,13 @@
 # @vigilio-services/prompt-builder
 
+## 0.7.0
+
+### Minor Changes
+
+- Add execution-plan and lock schema v3 resource claims for fail-closed Senior Mode scheduling.
+- Keep prompt-pack v2 and execution-plan v2 compatible in serial mode.
+- Add stable step identifiers, prerequisite step identifiers and semantic plan fingerprints.
+
 ## 0.6.3
 
 ### Patch Changes

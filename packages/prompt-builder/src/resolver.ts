@@ -7,6 +7,7 @@ import type { LoadedDocument, PromptPack } from './types.js';
 import {
   assertFileExists,
   assertNoCircularPath,
+  validateConcurrencyConfiguration,
   validatePackShape,
   validateScope,
 } from './validator.js';
@@ -28,6 +29,7 @@ export async function loadPack(packId: string, projectRoot: string) {
   for (const scope of Object.values(manifest.federated_scope ?? {})) {
     validateScope(scope.allowed_paths ?? [], scope.forbidden_paths ?? []);
   }
+  validateConcurrencyConfiguration(manifest);
   return {
     manifest,
     manifestPath,

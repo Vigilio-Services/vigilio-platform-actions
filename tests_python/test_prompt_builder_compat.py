@@ -277,6 +277,15 @@ class PromptBuilderCompatibilityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "wait_status_current_response"):
             wait_for_fresh_status(object())
 
+    def test_legacy_queue_workers_one_remains_the_default(self):
+        with patch("sys.argv", ["chatgpt_prompt_queue.py", "--workers", "1"]):
+            self.assertEqual(parse_args().workers, 1)
+        with patch("sys.argv", ["chatgpt_prompt_queue.py", "--workers", "2"]):
+            with redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    parse_args()
+        self.assertEqual(raised.exception.code, 2)
+
     def test_run_lock_is_exclusive_at_a_stable_byte_offset(self):
         with tempfile.TemporaryDirectory() as temp:
             lock_path = Path(temp) / "prompt-runner.lock"

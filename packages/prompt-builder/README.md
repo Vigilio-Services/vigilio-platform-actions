@@ -234,6 +234,29 @@ pnpm exec vigilio-prompt migrate --project-root .
 pnpm exec vigilio-prompt migrate --project-root . --write
 ```
 
+### Prompt-pack schema v3 and Senior Mode
+
+Schema v3 opts an individual pack into conflict-aware scheduling. Existing v2 packs remain valid
+and are always treated as serial. Concurrency is never inferred from broad `allowed_paths`:
+
+```yaml
+schema_version: 3
+execution:
+  enabled: true
+  concurrency:
+    strategy: resource-claims
+    isolation: dedicated-worktree
+    phases:
+      apply:
+        write_paths: [apps/api/src/modules/orders/**]
+        exclusive_resources: [postgres-migrations]
+```
+
+Claims must be relative, narrower than the pack's allowed scope, outside forbidden paths, and may
+be phase-specific. Missing or ambiguous claims fail closed to serial execution. Generated plan v3
+steps contain stable `step_id`, exact `prerequisite_step_ids`, resolved claims, and a deterministic
+`plan_fingerprint`; `generated_at` does not affect that fingerprint.
+
 Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
 
 The generated Markdown is agent-neutral. Vigilio currently provisions synchronized skills for Codex and OpenCode; another AI coding agent can consume the generated prompts without being executed by this package.
@@ -282,7 +305,8 @@ reference files retain the existing OpenSpec content behavior for backward compa
 - `execution.enabled` controls whether a pack becomes an executable project step.
 - `execution.order` is only a deterministic tie-breaker between independent packs; it never overrides a dependency.
 - Missing, inactive, non-executable or cyclic dependencies fail closed before prompt files are written.
-- Packs at the same dependency level may be executed in parallel only when their scopes and contracts do not conflict.
+- Dependency levels are not parallel batches. Packs may execute together only when a Senior Mode
+  scheduler proves that their v3 path and named-resource claims do not conflict.
 
 Use-case packs include backend rules from `class.md`, `business.md`, `endpoints.md`, tests and operations. When `pages.md` exists it is loaded into the same prompt, activates frontend skills/gates, and coordinates the exact repositories selected by `target_profile`; it never invents `apps/backend` or `apps/frontend` paths.
 

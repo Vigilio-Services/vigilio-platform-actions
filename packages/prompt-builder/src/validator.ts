@@ -2,7 +2,13 @@ import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020 } from 'ajv/dist/2020.js';
-import type { CanonicalReferenceFile, PromptPack, PromptPlanFile } from './types.js';
+import type {
+  CanonicalReferenceFile,
+  PhaseResourceClaims,
+  PromptPack,
+  PromptPlanFile,
+  ResourcePathClaim,
+} from './types.js';
 
 const TOOL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -79,6 +85,118 @@ export function validateScope(allowedPaths: string[], forbiddenPaths: string[] =
   const contradictory = allowedPaths.find((path) => forbidden.has(path));
   if (contradictory) {
     throw new Error(`Path is both allowed and forbidden: ${contradictory}`);
+  }
+}
+
+function normalizedResourcePath(value: string) {
+  const normalized = value.replaceAll('\\', '/').replace(/^\.\//, '');
+  if (
+    normalized.length === 0 ||
+    normalized === '**' ||
+    normalized.startsWith('/') ||
+    /^[A-Za-z]:\//.test(normalized) ||
+    normalized.split('/').includes('..')
+  ) {
+    throw new Error(`Invalid concurrency resource path: ${value}`);
+  }
+  return normalized;
+}
+
+function staticPrefix(value: string) {
+  const parts: string[] = [];
+  for (const part of normalizedResourcePath(value).split('/')) {
+    if (/[*?[\]]/.test(part)) break;
+    parts.push(part.toLocaleLowerCase('en-US'));
+  }
+  return parts;
+}
+
+function claimParts(claim: ResourcePathClaim) {
+  return typeof claim === 'string'
+    ? { repository: '.', path: normalizedResourcePath(claim) }
+    : { repository: claim.repository, path: normalizedResourcePath(claim.path) };
+}
+
+function pathIsWithin(claim: string, allowed: string) {
+  const claimPrefix = staticPrefix(claim);
+  const allowedPrefix = staticPrefix(allowed);
+  if (allowedPrefix.length === 0 || claimPrefix.length < allowedPrefix.length) return false;
+  return allowedPrefix.every((part, index) => claimPrefix[index] === part);
+}
+
+function pathsMayOverlap(left: string, right: string) {
+  const leftPrefix = staticPrefix(left);
+  const rightPrefix = staticPrefix(right);
+  if (leftPrefix.length === 0 || rightPrefix.length === 0) return true;
+  const shared = Math.min(leftPrefix.length, rightPrefix.length);
+  return leftPrefix.slice(0, shared).every((part, index) => rightPrefix[index] === part);
+}
+
+export function validateConcurrencyConfiguration(pack: PromptPack) {
+  const configuration = pack.execution?.concurrency;
+  if (!configuration) return;
+  if (pack.schema_version !== 3) {
+    throw new Error(`Concurrency metadata requires prompt-pack schema_version 3: ${pack.id}`);
+  }
+  const claims: PhaseResourceClaims[] = [
+    configuration,
+    ...Object.values(configuration.phases ?? {}),
+  ];
+  const writes = claims.flatMap((item) => item.write_paths ?? []);
+  if (
+    configuration.strategy === 'serial' &&
+    claims.some((item) =>
+      Boolean(
+        item.read_paths?.length || item.write_paths?.length || item.exclusive_resources?.length,
+      ),
+    )
+  ) {
+    throw new Error(`Serial concurrency strategy cannot declare resource claims: ${pack.id}`);
+  }
+  if (
+    configuration.strategy === 'resource-claims' &&
+    configuration.isolation !== 'read-only' &&
+    writes.length === 0
+  ) {
+    throw new Error(`Resource-claims strategy requires write_paths: ${pack.id}`);
+  }
+  if (configuration.isolation === 'read-only' && writes.length > 0) {
+    throw new Error(`Read-only concurrency cannot declare write_paths: ${pack.id}`);
+  }
+  for (const claimsForPhase of claims) {
+    for (const claim of [
+      ...(claimsForPhase.read_paths ?? []),
+      ...(claimsForPhase.write_paths ?? []),
+    ]) {
+      claimParts(claim);
+    }
+    for (const resource of claimsForPhase.exclusive_resources ?? []) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(resource)) {
+        throw new Error(`Invalid exclusive concurrency resource: ${resource}`);
+      }
+    }
+  }
+  const allPathClaims = claims.flatMap((item) => [
+    ...(item.read_paths ?? []),
+    ...(item.write_paths ?? []),
+  ]);
+  for (const claim of allPathClaims) {
+    const resolved = claimParts(claim);
+    const scope =
+      resolved.repository === '.' ? pack.scope : pack.federated_scope?.[resolved.repository];
+    const allowed = scope?.allowed_paths ?? [];
+    if (!allowed.some((candidate) => pathIsWithin(resolved.path, candidate))) {
+      throw new Error(
+        `Concurrency path is outside allowed scope: ${pack.id} -> ${resolved.repository}:${resolved.path}`,
+      );
+    }
+    if (
+      (scope?.forbidden_paths ?? []).some((candidate) => pathsMayOverlap(resolved.path, candidate))
+    ) {
+      throw new Error(
+        `Concurrency path intersects forbidden scope: ${pack.id} -> ${resolved.repository}:${resolved.path}`,
+      );
+    }
   }
 }
 

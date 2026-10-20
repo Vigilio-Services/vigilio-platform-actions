@@ -91,7 +91,7 @@ unset XAUTHORITY; export DISPLAY=:1; export VIGILIO_NODE24_BIN=/tmp/opencode/nod
 
 By default the runner:
 
-    1. requires Prompt Builder 0.6.3, execution-plan.json schema v2 and valid locks;
+    1. requires Prompt Builder 0.6.3/0.7.0, execution-plan.json schema v2/v3 and valid locks;
     2. opens a NEW ChatGPT chat for every generated prompt;
     3. executes the next dependency-ready prompt;
     4. on PROPOSE success, saves `awaiting_approval` and STOPS by default;
@@ -620,7 +620,7 @@ def discover_prompts(
     if gaps:
         logging.warning("Queue has numeric gaps: %s", gaps[:10])
 
-    # Validate phase order per pack for whatever 0.6.3 phases the plan selected.
+    # Validate phase order per pack for whatever supported phases the plan selected.
     by_pack: dict[str, list[PromptItem]] = {}
     for item in items:
         by_pack.setdefault(item.pack, []).append(item)
@@ -1214,7 +1214,7 @@ def try_auto_rebuild_for_blocked(
     plan: ExecutionPlan,
     token_budget: int,
 ) -> bool:
-    """Regenerate the owning 0.6.3 plan without creating an orphan single build."""
+    """Regenerate the owning plan without creating an orphan single build."""
     try:
         logging.warning(
             "Regenerating Prompt Builder plan=%s before retrying %s",
@@ -1544,8 +1544,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
-        default=SUPPORTED_PROMPT_BUILDER_VERSION,
-        help="Exact Prompt Builder version required for execution (default: 0.6.3).",
+        default="0.6.3,0.7.0",
+        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0).",
+    )
+    parser.add_argument(
+        "--workers",
+        "-workers",
+        type=int,
+        default=1,
+        help="Legacy runner capacity. Must remain 1; use senior_queue.py for coordinated parallelism.",
     )
     parser.add_argument(
         "--package-manager",
@@ -1636,7 +1643,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--regenerate-plan",
         action="store_true",
-        help="Explicitly rebuild the complete owning 0.6.3 plan, reconcile hashes, then stop.",
+        help="Explicitly rebuild the complete owning plan, reconcile hashes, then stop.",
     )
     parser.add_argument("--max-prompts", type=int, default=None, help="Maximum prompts to execute this run.")
     parser.add_argument(
@@ -1779,6 +1786,18 @@ def parse_args() -> argparse.Namespace:
         parser.error("--log-backup-count must be between 1 and 100")
     if args.prompt_builder_timeout_seconds < 1:
         parser.error("--prompt-builder-timeout-seconds must be at least 1")
+    if args.workers != 1:
+        parser.error(
+            "chatgpt_prompt_queue.py supports --workers 1 only; use senior_queue.py "
+            "for isolated multi-worker execution"
+        )
+    args.expected_prompt_builder_version = tuple(
+        value.strip()
+        for value in args.expected_prompt_builder_version.split(",")
+        if value.strip()
+    )
+    if not args.expected_prompt_builder_version:
+        parser.error("--expected-prompt-builder-version cannot be empty")
     if args.dry_run and any(
         (
             args.regenerate_plan,

@@ -28,7 +28,7 @@ export async function writeLockfile(input: {
 }) {
   await mkdir(path.dirname(input.outputBase), { recursive: true });
   const payload = {
-    schema_version: 2,
+    schema_version: 3,
     builder_version: await builderVersion(),
     pack: input.prepared.packId,
     prompt_pack_schema_version: input.prepared.schemaVersion,
@@ -68,6 +68,7 @@ export async function writeLockfile(input: {
     activation_requirements: input.prepared.activationRequirements,
     allowed_paths: input.prepared.allowedPaths,
     forbidden_paths: input.prepared.forbiddenPaths,
+    concurrency: input.prepared.concurrency,
     documents: input.prepared.documents.map((d) => ({
       source: portableSource(input.prepared.projectRoot, d.source),
       required: d.required,

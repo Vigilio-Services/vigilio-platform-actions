@@ -1,0 +1,301 @@
+"""Crash-safe, single-writer state for Senior Mode."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import uuid
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Iterable, Mapping
+
+
+STATE_SCHEMA_VERSION = 1
+SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,191}")
+TERMINAL_STATUSES = frozenset({"done", "skipped", "blocked"})
+
+
+class SeniorStateError(RuntimeError):
+    pass
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _timestamp(value: datetime | None = None) -> str:
+    return (value or _now()).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _parse_timestamp(value: Any) -> datetime:
+    if not isinstance(value, str):
+        raise SeniorStateError("lease timestamp is missing")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SeniorStateError(f"invalid lease timestamp: {value!r}") from exc
+
+
+class SeniorStateStore:
+    """Own one workflow snapshot and its append-only transition log.
+
+    Only the coordinator may instantiate a writable store.  Workers communicate
+    through attempt-scoped files and never update this snapshot directly.
+    """
+
+    def __init__(self, root: Path, *, workflow_id: str, plan_fingerprint: str):
+        if not SAFE_ID.fullmatch(workflow_id):
+            raise SeniorStateError("workflow_id contains unsafe characters")
+        if not re.fullmatch(r"[a-fA-F0-9]{64}", plan_fingerprint):
+            raise SeniorStateError("plan_fingerprint must be a SHA-256 hex digest")
+        self.root = root.resolve()
+        self.path = self.root / "state.json"
+        self.events_path = self.root / "events.jsonl"
+        self.workflow_id = workflow_id
+        self.plan_fingerprint = plan_fingerprint.lower()
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.data = self._load_or_create()
+
+    def _load_or_create(self) -> dict[str, Any]:
+        if not self.path.exists():
+            now = _timestamp()
+            data: dict[str, Any] = {
+                "schema_version": STATE_SCHEMA_VERSION,
+                "workflow_id": self.workflow_id,
+                "plan_fingerprint": self.plan_fingerprint,
+                "revision": 0,
+                "created_at": now,
+                "updated_at": now,
+                "preflight": None,
+                "jobs": {},
+            }
+            self._persist(data)
+            return data
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SeniorStateError(f"Senior Mode state is unreadable: {self.path}: {exc}") from exc
+        if not isinstance(data, dict) or data.get("schema_version") != STATE_SCHEMA_VERSION:
+            raise SeniorStateError("unsupported Senior Mode state schema")
+        if data.get("workflow_id") != self.workflow_id:
+            raise SeniorStateError("state belongs to a different workflow")
+        if data.get("plan_fingerprint") != self.plan_fingerprint:
+            raise SeniorStateError(
+                "execution plan changed; start a new run or explicitly migrate the state"
+            )
+        if not isinstance(data.get("jobs"), dict):
+            raise SeniorStateError("Senior Mode state jobs must be an object")
+        return data
+
+    def _persist(self, data: dict[str, Any]) -> None:
+        data["updated_at"] = _timestamp()
+        temporary = self.path.with_name(f".{self.path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+        encoded = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+        try:
+            with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+
+    def _event(self, event: str, *, job_id: str | None = None, data: Mapping[str, Any] | None = None) -> None:
+        sequence = int(self.data.get("revision", 0))
+        payload: dict[str, Any] = {
+            "schema_version": 1,
+            "sequence": sequence,
+            "timestamp": _timestamp(),
+            "workflow_id": self.workflow_id,
+            "event": event,
+            "data": dict(data or {}),
+        }
+        if job_id is not None:
+            payload["job_id"] = job_id
+        with self.events_path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def _commit(self, event: str, *, job_id: str | None = None, data: Mapping[str, Any] | None = None) -> None:
+        self.data["revision"] = int(self.data.get("revision", 0)) + 1
+        self._persist(self.data)
+        self._event(event, job_id=job_id, data=data)
+
+    @property
+    def jobs(self) -> dict[str, dict[str, Any]]:
+        return self.data["jobs"]
+
+    def reconcile(self, jobs: Iterable[Any]) -> None:
+        changed = False
+        known_ids: set[str] = set()
+        for job in jobs:
+            job_id = str(job.job_id)
+            if not SAFE_ID.fullmatch(job_id):
+                raise SeniorStateError(f"unsafe job_id: {job_id!r}")
+            known_ids.add(job_id)
+            record = self.jobs.get(job_id)
+            if record is None:
+                self.jobs[job_id] = {
+                    "status": "pending",
+                    "attempt": 0,
+                    "pack": job.pack,
+                    "phase": job.phase,
+                    "sequence": job.sequence,
+                    "lease": None,
+                    "result": None,
+                    "integrated_commit": None,
+                    "last_error": None,
+                }
+                changed = True
+                continue
+            identity = (record.get("pack"), record.get("phase"), record.get("sequence"))
+            if identity != (job.pack, job.phase, job.sequence):
+                raise SeniorStateError(f"job identity changed inside one plan: {job_id}")
+        unknown = sorted(set(self.jobs) - known_ids)
+        if unknown:
+            raise SeniorStateError(f"state contains jobs absent from the plan: {unknown}")
+        if changed:
+            self._commit("plan.reconciled", data={"job_count": len(self.jobs)})
+
+    def statuses(self) -> dict[str, str]:
+        return {job_id: str(record.get("status", "pending")) for job_id, record in self.jobs.items()}
+
+    def record_preflight(
+        self,
+        *,
+        base_sha: str,
+        command_sha256: str,
+        passed: bool,
+        returncode: int,
+    ) -> None:
+        self.data["preflight"] = {
+            "checked_at": _timestamp(),
+            "base_sha": base_sha,
+            "plan_fingerprint": self.plan_fingerprint,
+            "command_sha256": command_sha256,
+            "passed": bool(passed),
+            "returncode": int(returncode),
+        }
+        self._commit("preflight.passed" if passed else "preflight.failed")
+
+    def preflight_ready(self, *, base_sha: str) -> bool:
+        report = self.data.get("preflight")
+        return bool(
+            isinstance(report, dict)
+            and report.get("passed") is True
+            and report.get("base_sha") == base_sha
+            and report.get("plan_fingerprint") == self.plan_fingerprint
+        )
+
+    def lease(self, job_ids: Iterable[str], *, ttl_seconds: int = 900) -> list[dict[str, Any]]:
+        if ttl_seconds < 5:
+            raise SeniorStateError("lease TTL must be at least 5 seconds")
+        now = _now()
+        leases: list[dict[str, Any]] = []
+        for job_id in job_ids:
+            record = self.jobs.get(job_id)
+            if record is None:
+                raise SeniorStateError(f"unknown job: {job_id}")
+            if record.get("status") != "pending":
+                raise SeniorStateError(f"job is not pending: {job_id}")
+            attempt = int(record.get("attempt", 0)) + 1
+            token = uuid.uuid4().hex
+            lease = {
+                "token": token,
+                "attempt_id": f"attempt-{attempt:04d}",
+                "leased_at": _timestamp(now),
+                "heartbeat_at": _timestamp(now),
+                "expires_at": _timestamp(now + timedelta(seconds=ttl_seconds)),
+            }
+            record.update(status="leased", attempt=attempt, lease=lease, last_error=None)
+            leases.append({"job_id": job_id, **lease})
+        if leases:
+            self._commit("jobs.leased", data={"job_ids": [lease["job_id"] for lease in leases]})
+        return leases
+
+    def heartbeat(self, job_id: str, *, token: str, ttl_seconds: int = 900) -> None:
+        record = self._leased_record(job_id, token)
+        now = _now()
+        record["status"] = "running"
+        record["lease"]["heartbeat_at"] = _timestamp(now)
+        record["lease"]["expires_at"] = _timestamp(now + timedelta(seconds=ttl_seconds))
+        self._commit("job.heartbeat", job_id=job_id)
+
+    def _leased_record(self, job_id: str, token: str) -> dict[str, Any]:
+        record = self.jobs.get(job_id)
+        if record is None:
+            raise SeniorStateError(f"unknown job: {job_id}")
+        lease = record.get("lease")
+        if not isinstance(lease, dict) or lease.get("token") != token:
+            raise SeniorStateError(f"stale or invalid lease token for {job_id}")
+        if record.get("status") not in {"leased", "running"}:
+            raise SeniorStateError(f"job does not accept worker results: {job_id}")
+        return record
+
+    def record_result(self, job_id: str, *, token: str, result: Mapping[str, Any]) -> None:
+        record = self._leased_record(job_id, token)
+        outcome = result.get("status")
+        persisted_result = dict(result)
+        persisted_result.pop("lease_token", None)
+        if outcome == "PASS":
+            record["status"] = "produced"
+            record["result"] = persisted_result
+            record["last_error"] = None
+            event = "job.produced"
+        elif outcome == "BLOCKED":
+            record["status"] = "blocked"
+            record["last_error"] = str(result.get("error", "worker blocked"))[:2000]
+            event = "job.blocked"
+        else:
+            record["status"] = "failed"
+            record["last_error"] = str(result.get("error", "worker failed"))[:2000]
+            event = "job.failed"
+        record["lease"] = None
+        self._commit(event, job_id=job_id)
+
+    def mark_validated(self, job_id: str) -> None:
+        record = self._transition(job_id, {"produced"}, "validated")
+        self._commit("job.validated", job_id=job_id, data={"commit": record.get("result", {}).get("result_commit")})
+
+    def mark_done(self, job_id: str, *, integrated_commit: str) -> None:
+        if not re.fullmatch(r"[a-fA-F0-9]{7,64}", integrated_commit):
+            raise SeniorStateError("integrated_commit is not a Git object id")
+        record = self._transition(job_id, {"validated", "merge_pending"}, "done")
+        record["integrated_commit"] = integrated_commit.lower()
+        self._commit("job.done", job_id=job_id, data={"integrated_commit": integrated_commit.lower()})
+
+    def _transition(self, job_id: str, allowed: set[str], target: str) -> dict[str, Any]:
+        record = self.jobs.get(job_id)
+        if record is None:
+            raise SeniorStateError(f"unknown job: {job_id}")
+        if record.get("status") not in allowed:
+            raise SeniorStateError(
+                f"invalid transition for {job_id}: {record.get('status')} -> {target}"
+            )
+        record["status"] = target
+        return record
+
+    def retry(self, job_id: str) -> None:
+        record = self._transition(job_id, {"failed", "blocked"}, "pending")
+        record["lease"] = None
+        record["result"] = None
+        self._commit("job.retry_scheduled", job_id=job_id)
+
+    def recover_expired(self, *, now: datetime | None = None) -> tuple[str, ...]:
+        current = now or _now()
+        recovered: list[str] = []
+        for job_id, record in self.jobs.items():
+            if record.get("status") not in {"leased", "running"}:
+                continue
+            lease = record.get("lease")
+            if not isinstance(lease, dict) or _parse_timestamp(lease.get("expires_at")) <= current:
+                record["status"] = "pending"
+                record["lease"] = None
+                record["last_error"] = "worker lease expired"
+                recovered.append(job_id)
+        if recovered:
+            self._commit("jobs.recovered", data={"job_ids": recovered})
+        return tuple(recovered)

@@ -7,6 +7,28 @@ export type Scope = {
   forbidden_paths?: string[] | undefined;
 };
 
+export type ResourcePathClaim = string | { repository: string; path: string };
+
+export type PhaseResourceClaims = {
+  read_paths?: ResourcePathClaim[] | undefined;
+  write_paths?: ResourcePathClaim[] | undefined;
+  exclusive_resources?: string[] | undefined;
+};
+
+export type ConcurrencyConfiguration = PhaseResourceClaims & {
+  strategy: 'serial' | 'resource-claims';
+  isolation?: 'dedicated-worktree' | 'shared-worktree' | 'read-only' | undefined;
+  phases?: Partial<Record<Phase, PhaseResourceClaims>> | undefined;
+};
+
+export type ResolvedConcurrency = {
+  strategy: 'serial' | 'resource-claims';
+  isolation: 'dedicated-worktree' | 'shared-worktree' | 'read-only';
+  read_paths: ResourcePathClaim[];
+  write_paths: ResourcePathClaim[];
+  exclusive_resources: string[];
+};
+
 export type ConditionPredicate = {
   name: string;
   equals: boolean;
@@ -81,7 +103,7 @@ export type ResolvedTargetProfile = TargetProfile & {
 };
 
 export type PromptPack = {
-  schema_version: 2;
+  schema_version: 2 | 3;
   id: string;
   version: number;
   status: 'active' | 'deprecated';
@@ -100,6 +122,7 @@ export type PromptPack = {
         order?: number | undefined;
         phases?: Phase[] | undefined;
         blocking_decisions?: string[] | undefined;
+        concurrency?: ConcurrencyConfiguration | undefined;
       }
     | undefined;
   documents?:
@@ -217,7 +240,7 @@ export type PreparedPrompt = {
   projectRoot: string;
   factoryBaseline?: FactoryBaseline | undefined;
   packId: string;
-  schemaVersion: 2;
+  schemaVersion: 2 | 3;
   packVersion: number;
   change?: string | undefined;
   phase: Phase;
@@ -237,6 +260,7 @@ export type PreparedPrompt = {
   targetProfile?: ResolvedTargetProfile | undefined;
   estimatedTokens: number;
   templateSha256: string;
+  concurrency: ResolvedConcurrency;
 };
 
 export type PackPlanNode = {

@@ -1,5 +1,7 @@
 # vigilio-platform-actions
 
+Senior Mode: [`docs/SENIOR_MODE.md`](docs/SENIOR_MODE.md).
+
 Repositorio central de workflows reutilizables, composite actions y governance scripts para proyectos Vigilio.
 
 Objetivo: que `bus-impl`, `web-mfe`, `mobile-mfe`, `tauri-mfe` y futuros repos consuman CI/CD consistente sin duplicar YAML pesado.

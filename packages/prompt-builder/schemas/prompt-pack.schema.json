@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vigilio.dev/schemas/prompt-pack.v2.schema.json",
-  "title": "Vigilio Prompt Pack v2",
+  "$id": "https://vigilio.dev/schemas/prompt-pack.schema.json",
+  "title": "Vigilio Prompt Pack v2/v3",
   "type": "object",
   "required": ["schema_version", "id", "version", "status"],
   "properties": {
-    "schema_version": { "const": 2 },
+    "schema_version": { "enum": [2, 3] },
     "id": { "type": "string", "minLength": 3, "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
     "version": { "type": "integer", "minimum": 1 },
     "status": { "enum": ["active", "deprecated"] },
@@ -33,7 +33,8 @@
           "uniqueItems": true,
           "minItems": 1
         },
-        "blocking_decisions": { "$ref": "#/$defs/stringList" }
+        "blocking_decisions": { "$ref": "#/$defs/stringList" },
+        "concurrency": { "$ref": "#/$defs/concurrency" }
       },
       "additionalProperties": false
     },
@@ -82,6 +83,20 @@
     "documentation_sync": { "$ref": "#/$defs/stringList" }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": { "schema_version": { "const": 2 } },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "type": "object",
+            "properties": { "concurrency": false }
+          }
+        }
+      }
+    },
     {
       "if": {
         "required": ["execution"],
@@ -143,6 +158,57 @@
       "properties": {
         "allowed_paths": { "$ref": "#/$defs/stringList" },
         "forbidden_paths": { "$ref": "#/$defs/stringList" }
+      },
+      "additionalProperties": false
+    },
+    "resourcePath": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["repository", "path"],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+            },
+            "path": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "resourcePathList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/resourcePath" },
+      "uniqueItems": true
+    },
+    "phaseResourceClaims": {
+      "type": "object",
+      "properties": {
+        "read_paths": { "$ref": "#/$defs/resourcePathList" },
+        "write_paths": { "$ref": "#/$defs/resourcePathList" },
+        "exclusive_resources": { "$ref": "#/$defs/stringList" }
+      },
+      "additionalProperties": false
+    },
+    "concurrency": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": { "enum": ["serial", "resource-claims"] },
+        "isolation": {
+          "enum": ["dedicated-worktree", "shared-worktree", "read-only"]
+        },
+        "read_paths": { "$ref": "#/$defs/resourcePathList" },
+        "write_paths": { "$ref": "#/$defs/resourcePathList" },
+        "exclusive_resources": { "$ref": "#/$defs/stringList" },
+        "phases": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/phase" },
+          "additionalProperties": { "$ref": "#/$defs/phaseResourceClaims" }
+        }
       },
       "additionalProperties": false
     },

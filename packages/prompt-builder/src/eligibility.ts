@@ -124,37 +124,40 @@ export async function checkPackEligibility(input: {
   const scopeFailures: string[] = [];
   const gateFailures: string[] = [];
   for (const node of plan) {
-    const phase = node.phases[0];
-    if (!phase) {
+    if (node.phases.length === 0) {
       promptPreflightPassed = false;
       preflightFailures.push(`${node.id}: no compatible phase`);
       continue;
     }
-    try {
-      const prepared = await preparePrompt({
-        projectRoot: input.projectRoot,
-        packId: node.id,
-        change: input.change,
-        phase,
-        tokenBudget: 1_000_000_000,
-        dependencies: node.dependencies,
-        conditionContext: input.conditionContext,
-      });
-      if (!hasImplementationPath(prepared.allowedPaths)) {
+    for (const phase of node.phases) {
+      try {
+        const prepared = await preparePrompt({
+          projectRoot: input.projectRoot,
+          packId: node.id,
+          change: input.change,
+          phase,
+          tokenBudget: 1_000_000_000,
+          dependencies: node.dependencies,
+          conditionContext: input.conditionContext,
+        });
+        if (!hasImplementationPath(prepared.allowedPaths)) {
+          scopePassed = false;
+          scopeFailures.push(
+            `${node.id}:${phase}: no allowed paths outside documentation/derived areas`,
+          );
+        }
+        if (prepared.qualityGates.length + prepared.activationGates.length === 0) {
+          gatesPassed = false;
+          gateFailures.push(`${node.id}:${phase}: no required or activation quality gates`);
+        }
+      } catch (error) {
+        promptPreflightPassed = false;
+        preflightFailures.push(`${node.id}:${phase}: ${detail(error)}`);
         scopePassed = false;
-        scopeFailures.push(`${node.id}: no allowed paths outside documentation/derived areas`);
-      }
-      if (prepared.qualityGates.length + prepared.activationGates.length === 0) {
+        scopeFailures.push(`${node.id}:${phase}: not evaluated because prompt preflight failed`);
         gatesPassed = false;
-        gateFailures.push(`${node.id}: no required or activation quality gates`);
+        gateFailures.push(`${node.id}:${phase}: not evaluated because prompt preflight failed`);
       }
-    } catch (error) {
-      promptPreflightPassed = false;
-      preflightFailures.push(`${node.id}: ${detail(error)}`);
-      scopePassed = false;
-      scopeFailures.push(`${node.id}: not evaluated because prompt preflight failed`);
-      gatesPassed = false;
-      gateFailures.push(`${node.id}: not evaluated because prompt preflight failed`);
     }
   }
   checks.push(

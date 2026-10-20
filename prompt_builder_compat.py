@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.3.
+"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.3/0.7.0.
 
 This module is intentionally UI-agnostic.  Both ChatGPT automation scripts use
 it so version checks, command execution, JSON parsing and execution-plan
@@ -14,13 +14,16 @@ import os
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from senior_scheduler import ResourceClaims, SeniorPlanError
 
-SUPPORTED_PROMPT_BUILDER_VERSION = "0.6.3"
-SUPPORTED_PLAN_SCHEMA_VERSION = 2
+
+SUPPORTED_PROMPT_BUILDER_VERSION = "0.7.0"
+SUPPORTED_PROMPT_BUILDER_VERSIONS = ("0.6.3", "0.7.0")
+SUPPORTED_PLAN_SCHEMA_VERSIONS = (2, 3)
 SUPPORTED_PHASES = ("explore", "propose", "apply", "review", "fix")
 MUTATING_PHASES = frozenset({"apply", "review", "fix"})
 
@@ -67,6 +70,9 @@ class ExecutionPlanStep:
     lockfile: Path
     selection_reason: str
     execution_status: str
+    step_id: str
+    prerequisite_step_ids: tuple[str, ...]
+    concurrency: ResourceClaims
 
     @property
     def logical_id(self) -> str:
@@ -81,6 +87,7 @@ class ExecutionPlan:
     phases: tuple[str, ...]
     selection: Mapping[str, Any]
     steps: tuple[ExecutionPlanStep, ...]
+    plan_fingerprint: str
 
 
 def _extract_json(text: str) -> Any:
@@ -121,13 +128,13 @@ def _relative_artifact(project_root: Path, value: Any, *, label: str) -> Path:
     raw = Path(value)
     if raw.is_absolute():
         raise PromptBuilderCompatibilityError(
-            f"{label} must be project-relative for portable Prompt Builder 0.6.3 locks"
+            f"{label} must be project-relative for portable Prompt Builder locks"
         )
     return _inside(project_root, project_root / raw, label=label)
 
 
 def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
-    """Load and strictly validate a Prompt Builder 0.6.3 execution plan."""
+    """Load and strictly validate a Prompt Builder schema v2/v3 execution plan."""
 
     project_root = project_root.resolve()
     prompts_dir = _inside(project_root, prompts_dir, label="prompts directory")
@@ -145,10 +152,11 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
         ) from exc
     if not isinstance(raw, dict):
         raise PromptBuilderCompatibilityError("execution-plan.json must be a JSON object")
-    if raw.get("schema_version") != SUPPORTED_PLAN_SCHEMA_VERSION:
+    schema_version = raw.get("schema_version")
+    if schema_version not in SUPPORTED_PLAN_SCHEMA_VERSIONS:
         raise PromptBuilderCompatibilityError(
             "Unsupported execution plan schema: "
-            f"{raw.get('schema_version')!r}; expected {SUPPORTED_PLAN_SCHEMA_VERSION}"
+            f"{schema_version!r}; expected one of {SUPPORTED_PLAN_SCHEMA_VERSIONS}"
         )
     plan_id = raw.get("plan_id")
     if not isinstance(plan_id, str) or not plan_id.strip():
@@ -239,6 +247,30 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
                 f"step {sequence} has invalid selection_reason {selection_reason!r}"
             )
 
+        if schema_version == 3:
+            step_id = entry.get("step_id")
+            if step_id != logical_id:
+                raise PromptBuilderCompatibilityError(
+                    f"step {sequence} step_id must equal {logical_id!r}"
+                )
+            prerequisites = entry.get("prerequisite_step_ids")
+            if not isinstance(prerequisites, list) or not all(
+                isinstance(value, str) and value for value in prerequisites
+            ):
+                raise PromptBuilderCompatibilityError(
+                    f"step {sequence} has invalid prerequisite_step_ids"
+                )
+            try:
+                concurrency = ResourceClaims.from_mapping(entry.get("concurrency"))
+            except SeniorPlanError as exc:
+                raise PromptBuilderCompatibilityError(
+                    f"step {sequence} has invalid concurrency claims: {exc}"
+                ) from exc
+        else:
+            step_id = logical_id
+            prerequisites = []
+            concurrency = ResourceClaims()
+
         steps.append(
             ExecutionPlanStep(
                 sequence=sequence,
@@ -251,6 +283,9 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
                 lockfile=lockfile,
                 selection_reason=selection_reason,
                 execution_status=expected_status,
+                step_id=step_id,
+                prerequisite_step_ids=tuple(prerequisites),
+                concurrency=concurrency,
             )
         )
         seen_sequences.add(sequence)
@@ -259,7 +294,7 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
     steps.sort(key=lambda step: step.sequence)
     if [step.sequence for step in steps] != list(range(1, len(steps) + 1)):
         raise PromptBuilderCompatibilityError(
-            "Prompt Builder 0.6.3 execution steps must use contiguous numeric order"
+            "Prompt Builder execution steps must use contiguous numeric order"
         )
 
     if raw.get("prompt_count") not in (None, len(steps)):
@@ -270,6 +305,8 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
         raise PromptBuilderCompatibilityError("execution plan pack_count does not match steps")
     levels_by_pack = {step.pack: step.dependency_level for step in steps}
     by_sequence = {step.sequence: step for step in steps}
+    by_logical_id = {step.logical_id: step for step in steps}
+    normalized_steps: list[ExecutionPlanStep] = []
     for step in steps:
         if step.previous_phase_sequence is not None:
             previous = by_sequence.get(step.previous_phase_sequence)
@@ -301,13 +338,63 @@ def load_execution_plan(project_root: Path, prompts_dir: Path) -> ExecutionPlan:
                 f"expected {expected_status!r}"
             )
 
+        if schema_version == 2:
+            prerequisites: list[str] = []
+            if step.previous_phase_sequence is not None:
+                prerequisites.append(by_sequence[step.previous_phase_sequence].logical_id)
+            for dependency in step.depends_on:
+                same_phase = by_logical_id.get(f"{dependency}:{step.phase}")
+                if same_phase is not None:
+                    prerequisites.append(same_phase.logical_id)
+            step = replace(step, prerequisite_step_ids=tuple(dict.fromkeys(prerequisites)))
+        else:
+            missing = sorted(set(step.prerequisite_step_ids) - by_logical_id.keys())
+            if missing:
+                raise PromptBuilderCompatibilityError(
+                    f"step {step.sequence} references missing prerequisite steps: {missing}"
+                )
+            if step.previous_phase_sequence is not None:
+                previous_id = by_sequence[step.previous_phase_sequence].logical_id
+                if previous_id not in step.prerequisite_step_ids:
+                    raise PromptBuilderCompatibilityError(
+                        f"step {step.sequence} omits previous phase prerequisite {previous_id}"
+                    )
+        normalized_steps.append(step)
+
+    if schema_version == 3:
+        plan_fingerprint = raw.get("plan_fingerprint")
+        if not isinstance(plan_fingerprint, str) or not re.fullmatch(
+            r"[a-fA-F0-9]{64}", plan_fingerprint
+        ):
+            raise PromptBuilderCompatibilityError("schema v3 plan has no valid plan_fingerprint")
+        semantic = dict(raw)
+        semantic.pop("generated_at", None)
+        semantic.pop("plan_fingerprint", None)
+        semantic["steps"] = [
+            {key: value for key, value in entry.items() if key != "prompt_status"}
+            for entry in semantic.get("steps", [])
+        ]
+        expected_fingerprint = hashlib.sha256(
+            json.dumps(semantic, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if plan_fingerprint.lower() != expected_fingerprint:
+            raise PromptBuilderCompatibilityError("schema v3 plan_fingerprint is stale")
+        plan_fingerprint = expected_fingerprint
+    else:
+        semantic = dict(raw)
+        semantic.pop("generated_at", None)
+        plan_fingerprint = hashlib.sha256(
+            json.dumps(semantic, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+
     return ExecutionPlan(
         source=source,
-        schema_version=SUPPORTED_PLAN_SCHEMA_VERSION,
+        schema_version=schema_version,
         plan_id=plan_id,
         phases=phases,
         selection=selection,
-        steps=tuple(steps),
+        steps=tuple(normalized_steps),
+        plan_fingerprint=plan_fingerprint,
     )
 
 
@@ -318,7 +405,7 @@ class PromptBuilderClient:
         self,
         project_root: Path,
         *,
-        expected_version: str = SUPPORTED_PROMPT_BUILDER_VERSION,
+        expected_version: str | Sequence[str] = SUPPORTED_PROMPT_BUILDER_VERSIONS,
         package_manager: str = "pnpm",
         executable: str = "vigilio-prompt",
         timeout_seconds: int = 180,
@@ -326,7 +413,14 @@ class PromptBuilderClient:
         node_executable: Path | None = None,
     ) -> None:
         self.project_root = project_root.resolve()
-        self.expected_version = expected_version
+        self.expected_versions = (
+            (expected_version,)
+            if isinstance(expected_version, str)
+            else tuple(expected_version)
+        )
+        if not self.expected_versions:
+            raise ValueError("at least one compatible Prompt Builder version is required")
+        self.expected_version = self.expected_versions[-1]
         self.package_manager = package_manager
         self.executable = executable
         self.timeout_seconds = timeout_seconds
@@ -480,10 +574,10 @@ class PromptBuilderClient:
 
     def assert_compatible(self) -> str:
         installed = self.version()
-        if installed != self.expected_version:
+        if installed not in self.expected_versions:
             raise PromptBuilderCompatibilityError(
                 f"Prompt Builder version mismatch: installed={installed}, "
-                f"required={self.expected_version}"
+                f"required one of={','.join(self.expected_versions)}"
             )
         return installed
 

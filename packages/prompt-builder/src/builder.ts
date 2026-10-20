@@ -9,6 +9,7 @@ import {
   resolveActivationGates,
   resolveActivationRequirements,
   resolveCapabilities,
+  resolveConcurrency,
   resolveQualityGates,
   resolveScopes,
   resolveTargetProfileId,
@@ -77,6 +78,17 @@ export async function preparePrompt(input: {
       ? [...new Set([...scopes.allowed, `openspec/changes/${changeId}/**`])]
       : scopes.allowed;
   const dependencies = input.dependencies ?? target.depends_on ?? [];
+  const concurrency = resolveConcurrency(manifests, input.phase);
+  if (concurrency.strategy === 'resource-claims' && input.phase === 'propose') {
+    concurrency.write_paths = [
+      ...new Map(
+        [...concurrency.write_paths, `openspec/changes/${changeId}/**`].map((claim) => [
+          typeof claim === 'string' ? `.:${claim}` : `${claim.repository}:${claim.path}`,
+          claim,
+        ]),
+      ).values(),
+    ];
+  }
   const prompt = assemble({
     template,
     packId: input.packId,
@@ -117,6 +129,7 @@ export async function preparePrompt(input: {
     targetProfile,
     estimatedTokens: budgeted.estimatedTokens,
     templateSha256: sha256(template),
+    concurrency,
   };
 }
 

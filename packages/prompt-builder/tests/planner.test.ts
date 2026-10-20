@@ -211,6 +211,18 @@ describe('planner', () => {
       const plan = JSON.parse(
         await readFile(path.join(result.outputDirectory, 'execution-plan.json'), 'utf8'),
       );
+      assert.equal(plan.schema_version, 3);
+      assert.match(plan.plan_fingerprint, /^[a-f0-9]{64}$/);
+      assert.equal(plan.steps[0].step_id, 'identity.users-store:propose');
+      assert.equal(plan.steps[0].concurrency.strategy, 'serial');
+      const rebuilt = await buildAll({
+        projectRoot: root,
+        phases: ['propose', 'apply', 'review'],
+        tokenBudget: 60_000,
+        planId: 'full-project',
+        dryRun: true,
+      });
+      assert.equal(rebuilt.executionPlan.plan_fingerprint, plan.plan_fingerprint);
       assert.equal(plan.steps[0].pack, 'identity.users-store');
       assert.equal(plan.steps[0].execution_status, 'READY');
       assert.equal(plan.steps[1].execution_status, 'BLOCKED_BY_PREVIOUS_PHASE');
