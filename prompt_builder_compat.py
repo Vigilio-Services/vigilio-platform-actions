@@ -20,7 +20,6 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from senior_scheduler import ResourceClaims, SeniorPlanError
 
-
 SUPPORTED_PROMPT_BUILDER_VERSION = "0.8.0"
 SUPPORTED_PROMPT_BUILDER_VERSIONS = ("0.6.3", "0.7.0", "0.8.0")
 SUPPORTED_PLAN_SCHEMA_VERSIONS = (2, 3)
