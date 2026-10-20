@@ -1,5 +1,14 @@
 # @vigilio-services/prompt-builder
 
+## 0.8.0
+
+### Minor Changes
+
+- Add the Senior Mode supervisor protocol with attempt-scoped heartbeat, cancellation and results.
+- Add managed-command terminal safety so stalled workers can be cancelled without touching unrelated processes.
+- Enforce the configured worker ceiling across already-running and newly leased jobs.
+- Add the terminal safety contract to every newly compiled prompt.
+
 ## 0.7.0
 
 ### Minor Changes

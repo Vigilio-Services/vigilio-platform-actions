@@ -2748,8 +2748,8 @@ def parse_args():
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
-        default="0.6.3,0.7.0",
-        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0).",
+        default="0.6.3,0.7.0,0.8.0",
+        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0,0.8.0).",
     )
     parser.add_argument("--package-manager", default="pnpm")
     parser.add_argument(

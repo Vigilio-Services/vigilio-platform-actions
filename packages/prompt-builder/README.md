@@ -257,6 +257,16 @@ be phase-specific. Missing or ambiguous claims fail closed to serial execution. 
 steps contain stable `step_id`, exact `prerequisite_step_ids`, resolved claims, and a deterministic
 `plan_fingerprint`; `generated_at` does not affect that fingerprint.
 
+Prompt Builder defines the deterministic plan; the repository-level Senior Mode coordinator executes
+it. Every newly compiled prompt includes a terminal safety contract. Long-running commands must use
+the managed worker wrapper, report heartbeat/progress, respect cancellation, and clean up child
+processes before completion. Runtime state belongs under `.prompt-runner/senior/`, never in `docs/`
+or `generated/`.
+
+`-workers 1` preserves strict sequential behavior. Capacities two through four are used only when the
+coordinator proves that prerequisites, phase barriers, path claims and exclusive resources permit the
+cohort. A stalled attempt is cancelled and retried independently; completed siblings are not repeated.
+
 Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
 
 The generated Markdown is agent-neutral. Vigilio currently provisions synchronized skills for Codex and OpenCode; another AI coding agent can consume the generated prompts without being executed by this package.

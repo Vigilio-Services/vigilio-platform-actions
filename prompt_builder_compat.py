@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strict, dependency-free integration with Vigilio Prompt Builder 0.6.3/0.7.0.
+"""Strict integration with Vigilio Prompt Builder 0.6.3 through 0.8.0.
 
 This module is intentionally UI-agnostic.  Both ChatGPT automation scripts use
 it so version checks, command execution, JSON parsing and execution-plan
@@ -21,8 +21,8 @@ from typing import Any, Iterable, Mapping, Sequence
 from senior_scheduler import ResourceClaims, SeniorPlanError
 
 
-SUPPORTED_PROMPT_BUILDER_VERSION = "0.7.0"
-SUPPORTED_PROMPT_BUILDER_VERSIONS = ("0.6.3", "0.7.0")
+SUPPORTED_PROMPT_BUILDER_VERSION = "0.8.0"
+SUPPORTED_PROMPT_BUILDER_VERSIONS = ("0.6.3", "0.7.0", "0.8.0")
 SUPPORTED_PLAN_SCHEMA_VERSIONS = (2, 3)
 SUPPORTED_PHASES = ("explore", "propose", "apply", "review", "fix")
 MUTATING_PHASES = frozenset({"apply", "review", "fix"})
