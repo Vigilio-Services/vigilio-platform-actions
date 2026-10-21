@@ -12,6 +12,7 @@ from pathlib import Path
 
 from prompt_builder_compat import PromptBuilderCompatibilityError, load_execution_plan
 from senior_queue import SeniorCoordinator
+from senior_agent_launcher import launch_agent_session, record_unreported_exit
 from senior_scheduler import ResourceClaims, SeniorJob, SeniorPlanError, SeniorScheduler
 from senior_state import SeniorStateError, SeniorStateStore
 from senior_worker import (
@@ -20,6 +21,7 @@ from senior_worker import (
     validate_worker_heartbeat,
     validate_worker_result,
     write_worker_heartbeat,
+    write_worker_result,
 )
 
 
@@ -59,6 +61,17 @@ class SeniorSchedulerTests(unittest.TestCase):
         scheduler = SeniorScheduler(jobs, phase_order=("propose",))
 
         self.assertEqual(len(scheduler.ready_batch({}, max_workers=4)), 4)
+
+    def test_worker_ceiling_is_dynamic_and_supports_six_sessions(self) -> None:
+        jobs = [
+            job(index, f"pack-{index}", "propose", f"openspec/changes/c{index}/**")
+            for index in range(1, 7)
+        ]
+
+        self.assertEqual(
+            len(SeniorScheduler(jobs, phase_order=("propose",)).ready_batch({}, max_workers=6)),
+            6,
+        )
 
     def test_overlapping_paths_and_resources_never_share_a_cohort(self) -> None:
         jobs = [
@@ -187,6 +200,30 @@ class SeniorStateTests(unittest.TestCase):
 
         store.retry("a:propose")
         self.assertEqual(store.statuses(), {"a:propose": "pending", "b:propose": "produced"})
+
+    def test_only_explicitly_retryable_results_are_requeued(self) -> None:
+        store = self.store()
+        leases = store.lease(["a:propose", "b:propose"], ttl_seconds=30)
+        store.record_result(
+            "a:propose",
+            token=leases[0]["token"],
+            result={"status": "FAILED", "error": "transient", "retryable": True},
+        )
+        store.record_result(
+            "b:propose",
+            token=leases[1]["token"],
+            result={
+                "status": "BLOCKED",
+                "error": "authority required",
+                "severity": "HIGH",
+                "retryable": False,
+            },
+        )
+
+        recovery = store.recover_retryable_results(max_attempts=2)
+
+        self.assertEqual(recovery["retried"], ("a:propose",))
+        self.assertEqual(store.statuses(), {"a:propose": "pending", "b:propose": "blocked"})
 
     def test_stalled_job_observes_grace_and_retry_limit(self) -> None:
         store = self.store()
@@ -381,6 +418,184 @@ class SeniorWorkerTests(unittest.TestCase):
                     claims=claims("apps/a/src/*.ts"),
                 )
 
+    def test_result_writer_is_attempt_scoped_and_immutable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = root / "request.json"
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "workflow_id": "test",
+                        "job_id": "a:apply",
+                        "attempt_id": "attempt-0001",
+                        "lease_token": "lease",
+                        "project_root": str(root),
+                        "base_sha": "a" * 40,
+                        "prompt_sha256": "b" * 64,
+                        "lock_sha256": "c" * 64,
+                        "heartbeat_file": str(root / "heartbeat.json"),
+                        "progress_file": str(root / "progress.json"),
+                        "result_file": str(root / "result.json"),
+                        "commands_dir": str(root / "commands"),
+                        "cancel_file": str(root / "cancel.json"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = write_worker_result(
+                request_path,
+                status="FAILED",
+                error="test failure",
+                failure_type="TEST_FAILURE",
+                retryable=True,
+            )
+
+            payload = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual(payload["job_id"], "a:apply")
+            self.assertTrue(payload["retryable"])
+            self.assertTrue((root / "progress.json").is_file())
+            with self.assertRaisesRegex(SeniorWorkerResultError, "immutable"):
+                write_worker_result(
+                    request_path,
+                    status="FAILED",
+                    error="second write",
+                    retryable=True,
+                )
+
+    def test_managed_command_is_deduplicated_within_attempt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            request_path = root / "request.json"
+            marker = root / "count.txt"
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "job_id": "a:apply",
+                        "attempt_id": "attempt-0001",
+                        "lease_token": "lease",
+                        "project_root": str(root),
+                        "base_sha": "a" * 40,
+                        "heartbeat_file": str(root / "heartbeat.json"),
+                        "progress_file": str(root / "progress.json"),
+                        "commands_dir": str(root / "commands"),
+                        "cancel_file": str(root / "cancel.json"),
+                    }
+                ),
+                encoding="utf-8",
+            )
+            command = [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; p=Path(r'"
+                + str(marker)
+                + "'); p.write_text(p.read_text()+'x' if p.exists() else 'x')",
+            ]
+
+            first = run_managed_command(
+                request_path,
+                command,
+                heartbeat_seconds=1,
+                timeout_seconds=5,
+                cancel_grace_seconds=1,
+            )
+            second = run_managed_command(
+                request_path,
+                command,
+                heartbeat_seconds=1,
+                timeout_seconds=5,
+                cancel_grace_seconds=1,
+            )
+
+            self.assertEqual((first, second), (0, 0))
+            self.assertEqual(marker.read_text(encoding="utf-8"), "x")
+
+
+class SeniorAgentLauncherTests(unittest.TestCase):
+    def test_six_leases_launch_six_distinct_agent_processes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            prompt = root / "prompt.md"
+            prompt.write_text("perform the assigned task\n", encoding="utf-8")
+            lock = root / "prompt.lock.json"
+            lock.write_text("{}\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "fixture"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            base_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            worker_script = Path(__file__).resolve().parents[1] / "senior_worker.py"
+            sessions = []
+            for index in range(6):
+                attempt = root / ".prompt-runner" / f"job-{index}" / "attempt-0001"
+                attempt.mkdir(parents=True)
+                request_path = attempt / "request.json"
+                request_path.write_text(
+                    json.dumps(
+                        {
+                            "schema_version": 1,
+                            "workflow_id": "six-agents",
+                            "job_id": f"pack-{index}:propose",
+                            "attempt_id": "attempt-0001",
+                            "lease_token": f"lease-{index}",
+                            "project_root": str(root),
+                            "workspace_root": str(attempt / "worktree"),
+                            "worktree_required": True,
+                            "base_sha": base_sha,
+                            "prompt": str(prompt),
+                            "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+                            "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+                            "heartbeat_file": str(attempt / "heartbeat.json"),
+                            "progress_file": str(attempt / "progress.json"),
+                            "result_file": str(attempt / "result.json"),
+                            "commands_dir": str(attempt / "commands"),
+                            "cancel_file": str(attempt / "cancel.json"),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                sessions.append(
+                    launch_agent_session(
+                        request_path,
+                        [
+                            sys.executable,
+                            "-c",
+                            "import time; time.sleep(0.25)",
+                            "{agent_prompt}",
+                        ],
+                        worker_script=worker_script,
+                    )
+                )
+
+            self.assertEqual(len({session.process.pid for session in sessions}), 6)
+            for session in sessions:
+                returncode = session.process.wait(timeout=10)
+                session.close_output()
+                record_unreported_exit(session, returncode)
+                self.assertTrue((session.request_path.parent / "result.json").is_file())
+                self.assertTrue((session.workspace / ".git").exists())
 
 class SeniorPlanCompatibilityTests(unittest.TestCase):
     def _write_v3_plan(self, root: Path) -> Path:

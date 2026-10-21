@@ -275,10 +275,12 @@ class SeniorStateStore:
             event = "job.produced"
         elif outcome == "BLOCKED":
             record["status"] = "blocked"
+            record["result"] = persisted_result
             record["last_error"] = str(result.get("error", "worker blocked"))[:2000]
             event = "job.blocked"
         else:
             record["status"] = "failed"
+            record["result"] = persisted_result
             record["last_error"] = str(result.get("error", "worker failed"))[:2000]
             event = "job.failed"
         record["lease"] = None
@@ -363,6 +365,37 @@ class SeniorStateStore:
                 "jobs.stall_recovered",
                 data={"retried": retried, "exhausted": exhausted},
             )
+        return {"retried": tuple(retried), "exhausted": tuple(exhausted)}
+
+    def recover_retryable_results(self, *, max_attempts: int) -> dict[str, tuple[str, ...]]:
+        """Requeue only failures that explicitly opted into an automatic retry.
+
+        A severity label never grants retry authority.  BLOCKED and FAILED
+        attempts are retried only when their immutable result says
+        ``retryable: true`` and the attempt budget remains.
+        """
+
+        if max_attempts < 1:
+            raise SeniorStateError("max attempts must be at least 1")
+        retried: list[str] = []
+        exhausted: list[str] = []
+        for job_id, record in self.jobs.items():
+            if record.get("status") not in {"failed", "blocked"}:
+                continue
+            result = record.get("result")
+            if not isinstance(result, dict) or result.get("retryable") is not True:
+                continue
+            if int(record.get("attempt", 0)) >= max_attempts:
+                exhausted.append(job_id)
+                continue
+            record["status"] = "pending"
+            record["lease"] = None
+            record["result"] = None
+            record["activity"] = None
+            record["stalled_at"] = None
+            retried.append(job_id)
+        if retried:
+            self._commit("jobs.retryable_results_requeued", data={"job_ids": retried})
         return {"retried": tuple(retried), "exhausted": tuple(exhausted)}
 
     def recover_expired(self, *, now: datetime | None = None) -> tuple[str, ...]:

@@ -13,6 +13,9 @@ const TERMINAL_SAFETY_CONTRACT = `
 - Never leave an unmanaged watch process, development server, or interactive command running.
 - When a Senior Mode request is present, use its heartbeat and cancellation contract throughout the job.
 - Run bounded terminal commands through the provided Senior Mode managed-command wrapper.
+- Publish concise attempt-scoped progress; never edit the coordinator-owned global state.
+- Produce exactly one immutable PASS, FAILED, or BLOCKED result for the current attempt.
+- PASS requires the owned commit, claimed changed files, and objective passing checks.
 - Register every required background service, keep reporting progress, and stop it during cleanup.
 - A task is complete only after its managed child processes have exited or been explicitly cleaned up.
 `;

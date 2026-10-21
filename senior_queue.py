@@ -29,7 +29,13 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.1.0"
+SCRIPT_VERSION = "1.2.0"
+MAX_WORKERS = 64
+
+
+def _validate_workers(value: int) -> None:
+    if value < 1 or value > MAX_WORKERS:
+        raise ValueError(f"workers must be between 1 and {MAX_WORKERS}")
 
 
 def _now() -> datetime:
@@ -139,8 +145,7 @@ class SeniorCoordinator:
         }
 
     def lease_ready(self, *, max_workers: int, ttl_seconds: int) -> list[Path]:
-        if max_workers < 1 or max_workers > 4:
-            raise ValueError("workers must be between 1 and 4")
+        _validate_workers(max_workers)
         base_sha = _git_head(self.project_root)
         if not self.state.preflight_ready(base_sha=base_sha):
             raise SeniorStateError(
@@ -158,6 +163,7 @@ class SeniorCoordinator:
             step = self.steps[job_id]
             attempt_root = self.state.root / "jobs" / job_id.replace(":", "__") / lease["attempt_id"]
             attempt_root.mkdir(parents=True, exist_ok=False)
+            worktree_required = job.claims.isolation == "dedicated-worktree"
             request = {
                 "schema_version": 1,
                 "workflow_id": self.plan.plan_id,
@@ -169,6 +175,9 @@ class SeniorCoordinator:
                 "pack": job.pack,
                 "phase": job.phase,
                 "project_root": str(self.project_root),
+                "workspace_root": str(
+                    attempt_root / "worktree" if worktree_required else self.project_root
+                ),
                 "base_sha": base_sha,
                 "prompt": str(step.prompt),
                 "prompt_sha256": _sha256(step.prompt),
@@ -176,8 +185,10 @@ class SeniorCoordinator:
                 "lock_sha256": _sha256(step.lockfile),
                 "result_file": str(attempt_root / "result.json"),
                 "heartbeat_file": str(attempt_root / "heartbeat.json"),
+                "progress_file": str(attempt_root / "progress.json"),
+                "commands_dir": str(attempt_root / "commands"),
                 "cancel_file": str(attempt_root / "cancel.json"),
-                "worktree_required": job.claims.isolation == "dedicated-worktree",
+                "worktree_required": worktree_required,
                 "concurrency": _claims_json(job.claims),
                 "terminal_safety": {
                     "heartbeat_required": True,
@@ -265,8 +276,7 @@ class SeniorCoordinator:
         max_retries: int,
         now: datetime | None = None,
     ) -> dict[str, Any]:
-        if max_workers < 1 or max_workers > 4:
-            raise ValueError("workers must be between 1 and 4")
+        _validate_workers(max_workers)
         if heartbeat_timeout_seconds < 5:
             raise ValueError("heartbeat timeout must be at least 5 seconds")
         if stall_grace_seconds < 0:
@@ -278,6 +288,9 @@ class SeniorCoordinator:
             grace_seconds=stall_grace_seconds,
             max_attempts=max_retries + 1,
             now=current,
+        )
+        retryable_recovery = self.state.recover_retryable_results(
+            max_attempts=max_retries + 1
         )
         observed: list[str] = []
         submitted: list[str] = []
@@ -367,14 +380,33 @@ class SeniorCoordinator:
                 "retried": (*recovery["retried"], *second_recovery["retried"]),
                 "exhausted": (*recovery["exhausted"], *second_recovery["exhausted"]),
             }
+        newly_retryable = self.state.recover_retryable_results(
+            max_attempts=max_retries + 1
+        )
         leased = self.lease_ready(max_workers=max_workers, ttl_seconds=ttl_seconds)
         return {
             "checked_at": current.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "heartbeats_observed": observed,
             "results_submitted": submitted,
             "stalled": stalled,
-            "retried": list(recovery["retried"]),
-            "retries_exhausted": list(recovery["exhausted"]),
+            "retried": list(
+                dict.fromkeys(
+                    (
+                        *recovery["retried"],
+                        *retryable_recovery["retried"],
+                        *newly_retryable["retried"],
+                    )
+                )
+            ),
+            "retries_exhausted": list(
+                dict.fromkeys(
+                    (
+                        *recovery["exhausted"],
+                        *retryable_recovery["exhausted"],
+                        *newly_retryable["exhausted"],
+                    )
+                )
+            ),
             "leased_requests": [str(path) for path in leased],
             "errors": errors,
             "status": self.status_report(),

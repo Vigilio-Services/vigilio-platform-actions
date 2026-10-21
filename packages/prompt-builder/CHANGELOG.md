@@ -1,5 +1,17 @@
 # @vigilio-services/prompt-builder
 
+## 0.9.0
+
+### Minor Changes
+
+- Add a backend-neutral multi-agent launcher that maps each Senior Mode lease to one independent
+  agent session and dedicated Git worktree.
+- Make `--workers` dynamic up to a bounded safety ceiling while keeping the legacy visual runner at
+  `--workers 1`.
+- Add attempt-scoped progress and immutable PASS/FAILED/BLOCKED result writers.
+- Deduplicate managed terminal commands and retry only failures that explicitly declare themselves
+  retryable.
+
 ## 0.8.0
 
 ### Minor Changes

@@ -91,7 +91,7 @@ unset XAUTHORITY; export DISPLAY=:1; export VIGILIO_NODE24_BIN=/tmp/opencode/nod
 
 By default the runner:
 
-    1. requires Prompt Builder 0.6.3/0.7.0/0.8.0, execution-plan.json schema v2/v3 and valid locks;
+    1. requires Prompt Builder 0.6.3/0.7.0/0.8.0/0.9.0, execution-plan.json schema v2/v3 and valid locks;
     2. opens a NEW ChatGPT chat for every generated prompt;
     3. executes the next dependency-ready prompt;
     4. on PROPOSE success, saves `awaiting_approval` and STOPS by default;
@@ -1544,8 +1544,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--expected-prompt-builder-version",
-        default="0.6.3,0.7.0,0.8.0",
-        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0,0.8.0).",
+        default="0.6.3,0.7.0,0.8.0,0.9.0",
+        help="Comma-separated compatible Prompt Builder versions (default: 0.6.3,0.7.0,0.8.0,0.9.0).",
     )
     parser.add_argument(
         "--workers",

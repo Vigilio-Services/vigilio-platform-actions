@@ -1,6 +1,6 @@
-# Senior Mode (Prompt Builder 0.8)
+# Senior Mode (Prompt Builder 0.9)
 
-Senior Mode coordinates one to four isolated prompt jobs while preserving the
+Senior Mode coordinates a bounded dynamic pool of isolated prompt jobs while preserving the
 existing one-prompt-at-a-time runner.
 
 ## Compatibility
@@ -9,9 +9,11 @@ existing one-prompt-at-a-time runner.
 - Execution-plan schema v2 remains supported and always schedules serially.
 - Execution-plan schema v3 enables concurrency only for jobs whose prompt packs
   declare complete, non-conflicting resource claims.
-- ChatGPT visual automation remains capacity one because it shares one screen,
-  cursor and clipboard. Multiple workers require isolated CLI/API backends or
-  independent desktops.
+- `chatgpt_prompt_queue.py` visual automation remains capacity one because it
+  shares one screen, cursor and clipboard.
+- `senior_agent_launcher.py --workers N` invokes the configured agent adapter N
+  times. Every invocation must create one new independent chat/session and stay
+  attached until that agent finishes.
 
 `docs/` remains the editable source, `generated/` remains generated output, and
 runtime history is written under `.prompt-runner/senior/`.
@@ -79,13 +81,14 @@ python senior_queue.py `
   lease -workers 1
 ```
 
-Or lease up to four conflict-free jobs:
+Or lease up to N conflict-free jobs (`N` is dynamically configurable from 1 to
+64; practical limits should be lower):
 
 ```powershell
 python senior_queue.py `
   --project-root C:\path\to\consumer `
   --prompts-dir generated\prompts\full-project `
-  lease --workers 4
+  lease --workers 6
 ```
 
 The recommended autonomous coordinator is `supervise`. It performs one short
@@ -109,6 +112,41 @@ python senior_queue.py `
 `stalled` attempts consume capacity. `-workers 1` therefore remains exactly
 prompt-by-prompt even if the supervisor is used.
 
+## Independent agent chats
+
+The launcher turns each lease into a separate foreground agent process. The
+backend command is an adapter contract: it must create a new chat/session for
+every invocation, consume `{agent_prompt}` or `{request}`, and remain attached.
+The launcher never sends six prompts to one conversation.
+
+```powershell
+python senior_agent_launcher.py `
+  --project-root C:\path\to\consumer `
+  --prompts-dir generated\prompts\full-project `
+  --workers 6 `
+  --check-every-seconds 15 `
+  -- <agent-adapter> --new-chat --prompt-file {agent_prompt}
+```
+
+Before launching, run the pinned deterministic `preflight` shown above. The
+adapter command is intentionally provider-neutral: Codex, OpenCode,
+Antigravity, an API adapter, or another agent runtime can implement it without
+changing the scheduler protocol.
+
+For each lease, the launcher:
+
+1. creates a dedicated detached Git worktree when the plan requires it;
+2. builds an attempt-specific `agent-prompt.md` containing the generated prompt
+   and runtime result contract;
+3. starts one independent process/session and records `session.json` plus its
+   PID and log;
+4. observes the attempt through heartbeat/progress/result files;
+5. retries only that job when an immutable result explicitly says it is
+   retryable or its heartbeat stalls.
+
+If the scheduler proves that only four of six jobs are safe, it launches four.
+The other two remain pending until their dependencies or resource locks clear.
+
 Each lease creates an immutable `request.json` beneath the run directory. A
 backend must create the requested `result.json` with the same job, attempt,
 lease, base, prompt and lock identities. `PASS` additionally requires a Git
@@ -121,6 +159,10 @@ Each attempt directory has a strict protocol:
 .prompt-runner/senior/<plan>/jobs/<pack>__<phase>/attempt-0001/
 ├── request.json
 ├── heartbeat.json
+├── progress.json
+├── commands/<command-id>.json
+├── agent-prompt.md
+├── session.json
 ├── cancel.json       # created only when cancellation is requested
 └── result.json
 ```
@@ -149,6 +191,26 @@ python senior_worker.py run `
   --timeout-seconds 3600 `
   -- pnpm test
 ```
+
+The wrapper hashes job, attempt, base, workspace, command and retry ID. If the
+same command is requested twice in the same attempt, an active duplicate is
+rejected and a completed result is reused. A deliberate re-run must supply a
+different `--retry-id`.
+
+Agents finish without visual emoji detection:
+
+```powershell
+python senior_worker.py complete `
+  --request C:\path\to\request.json `
+  --commit <git-sha> `
+  --changed-file apps/api/src/orders.ts `
+  --check "pnpm test orders"
+```
+
+Technical failures use `fail`; authority, credential, product-decision or
+external blockers use `block --severity ...`. Automatic retry requires the
+immutable result to say `retryable: true`; severity by itself never grants a
+retry.
 
 The wrapper owns a new process group, emits heartbeat while the command is
 alive, checks `cancel.json`, requests graceful interruption, then terminates
@@ -184,7 +246,9 @@ results, Git commits and reproducible checks are the evidence.
 ## Safety rules
 
 - One coordinator is the only writer of `state.json` and `events.jsonl`.
-- `--workers` is restricted to 1–4.
+- `--workers` accepts 1–64, remains a maximum, and may be reduced by resource
+  conflicts. Start with 2–6 unless the backend and repository prove a higher
+  safe capacity.
 - Phase barriers prevent APPLY before all selected PROPOSE jobs finish, and
   REVIEW before APPLY finishes.
 - Overlapping paths, shared-worktree writes, or equal exclusive resources never
@@ -193,5 +257,7 @@ results, Git commits and reproducible checks are the evidence.
   stale leases, and out-of-scope changed files fail closed.
 - Backend adapters for Antigravity, OpenCode, CLI/API agents or independent
   desktops consume the same request/heartbeat/result protocol.
-- Backend-specific agent-session launch and serial commit integration remain
-  explicit adapter operations; the coordinator never guesses how to open a chat.
+- The launcher starts one adapter process per chat, but provider-specific chat
+  creation and commit integration remain explicit adapter operations; the
+  coordinator never guesses a provider API or silently marks an unintegrated
+  commit done.

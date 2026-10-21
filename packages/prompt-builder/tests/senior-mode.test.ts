@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
+import { assemble } from '../src/assembler.js';
 import { resolveConcurrency } from '../src/pack-metadata.js';
 import type { PromptPack } from '../src/types.js';
 import { validateConcurrencyConfiguration } from '../src/validator.js';
@@ -32,6 +33,25 @@ function pack(overrides: Partial<PromptPack> = {}): PromptPack {
 }
 
 describe('Senior Mode prompt metadata', () => {
+  it('adds the immutable result and coordinator ownership contract to prompts', () => {
+    const prompt = assemble({
+      template: 'Do the work.',
+      packId: 'module.alpha',
+      skills: [],
+      qualityGates: [],
+      activationGates: [],
+      activationRequirements: [],
+      allowedPaths: [],
+      forbiddenPaths: [],
+      dependencies: [],
+      documents: [],
+      openspec: {},
+    });
+
+    assert.match(prompt, /never edit the coordinator-owned global state/i);
+    assert.match(prompt, /exactly one immutable PASS, FAILED, or BLOCKED result/i);
+  });
+
   it('resolves phase-specific resource claims', () => {
     const manifest = pack();
     validateConcurrencyConfiguration(manifest);
