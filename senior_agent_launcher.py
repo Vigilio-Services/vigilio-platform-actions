@@ -532,7 +532,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--blocked-repair-rounds", type=int, default=2)
     parser.add_argument("--retry-interrupted", action="store_true")
     parser.add_argument("--include-context-only", action="store_true")
-    parser.add_argument("--chat-url", default="https://chatgpt.com/")
+    parser.add_argument(
+        "--chat-url",
+        help=(
+            "Optional compatibility override. By default --visual-tabs duplicates the "
+            "currently focused agent tab and never navigates to a hard-coded site."
+        ),
+    )
     parser.add_argument("--tab-page-load-seconds", type=float, default=5.0)
     parser.add_argument("--tab-switch-seconds", type=float, default=0.8)
     parser.add_argument(

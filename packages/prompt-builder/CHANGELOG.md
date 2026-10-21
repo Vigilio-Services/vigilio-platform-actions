@@ -1,5 +1,13 @@
 # @vigilio-services/prompt-builder
 
+## 0.11.1
+
+### Patch Changes
+
+- Duplicate the already-focused authenticated agent tab in single-display mode instead of navigating
+  every worker to a hard-coded `chatgpt.com` URL.
+- Keep `--chat-url` only as an explicit compatibility override; it is no longer used by default.
+
 ## 0.11.0
 
 ### Minor Changes

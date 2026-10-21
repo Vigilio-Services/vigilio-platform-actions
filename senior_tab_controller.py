@@ -37,7 +37,7 @@ class SeniorTabController:
         os_mode: str,
         ui_module_path: Path,
         assets_dir: Path,
-        chat_url: str,
+        chat_url: str | None,
         chat_pane: str,
         workflow_file: Path | None,
         allow_resolution_mismatch: bool,
@@ -59,7 +59,7 @@ class SeniorTabController:
         self.workers = workers
         self.display = display
         self.os_mode = os_mode
-        self.chat_url = chat_url
+        self.chat_url = chat_url.strip() if chat_url else None
         self.new_chat_mode = new_chat_mode
         self.page_load_seconds = page_load_seconds
         self.tab_switch_seconds = tab_switch_seconds
@@ -105,22 +105,36 @@ class SeniorTabController:
         self.assignments: dict[int, Path] = {}
 
     def _navigate_current_tab(self) -> None:
+        if not self.chat_url:
+            raise SeniorTabControllerError("chat_url is required for explicit navigation")
         self.pyautogui.hotkey("ctrl", "l")
         time.sleep(0.15)
         self.pyautogui.write(self.chat_url, interval=0.001)
         self.pyautogui.press("enter")
         time.sleep(self.page_load_seconds)
 
+    def _duplicate_current_tab(self) -> None:
+        """Duplicate the already-open agent surface without assuming its URL."""
+        self.pyautogui.hotkey("ctrl", "l")
+        time.sleep(0.15)
+        self.pyautogui.hotkey("alt", "enter")
+        time.sleep(self.page_load_seconds)
+
     def initialize_tabs(self) -> None:
         """Provision a fixed tab per slot in a dedicated one-tab browser window."""
         if self.initialized:
             return
-        self._navigate_current_tab()
-        for slot in range(1, self.workers):
-            self.pyautogui.hotkey("ctrl", "t")
-            time.sleep(0.2)
+        if self.chat_url:
             self._navigate_current_tab()
-            self.active_slot = slot
+            for slot in range(1, self.workers):
+                self.pyautogui.hotkey("ctrl", "t")
+                time.sleep(0.2)
+                self._navigate_current_tab()
+                self.active_slot = slot
+        else:
+            for slot in range(1, self.workers):
+                self._duplicate_current_tab()
+                self.active_slot = slot
         self.activate(0)
         self.initialized = True
 

@@ -14,7 +14,8 @@ existing one-prompt-at-a-time runner.
 - `senior_agent_launcher.py --visual-tabs --workers N` is the recommended
   visual mode: one DISPLAY, one dedicated browser window and one fixed tab per
   worker. One controller serializes cursor/clipboard actions while chats
-  generate concurrently. This mode supports up to eight tabs.
+  generate concurrently. This mode supports up to eight tabs. It duplicates
+  the already focused agent tab and never assumes or opens `chatgpt.com`.
 - `senior_agent_launcher.py --visual --workers N` remains a compatibility mode
   for installations that already provision one isolated DISPLAY per worker.
 - `senior_agent_launcher.py --workers N` invokes the configured agent adapter N
@@ -158,7 +159,6 @@ python3 senior_agent_launcher.py \
   --integration-check-json '["pnpm","test"]' \
   --visual-tabs --linux \
   --display :1 \
-  --chat-url https://chatgpt.com/ \
   --ui-module ./chatgpt_docs_automation.py \
   --assets ./opencode-assets \
   --chat-pane auto \
@@ -174,10 +174,11 @@ python3 senior_agent_launcher.py \
   --include-context-only
 ```
 
-The controller navigates the first tab, creates the remaining tabs, then sends
-one prompt per tab in slot order. Prompt submission is sequential because one
-cursor and clipboard are shared; generation continues concurrently after each
-send. Every job still gets its own worktree, request, heartbeat, result and tab
+The controller duplicates the already-open authenticated agent tab, clicks the
+configured new-chat image in each fixed tab, then sends one prompt per tab in
+slot order. Prompt submission is sequential because one cursor and clipboard
+are shared; generation continues concurrently after each send. Every job still
+gets its own worktree, request, heartbeat, result and tab
 mapping in `session.json`. The fixed tabs are reused for the next wave, avoiding
 four browser processes and four desktop servers. Tabs still consume RAM, but
 substantially less infrastructure than the isolated-display mode.

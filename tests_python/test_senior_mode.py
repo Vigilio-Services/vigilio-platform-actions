@@ -768,7 +768,7 @@ class SeniorTabControllerTests(unittest.TestCase):
             os_mode="linux",
             ui_module_path=Path("unused.py"),
             assets_dir=Path("."),
-            chat_url="https://agent.example/",
+            chat_url=None,
             chat_pane="auto",
             workflow_file=None,
             allow_resolution_mismatch=True,
@@ -791,13 +791,16 @@ class SeniorTabControllerTests(unittest.TestCase):
 
         self.assertFalse(FakeUi.validation["need_status_markers"])
         self.assertEqual(
-            sum(action == ("hotkey", "ctrl", "t") for action in FakeUi.pyautogui.actions),
+            sum(action == ("hotkey", "alt", "enter") for action in FakeUi.pyautogui.actions),
             3,
         )
+        self.assertNotIn(("hotkey", "ctrl", "t"), FakeUi.pyautogui.actions)
+        self.assertFalse(any(action[0] == "write" for action in FakeUi.pyautogui.actions))
         self.assertEqual(
             [driver.prompts for driver in FakeDriver.instances],
             [["prompt-0"], ["prompt-1"], ["prompt-2"], ["prompt-3"]],
         )
+        self.assertEqual([driver.new_chats for driver in FakeDriver.instances], [1, 1, 1, 1])
         self.assertEqual(controller.assignments.keys(), {0, 1, 2, 3})
 
         for slot in range(4):
