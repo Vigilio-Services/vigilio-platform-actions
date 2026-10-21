@@ -1,5 +1,18 @@
 # @vigilio-services/prompt-builder
 
+## 0.12.0
+
+### Minor Changes
+
+- Derive conservative APPLY/FIX write claims from schema-v3 `allowed_paths` when concurrency metadata
+  is absent or only partially declared; explicit serial configuration still wins.
+- Integrate completed conflict-free subwaves so overlapping APPLY jobs cannot deadlock behind their own
+  unintegrated predecessors.
+- Recover the latest valid late worker result after a timeout, reject already-consumed/stale attempts,
+  and persist crash-resumable integration transactions.
+- Raise the default heartbeat timeout to 600 seconds and print a compact supervisor status event on
+  every poll so a long agent run is observable without visual emoji.
+
 ## 0.11.1
 
 ### Patch Changes

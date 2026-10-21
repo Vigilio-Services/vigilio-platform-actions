@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { assemble } from '../src/assembler.js';
-import { resolveConcurrency } from '../src/pack-metadata.js';
+import { resolveAllowedPathClaims, resolveConcurrency } from '../src/pack-metadata.js';
 import type { PromptPack } from '../src/types.js';
 import { validateConcurrencyConfiguration } from '../src/validator.js';
 
@@ -70,6 +70,64 @@ describe('Senior Mode prompt metadata', () => {
     });
 
     assert.equal(resolveConcurrency([legacy], 'apply').strategy, 'serial');
+  });
+
+  it('derives conservative APPLY claims from v3 allowed paths when metadata is absent', () => {
+    const manifest = pack({
+      execution: { enabled: true },
+      scope: { allowed_paths: ['apps/alpha/**'] },
+      federated_scope: {
+        contracts: { allowed_paths: ['schemas/alpha/**'] },
+      },
+    });
+    const fallback = resolveAllowedPathClaims([manifest]);
+
+    const apply = resolveConcurrency([manifest], 'apply', fallback);
+
+    assert.equal(apply.strategy, 'resource-claims');
+    assert.deepEqual(apply.write_paths, [
+      'apps/alpha/**',
+      { repository: 'contracts', path: 'schemas/alpha/**' },
+    ]);
+    assert.equal(resolveConcurrency([manifest], 'review', fallback).strategy, 'serial');
+  });
+
+  it('honors explicit serial strategy over inferred allowed-path claims', () => {
+    const manifest = pack({
+      execution: { enabled: true, concurrency: { strategy: 'serial' } },
+    });
+
+    assert.equal(
+      resolveConcurrency([manifest], 'apply', resolveAllowedPathClaims([manifest])).strategy,
+      'serial',
+    );
+  });
+
+  it('keeps partially declared v3 APPLY metadata conservative', () => {
+    const base = pack({
+      id: 'base',
+      scope: { allowed_paths: ['packages/shared/**'] },
+      execution: { enabled: true },
+    });
+    const feature = pack({
+      id: 'feature',
+      scope: { allowed_paths: ['apps/feature/**'] },
+      execution: {
+        enabled: true,
+        concurrency: {
+          strategy: 'resource-claims',
+          write_paths: ['apps/feature/**'],
+          exclusive_resources: ['database'],
+        },
+      },
+    });
+    const packs = [base, feature];
+
+    const apply = resolveConcurrency(packs, 'apply', resolveAllowedPathClaims(packs));
+
+    assert.equal(apply.strategy, 'resource-claims');
+    assert.deepEqual(apply.write_paths, ['packages/shared/**', 'apps/feature/**']);
+    assert.deepEqual(apply.exclusive_resources, ['database']);
   });
 
   it('rejects v2 claims and write paths outside allowed scope', () => {

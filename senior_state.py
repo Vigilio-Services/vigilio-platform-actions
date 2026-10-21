@@ -70,6 +70,7 @@ class SeniorStateStore:
                 "preflight": None,
                 "cohort": None,
                 "cohort_counter": 0,
+                "integration": None,
                 "jobs": {},
             }
             self._persist(data)
@@ -90,6 +91,7 @@ class SeniorStateStore:
             raise SeniorStateError("Senior Mode state jobs must be an object")
         data.setdefault("cohort", None)
         data.setdefault("cohort_counter", 0)
+        data.setdefault("integration", None)
         return data
 
     def _persist(self, data: dict[str, Any]) -> None:
@@ -152,6 +154,7 @@ class SeniorStateStore:
                     "activity": None,
                     "stalled_at": None,
                     "result": None,
+                    "last_result_attempt": None,
                     "integrated_commit": None,
                     "last_error": None,
                 }
@@ -160,6 +163,7 @@ class SeniorStateStore:
             identity = (record.get("pack"), record.get("phase"), record.get("sequence"))
             if identity != (job.pack, job.phase, job.sequence):
                 raise SeniorStateError(f"job identity changed inside one plan: {job_id}")
+            record.setdefault("last_result_attempt", None)
         unknown = sorted(set(self.jobs) - known_ids)
         if unknown:
             raise SeniorStateError(f"state contains jobs absent from the plan: {unknown}")
@@ -293,6 +297,27 @@ class SeniorStateStore:
 
     def record_result(self, job_id: str, *, token: str, result: Mapping[str, Any]) -> None:
         record = self._leased_record(job_id, token)
+        lease = record["lease"]
+        self._persist_result(record, result, attempt_id=str(lease["attempt_id"]))
+        self._commit(self._result_event(result), job_id=job_id)
+
+    @staticmethod
+    def _result_event(result: Mapping[str, Any], *, late: bool = False) -> str:
+        prefix = "job.late_" if late else "job."
+        outcome = result.get("status")
+        if outcome == "PASS":
+            return f"{prefix}produced"
+        if outcome == "BLOCKED":
+            return f"{prefix}blocked"
+        return f"{prefix}failed"
+
+    @staticmethod
+    def _persist_result(
+        record: dict[str, Any],
+        result: Mapping[str, Any],
+        *,
+        attempt_id: str,
+    ) -> None:
         outcome = result.get("status")
         persisted_result = dict(result)
         persisted_result.pop("lease_token", None)
@@ -300,20 +325,93 @@ class SeniorStateStore:
             record["status"] = "produced"
             record["result"] = persisted_result
             record["last_error"] = None
-            event = "job.produced"
         elif outcome == "BLOCKED":
             record["status"] = "blocked"
             record["result"] = persisted_result
             record["last_error"] = str(result.get("error", "worker blocked"))[:2000]
-            event = "job.blocked"
         else:
             record["status"] = "failed"
             record["result"] = persisted_result
             record["last_error"] = str(result.get("error", "worker failed"))[:2000]
-            event = "job.failed"
         record["lease"] = None
         record["stalled_at"] = None
-        self._commit(event, job_id=job_id)
+        record["last_result_attempt"] = attempt_id
+
+    def record_late_result(
+        self,
+        job_id: str,
+        *,
+        attempt_id: str,
+        result: Mapping[str, Any],
+    ) -> None:
+        """Adopt a validated result from the latest cancelled/timed-out attempt."""
+        record = self.jobs.get(job_id)
+        if record is None:
+            raise SeniorStateError(f"unknown job: {job_id}")
+        expected_attempt = f"attempt-{int(record.get('attempt', 0)):04d}"
+        if attempt_id != expected_attempt:
+            raise SeniorStateError(
+                f"late result attempt is stale for {job_id}: {attempt_id} != {expected_attempt}"
+            )
+        if record.get("last_result_attempt") == attempt_id:
+            raise SeniorStateError(
+                f"result for {job_id} {attempt_id} was already consumed"
+            )
+        if record.get("status") not in {"stalled", "failed", "pending"}:
+            raise SeniorStateError(
+                f"job does not accept a late result: {job_id} ({record.get('status')})"
+            )
+        self._persist_result(record, result, attempt_id=attempt_id)
+        self._commit(
+            self._result_event(result, late=True),
+            job_id=job_id,
+            data={"attempt_id": attempt_id},
+        )
+
+    def begin_integration(
+        self,
+        *,
+        phase: str,
+        base_sha: str,
+        expected_tree: str,
+        jobs: Iterable[Mapping[str, str]],
+    ) -> None:
+        if self.data.get("integration") is not None:
+            raise SeniorStateError("an integration transaction is already active")
+        normalized_jobs = [dict(item) for item in jobs]
+        if not normalized_jobs:
+            raise SeniorStateError("integration transaction requires jobs")
+        self.data["integration"] = {
+            "phase": phase,
+            "base_sha": base_sha,
+            "expected_tree": expected_tree,
+            "jobs": normalized_jobs,
+            "started_at": _timestamp(),
+        }
+        self._commit(
+            "integration.started",
+            data={"phase": phase, "job_ids": [item["job_id"] for item in normalized_jobs]},
+        )
+
+    def finish_integration(self) -> None:
+        transaction = self.data.get("integration")
+        if not isinstance(transaction, dict):
+            raise SeniorStateError("no integration transaction is active")
+        self.data["integration"] = None
+        self._commit(
+            "integration.completed",
+            data={"phase": transaction.get("phase")},
+        )
+
+    def abort_integration(self, *, error: str) -> None:
+        transaction = self.data.get("integration")
+        if not isinstance(transaction, dict):
+            return
+        self.data["integration"] = None
+        self._commit(
+            "integration.aborted",
+            data={"phase": transaction.get("phase"), "error": error[:2000]},
+        )
 
     def mark_merged(self, job_id: str, *, integrated_commit: str) -> None:
         if not re.fullmatch(r"[a-fA-F0-9]{7,64}", integrated_commit):

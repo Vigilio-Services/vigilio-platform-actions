@@ -8,6 +8,7 @@ import { readOpenSpecContext } from './openspec-reader.js';
 import {
   resolveActivationGates,
   resolveActivationRequirements,
+  resolveAllowedPathClaims,
   resolveCapabilities,
   resolveConcurrency,
   resolveQualityGates,
@@ -78,7 +79,11 @@ export async function preparePrompt(input: {
       ? [...new Set([...scopes.allowed, `openspec/changes/${changeId}/**`])]
       : scopes.allowed;
   const dependencies = input.dependencies ?? target.depends_on ?? [];
-  const concurrency = resolveConcurrency(manifests, input.phase);
+  const concurrency = resolveConcurrency(
+    manifests,
+    input.phase,
+    resolveAllowedPathClaims(manifests),
+  );
   if (concurrency.strategy === 'resource-claims' && input.phase === 'propose') {
     concurrency.write_paths = [
       ...new Map(

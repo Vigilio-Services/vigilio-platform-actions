@@ -290,6 +290,44 @@ class SeniorStateTests(unittest.TestCase):
         self.assertEqual(exhausted["exhausted"], ("a:propose",))
         self.assertEqual(store.statuses()["a:propose"], "failed")
 
+    def test_latest_late_result_can_be_adopted_after_timeout_exhaustion(self) -> None:
+        store = self.store()
+        [lease] = store.lease(["a:propose"], ttl_seconds=30)
+        store.mark_stalled(
+            "a:propose",
+            token=lease["token"],
+            reason="heartbeat timeout",
+            now=datetime.now(timezone.utc),
+        )
+        store.recover_stalled(grace_seconds=0, max_attempts=1)
+
+        store.record_late_result(
+            "a:propose",
+            attempt_id="attempt-0001",
+            result={
+                "status": "PASS",
+                "result_commit": "1" * 40,
+                "lease_token": lease["token"],
+            },
+        )
+
+        self.assertEqual(store.statuses()["a:propose"], "produced")
+        self.assertNotIn("lease_token", store.jobs["a:propose"]["result"])
+        store.mark_integration_failed("a:propose", error="integration failed")
+        store.recover_retryable_results(max_attempts=2)
+        with self.assertRaisesRegex(SeniorStateError, "already consumed"):
+            store.record_late_result(
+                "a:propose",
+                attempt_id="attempt-0001",
+                result={"status": "PASS", "result_commit": "1" * 40},
+            )
+        with self.assertRaisesRegex(SeniorStateError, "stale"):
+            store.record_late_result(
+                "a:propose",
+                attempt_id="attempt-0000",
+                result={"status": "PASS", "result_commit": "2" * 40},
+            )
+
     def test_changed_plan_never_silently_reuses_history(self) -> None:
         self.store()
         with self.assertRaisesRegex(SeniorStateError, "execution plan changed"):
@@ -808,14 +846,21 @@ class SeniorTabControllerTests(unittest.TestCase):
         self.assertEqual(controller.assignments, {})
 
 class SeniorPlanCompatibilityTests(unittest.TestCase):
-    def _write_v3_plan(self, root: Path, *, pack_count: int = 1) -> Path:
+    def _write_v3_plan(
+        self,
+        root: Path,
+        *,
+        pack_count: int = 1,
+        phase: str = "propose",
+        shared_write_path: str | None = None,
+    ) -> Path:
         prompts = root / "generated" / "prompts" / "full-project"
         prompts.mkdir(parents=True)
         steps = []
         for index in range(1, pack_count + 1):
             pack = chr(ord("a") + index - 1)
-            prompt = prompts / f"{index:04d}-{pack}.propose.md"
-            lock = prompts / f"{index:04d}-{pack}.propose.lock.json"
+            prompt = prompts / f"{index:04d}-{pack}.{phase}.md"
+            lock = prompts / f"{index:04d}-{pack}.{phase}.lock.json"
             prompt.write_text("prompt", encoding="utf-8")
             lock.write_text("{}", encoding="utf-8")
             steps.append(
@@ -824,15 +869,15 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                     "dependency_level": 0,
                     "pack": pack,
                     "selection_reason": "enabled",
-                    "phase": "propose",
+                    "phase": phase,
                     "depends_on": [],
                     "depends_on_previous_phase_step": None,
-                    "step_id": f"{pack}:propose",
+                    "step_id": f"{pack}:{phase}",
                     "prerequisite_step_ids": [],
                     "concurrency": {
                         "strategy": "resource-claims",
                         "isolation": "dedicated-worktree",
-                        "write_paths": [f"openspec/changes/{pack}/**"],
+                        "write_paths": [shared_write_path or f"openspec/changes/{pack}/**"],
                         "read_paths": [],
                         "exclusive_resources": [],
                     },
@@ -845,7 +890,7 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
         plan = {
             "schema_version": 3,
             "plan_id": "full-project",
-            "phases": ["propose"],
+            "phases": [phase],
             "selection": {"mode": "enabled-packs", "source": None, "sha256": None},
             "steps": steps,
         }
@@ -1025,6 +1070,259 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             self.assertEqual(coordinator.state.statuses()["b:propose"], "done")
             self.assertTrue((root / "openspec/changes/a/proposal.md").is_file())
             self.assertTrue((root / "openspec/changes/b/proposal.md").is_file())
+
+    def test_supervisor_adopts_valid_late_pass_from_latest_attempt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            prompts = self._write_v3_plan(root)
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "fixture"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=30)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+            changed = "openspec/changes/a/proposal.md"
+            target = workspace / changed
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("late proposal\n", encoding="utf-8")
+            subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "late result"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            coordinator.state.mark_stalled(
+                request["job_id"],
+                token=request["lease_token"],
+                reason="heartbeat timeout",
+            )
+            coordinator.state.recover_stalled(grace_seconds=0, max_attempts=1)
+            write_worker_result(
+                request_path,
+                status="PASS",
+                result_commit=commit,
+                changed_files=[changed],
+                checks=[{"command": "focused-test", "exit_code": 0}],
+            )
+
+            adopted, errors = coordinator.adopt_late_results()
+
+            self.assertEqual(adopted, ["a:propose"])
+            self.assertEqual(errors, {})
+            self.assertEqual(coordinator.state.statuses()["a:propose"], "produced")
+
+    def test_conflicting_apply_jobs_advance_through_integrated_subwaves(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            prompts = self._write_v3_plan(
+                root,
+                pack_count=2,
+                phase="apply",
+                shared_write_path="apps/shared/**",
+            )
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "fixture"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [first_request] = coordinator.lease_ready(
+                max_workers=2,
+                ttl_seconds=60,
+                cohort_size=2,
+            )
+            request = json.loads(first_request.read_text(encoding="utf-8"))
+            self.assertEqual(request["job_id"], "a:apply")
+            workspace = prepare_workspace(first_request)
+            changed = "apps/shared/a.txt"
+            target = workspace / changed
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("a\n", encoding="utf-8")
+            subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "apply a"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            write_worker_result(
+                first_request,
+                status="PASS",
+                result_commit=commit,
+                changed_files=[changed],
+                checks=[{"command": "focused-test", "exit_code": 0}],
+            )
+
+            first_tick = coordinator.supervise_tick(
+                max_workers=2,
+                ttl_seconds=60,
+                heartbeat_timeout_seconds=600,
+                stall_grace_seconds=30,
+                max_retries=2,
+                cohort_size=2,
+                integration_checks=[[sys.executable, "-c", "raise SystemExit(0)"]],
+            )
+
+            self.assertEqual(first_tick["integration"]["validated"], ["a:apply"])
+            self.assertEqual(coordinator.state.statuses()["a:apply"], "done")
+            self.assertEqual(coordinator.state.statuses()["b:apply"], "pending")
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            second_tick = coordinator.supervise_tick(
+                max_workers=2,
+                ttl_seconds=60,
+                heartbeat_timeout_seconds=600,
+                stall_grace_seconds=30,
+                max_retries=2,
+                cohort_size=2,
+            )
+            self.assertEqual(len(second_tick["leased_requests"]), 1)
+            second_request = json.loads(
+                Path(second_tick["leased_requests"][0]).read_text(encoding="utf-8")
+            )
+            self.assertEqual(second_request["job_id"], "b:apply")
+
+    def test_integration_transaction_resumes_after_coordinator_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            prompts = self._write_v3_plan(root)
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "fixture"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+            changed = "openspec/changes/a/proposal.md"
+            target = workspace / changed
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("proposal\n", encoding="utf-8")
+            subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "propose a"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            result_file = write_worker_result(
+                request_path,
+                status="PASS",
+                result_commit=commit,
+                changed_files=[changed],
+                checks=[{"command": "focused-test", "exit_code": 0}],
+            )
+            coordinator.accept_result(job_id=request["job_id"], result_file=result_file)
+            base_sha, source_commit = coordinator._validate_result_commit(request["job_id"])
+            expected_tree = coordinator._preview_integration_tree(
+                base_sha=base_sha,
+                commits=[source_commit],
+                timeout_seconds=30,
+            )
+            coordinator.state.begin_integration(
+                phase="propose",
+                base_sha=base_sha,
+                expected_tree=expected_tree,
+                jobs=[{"job_id": request["job_id"], "source_commit": source_commit}],
+            )
+            subprocess.run(
+                ["git", "cherry-pick", source_commit],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+
+            restarted = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            result = restarted.integrate_ready_phase(
+                check_commands=[[sys.executable, "-c", "raise SystemExit(0)"]],
+                timeout_seconds=30,
+            )
+
+            self.assertEqual(result["validated"], ["a:propose"])
+            self.assertEqual(restarted.state.statuses()["a:propose"], "done")
+            self.assertIsNone(restarted.state.data["integration"])
 
     def test_coordinator_persists_vertical_cohorts_and_then_advances(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -237,7 +237,7 @@ pnpm exec vigilio-prompt migrate --project-root . --write
 ### Prompt-pack schema v3 and Senior Mode
 
 Schema v3 opts an individual pack into conflict-aware scheduling. Existing v2 packs remain valid
-and are always treated as serial. Concurrency is never inferred from broad `allowed_paths`:
+and are always treated as serial. Explicit resource claims remain the most precise configuration:
 
 ```yaml
 schema_version: 3
@@ -253,7 +253,10 @@ execution:
 ```
 
 Claims must be relative, narrower than the pack's allowed scope, outside forbidden paths, and may
-be phase-specific. Missing or ambiguous claims fail closed to serial execution. Generated plan v3
+be phase-specific. For schema-v3 APPLY/FIX only, missing or partially declared concurrency metadata
+falls back conservatively by treating every resolved `allowed_path` as a write claim. This can reduce
+parallelism but cannot create an undeclared write collision. Explicit `strategy: serial` always wins;
+PROPOSE/REVIEW and schema v2 still fail closed to serial when claims are absent. Generated plan v3
 steps contain stable `step_id`, exact `prerequisite_step_ids`, resolved claims, and a deterministic
 `plan_fingerprint`; `generated_at` does not affect that fingerprint.
 
@@ -271,7 +274,10 @@ the currently focused authenticated agent tab; it does not navigate to a hard-co
 are serialized; generation is concurrent and structured results are authoritative. Backend-neutral
 adapters can still map leases to distinct processes. N is a bounded maximum rather than a guarantee.
 The persisted vertical cohort advances `N PROPOSE → N APPLY → N REVIEW` before selecting the next
-packs. A stalled attempt is cancelled and retried independently; completed siblings are not repeated.
+packs. Completed conflict-free subwaves are integrated before blocked overlapping jobs are released,
+so a pending writer never waits forever on a produced writer. A stalled attempt is cancelled and
+retried independently; the latest valid late result may be adopted, while stale or already-consumed
+attempt results are rejected. Completed siblings are not repeated.
 
 Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
 

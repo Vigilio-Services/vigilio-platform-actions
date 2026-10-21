@@ -36,7 +36,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.2.0"
+SCRIPT_VERSION = "1.4.0"
 PLACEHOLDERS = (
     "request",
     "prompt",
@@ -474,7 +474,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Packs in one PROPOSE/APPLY/REVIEW wave (default: --workers).",
     )
     parser.add_argument("--check-every-seconds", type=float, default=15.0)
-    parser.add_argument("--heartbeat-timeout-seconds", type=int, default=120)
+    parser.add_argument("--heartbeat-timeout-seconds", type=int, default=600)
     parser.add_argument("--stall-grace-seconds", type=int, default=30)
     parser.add_argument("--ttl-seconds", type=int, default=900)
     parser.add_argument("--max-retries", type=int, default=2)
@@ -678,6 +678,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                             else:
                                 tab_controller.release(session.slot)
                         del tab_sessions[key]
+            job_report = tick.get("status", {}).get("jobs", {})
+            status_counts: dict[str, int] = {}
+            blocked_reasons: list[str] = []
+            if isinstance(job_report, dict):
+                for job_id, report in job_report.items():
+                    if not isinstance(report, dict):
+                        continue
+                    status = str(report.get("status", "unknown"))
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                    reason = report.get("blocked_reason")
+                    if reason and status not in {"done", "skipped"}:
+                        blocked_reasons.append(f"{job_id}: {reason}")
+            print(
+                json.dumps(
+                    {
+                        "event": "supervisor.tick",
+                        "checked_at": tick.get("checked_at"),
+                        "status_counts": status_counts,
+                        "ready": tick.get("status", {}).get("ready", []),
+                        "active_sessions": len(sessions) + len(tab_sessions),
+                        "waiting": tick.get("integration", {}).get("waiting", []),
+                        "blocked_reasons": blocked_reasons[:8],
+                        "errors": tick.get("errors", {}),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
             for key, session in list(sessions.items()):
                 if _session_cancel_requested(session):
                     _terminate_session(session)

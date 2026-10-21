@@ -17,18 +17,59 @@ function uniqueClaims(values: ResourcePathClaim[]) {
   return [...new Map(values.map((value) => [claimKey(value), value])).values()];
 }
 
-export function resolveConcurrency(packs: PromptPack[], phase: Phase): ResolvedConcurrency {
+export function resolveAllowedPathClaims(packs: PromptPack[]): ResourcePathClaim[] {
+  const claims: ResourcePathClaim[] = [];
+  for (const pack of packs) {
+    for (const path of pack.scope?.allowed_paths ?? []) claims.push(path);
+    for (const [repository, scope] of Object.entries(pack.federated_scope ?? {})) {
+      for (const path of scope.allowed_paths ?? []) claims.push({ repository, path });
+    }
+  }
+  return uniqueClaims(claims);
+}
+
+export function resolveConcurrency(
+  packs: PromptPack[],
+  phase: Phase,
+  conservativeWriteFallback: ResourcePathClaim[] = [],
+): ResolvedConcurrency {
   const configurations = packs
     .map((pack) => pack.execution?.concurrency)
     .filter((value) => value !== undefined);
-  if (configurations.length === 0 || configurations.some((item) => item.strategy === 'serial')) {
-    return {
-      strategy: 'serial',
-      isolation: 'dedicated-worktree',
-      read_paths: [],
-      write_paths: [],
-      exclusive_resources: [],
-    };
+  const serial = (): ResolvedConcurrency => ({
+    strategy: 'serial',
+    isolation: 'dedicated-worktree',
+    read_paths: [],
+    write_paths: [],
+    exclusive_resources: [],
+  });
+  if (configurations.some((item) => item.strategy === 'serial')) return serial();
+  if (configurations.length !== packs.length) {
+    if (
+      packs.every((pack) => pack.schema_version >= 3) &&
+      (phase === 'apply' || phase === 'fix') &&
+      conservativeWriteFallback.length > 0
+    ) {
+      const declared = configurations.map((item) => ({
+        read: [...(item.read_paths ?? []), ...(item.phases?.[phase]?.read_paths ?? [])],
+        write: [...(item.write_paths ?? []), ...(item.phases?.[phase]?.write_paths ?? [])],
+        resources: [
+          ...(item.exclusive_resources ?? []),
+          ...(item.phases?.[phase]?.exclusive_resources ?? []),
+        ],
+      }));
+      return {
+        strategy: 'resource-claims',
+        isolation: 'dedicated-worktree',
+        read_paths: uniqueClaims(declared.flatMap((item) => item.read)),
+        write_paths: uniqueClaims([
+          ...conservativeWriteFallback,
+          ...declared.flatMap((item) => item.write),
+        ]),
+        exclusive_resources: [...new Set(declared.flatMap((item) => item.resources))],
+      };
+    }
+    return serial();
   }
   const isolation = configurations.some((item) => item.isolation === 'shared-worktree')
     ? 'shared-worktree'
@@ -47,13 +88,7 @@ export function resolveConcurrency(packs: PromptPack[], phase: Phase): ResolvedC
   const writePaths = uniqueClaims(phaseClaims.flatMap((item) => item.write));
   const exclusiveResources = [...new Set(phaseClaims.flatMap((item) => item.resources))];
   if (isolation !== 'read-only' && writePaths.length === 0) {
-    return {
-      strategy: 'serial',
-      isolation: 'dedicated-worktree',
-      read_paths: [],
-      write_paths: [],
-      exclusive_resources: [],
-    };
+    return serial();
   }
   return {
     strategy: 'resource-claims',

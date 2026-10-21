@@ -12,8 +12,10 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Sequence
@@ -35,7 +37,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.3.0"
+SCRIPT_VERSION = "1.4.0"
 MAX_WORKERS = 64
 
 
@@ -378,6 +380,63 @@ class SeniorCoordinator:
         self.state.record_result(job_id, token=lease["token"], result=report)
         return report
 
+    def accept_late_result(self, *, job_id: str, result_file: Path) -> dict[str, Any]:
+        """Validate and adopt only the latest attempt after timeout/cancellation."""
+        job = self.by_id.get(job_id)
+        record = self.state.jobs.get(job_id)
+        if job is None or record is None:
+            raise SeniorStateError(f"unknown job: {job_id}")
+        attempt_id = f"attempt-{int(record.get('attempt', 0)):04d}"
+        request_path = (
+            self.state.root
+            / "jobs"
+            / job_id.replace(":", "__")
+            / attempt_id
+            / "request.json"
+        )
+        try:
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SeniorStateError(f"late-result request is unreadable for {job_id}: {exc}") from exc
+        report = validate_worker_result(
+            result_file.resolve(),
+            job_id=job_id,
+            attempt_id=attempt_id,
+            lease_token=str(request.get("lease_token", "")),
+            base_sha=str(request.get("base_sha", "")),
+            prompt_sha256=str(request.get("prompt_sha256", "")),
+            lock_sha256=str(request.get("lock_sha256", "")),
+            claims=job.claims,
+        )
+        self.state.record_late_result(job_id, attempt_id=attempt_id, result=report)
+        return report
+
+    def adopt_late_results(self) -> tuple[list[str], dict[str, str]]:
+        adopted: list[str] = []
+        errors: dict[str, str] = {}
+        for job_id, record in self.state.jobs.items():
+            if record.get("status") not in {"stalled", "failed", "pending"}:
+                continue
+            attempt = int(record.get("attempt", 0))
+            if attempt < 1:
+                continue
+            attempt_id = f"attempt-{attempt:04d}"
+            result_file = (
+                self.state.root
+                / "jobs"
+                / job_id.replace(":", "__")
+                / attempt_id
+                / "result.json"
+            )
+            if not result_file.is_file():
+                continue
+            try:
+                self.accept_late_result(job_id=job_id, result_file=result_file)
+                adopted.append(job_id)
+            except (SeniorStateError, SeniorWorkerResultError, OSError) as exc:
+                errors[job_id] = f"invalid late result: {exc}"
+        return adopted, errors
+
     def _attempt_request(self, job_id: str) -> dict[str, Any]:
         record = self.state.jobs[job_id]
         attempt = int(record.get("attempt", 0))
@@ -438,60 +497,12 @@ class SeniorCoordinator:
             )
         return base_sha, commit
 
-    def integrate_ready_phase(
+    def _run_integration_checks(
         self,
+        check_commands: Sequence[Sequence[str]],
         *,
-        check_commands: Sequence[Sequence[str]] = (),
-        timeout_seconds: int = 1800,
-    ) -> dict[str, Any]:
-        """Integrate a complete phase wave; never test against half-written worktrees."""
-        statuses = self.state.statuses()
-        packs = self._current_cohort_packs()
-        phase = self.scheduler.active_phase(statuses, allowed_packs=packs)
-        if not phase:
-            return {"phase": None, "integrated": [], "validated": [], "waiting": []}
-        phase_jobs = [
-            job for job in self.jobs if job.phase == phase and (packs is None or job.pack in packs)
-        ]
-        waiting = [
-            job.job_id
-            for job in phase_jobs
-            if statuses[job.job_id] not in {"produced", "merge_pending", "done"}
-        ]
-        if waiting:
-            return {"phase": phase, "integrated": [], "validated": [], "waiting": waiting}
-
-        dirty = _git(self.project_root, ["status", "--porcelain", "--untracked-files=no"])
-        if dirty.returncode != 0 or dirty.stdout.strip():
-            raise SeniorStateError("integration root has tracked changes; refusing automatic cherry-pick")
-
-        integrated: list[str] = []
-        for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id)):
-            record = self.state.jobs[job.job_id]
-            if record.get("status") != "produced":
-                continue
-            try:
-                _base_sha, commit = self._validate_result_commit(job.job_id)
-                cherry_pick = _git(self.project_root, ["cherry-pick", commit], timeout=timeout_seconds)
-                if cherry_pick.returncode != 0:
-                    _git(self.project_root, ["cherry-pick", "--abort"])
-                    detail = (cherry_pick.stderr or cherry_pick.stdout).strip()[-1600:]
-                    raise SeniorStateError(f"cherry-pick conflict for {job.job_id}: {detail}")
-                integrated_head = _git_head(self.project_root)
-                self.state.mark_merged(job.job_id, integrated_commit=integrated_head)
-                integrated.append(job.job_id)
-            except (OSError, subprocess.SubprocessError, SeniorStateError) as exc:
-                if self.state.jobs[job.job_id].get("status") in {"produced", "merge_pending"}:
-                    self.state.mark_integration_failed(job.job_id, error=str(exc))
-                return {
-                    "phase": phase,
-                    "integrated": integrated,
-                    "validated": [],
-                    "waiting": [],
-                    "error": str(exc),
-                }
-
-        validation_error: str | None = None
+        timeout_seconds: int,
+    ) -> str | None:
         for command in check_commands:
             if not command:
                 continue
@@ -509,41 +520,253 @@ class SeniorCoordinator:
                 )
                 if completed.returncode != 0:
                     detail = (completed.stderr or completed.stdout).strip()[-1600:]
-                    validation_error = f"integration check failed ({' '.join(command)}): {detail}"
-                    break
+                    return f"integration check failed ({' '.join(command)}): {detail}"
             except (OSError, subprocess.SubprocessError) as exc:
-                validation_error = f"integration check could not run ({' '.join(command)}): {exc}"
-                break
+                return f"integration check could not run ({' '.join(command)}): {exc}"
+        return None
 
-        merge_pending = [
-            job for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id))
-            if self.state.jobs[job.job_id].get("status") == "merge_pending"
-        ]
-        if validation_error and merge_pending:
-            for job in merge_pending[:-1]:
-                self.state.mark_validated(job.job_id)
-                self.state.mark_done(
-                    job.job_id,
-                    integrated_commit=str(self.state.jobs[job.job_id]["integrated_commit"]),
+    def _preview_integration_tree(
+        self,
+        *,
+        base_sha: str,
+        commits: Sequence[str],
+        timeout_seconds: int,
+    ) -> str:
+        """Prove the whole cherry-pick sequence before mutating the integration root."""
+        temporary_root = Path(tempfile.mkdtemp(prefix="vigilio-senior-integration-"))
+        workspace = temporary_root / "worktree"
+        attached = False
+        try:
+            add = _git(
+                self.project_root,
+                ["worktree", "add", "--detach", str(workspace), base_sha],
+                timeout=timeout_seconds,
+            )
+            if add.returncode != 0:
+                raise SeniorStateError(
+                    f"cannot create integration preview: {(add.stderr or add.stdout).strip()[-1600:]}"
                 )
-            self.state.mark_integration_failed(merge_pending[-1].job_id, error=validation_error)
+            attached = True
+            cherry_pick = _git(workspace, ["cherry-pick", *commits], timeout=timeout_seconds)
+            if cherry_pick.returncode != 0:
+                _git(workspace, ["cherry-pick", "--abort"])
+                raise SeniorStateError(
+                    "integration preview conflict: "
+                    f"{(cherry_pick.stderr or cherry_pick.stdout).strip()[-1600:]}"
+                )
+            tree = _git(workspace, ["rev-parse", "HEAD^{tree}"])
+            if tree.returncode != 0 or not tree.stdout.strip():
+                raise SeniorStateError("cannot resolve integration preview tree")
+            return tree.stdout.strip()
+        finally:
+            if attached:
+                _git(self.project_root, ["worktree", "remove", "--force", str(workspace)])
+            shutil.rmtree(temporary_root, ignore_errors=True)
+
+    def _finish_integration_transaction(
+        self,
+        *,
+        check_commands: Sequence[Sequence[str]],
+        timeout_seconds: int,
+    ) -> dict[str, Any] | None:
+        transaction = self.state.data.get("integration")
+        if not isinstance(transaction, dict):
+            return None
+        phase = str(transaction.get("phase", ""))
+        base_sha = str(transaction.get("base_sha", ""))
+        expected_tree = str(transaction.get("expected_tree", ""))
+        raw_jobs = transaction.get("jobs")
+        if not isinstance(raw_jobs, list) or not raw_jobs:
+            raise SeniorStateError("integration transaction has invalid jobs")
+        job_ids = [str(item.get("job_id", "")) for item in raw_jobs if isinstance(item, dict)]
+        if len(job_ids) != len(raw_jobs) or any(job_id not in self.by_id for job_id in job_ids):
+            raise SeniorStateError("integration transaction references unknown jobs")
+
+        current_head = _git_head(self.project_root)
+        if current_head == base_sha:
+            self.state.abort_integration(error="integration root was not mutated")
+            return None
+        tree = _git(self.project_root, ["rev-parse", "HEAD^{tree}"])
+        if tree.returncode != 0 or tree.stdout.strip() != expected_tree:
+            raise SeniorStateError(
+                "integration transaction does not match the current Git tree; manual recovery required"
+            )
+        revisions = _git(self.project_root, ["rev-list", "--reverse", f"{base_sha}..{current_head}"])
+        integrated_commits = [line.strip() for line in revisions.stdout.splitlines() if line.strip()]
+        if revisions.returncode != 0 or len(integrated_commits) != len(job_ids):
+            raise SeniorStateError("integration transaction commit count is inconsistent")
+
+        for job_id, integrated_commit in zip(job_ids, integrated_commits, strict=True):
+            status = self.state.jobs[job_id].get("status")
+            if status == "produced":
+                self.state.mark_merged(job_id, integrated_commit=integrated_commit)
+            elif status not in {"merge_pending", "validated", "done"}:
+                raise SeniorStateError(
+                    f"integration transaction job has unexpected status: {job_id}={status}"
+                )
+
+        validation_error = self._run_integration_checks(
+            check_commands,
+            timeout_seconds=timeout_seconds,
+        )
+        merge_pending = [
+            self.by_id[job_id]
+            for job_id in job_ids
+            if self.state.jobs[job_id].get("status") == "merge_pending"
+        ]
+        if validation_error:
+            for job in merge_pending:
+                self.state.mark_integration_failed(job.job_id, error=validation_error)
+            self.state.finish_integration()
             return {
                 "phase": phase,
-                "integrated": integrated,
-                "validated": [job.job_id for job in merge_pending[:-1]],
+                "integrated": job_ids,
+                "validated": [],
                 "waiting": [],
                 "error": validation_error,
             }
 
         validated: list[str] = []
-        for job in merge_pending:
-            self.state.mark_validated(job.job_id)
-            self.state.mark_done(
-                job.job_id,
-                integrated_commit=str(self.state.jobs[job.job_id]["integrated_commit"]),
+        for job_id, integrated_commit in zip(job_ids, integrated_commits, strict=True):
+            status = self.state.jobs[job_id].get("status")
+            if status == "merge_pending":
+                self.state.mark_validated(job_id)
+                status = "validated"
+            if status == "validated":
+                self.state.mark_done(job_id, integrated_commit=integrated_commit)
+            validated.append(job_id)
+        self.state.finish_integration()
+        return {
+            "phase": phase,
+            "integrated": job_ids,
+            "validated": validated,
+            "waiting": [],
+        }
+
+    def integrate_ready_phase(
+        self,
+        *,
+        check_commands: Sequence[Sequence[str]] = (),
+        timeout_seconds: int = 1800,
+    ) -> dict[str, Any]:
+        """Integrate one completed conflict-free subwave, then release the next."""
+        resumed = self._finish_integration_transaction(
+            check_commands=check_commands,
+            timeout_seconds=timeout_seconds,
+        )
+        if resumed is not None:
+            return resumed
+        statuses = self.state.statuses()
+        packs = self._current_cohort_packs()
+        phase = self.scheduler.active_phase(statuses, allowed_packs=packs)
+        if not phase:
+            return {"phase": None, "integrated": [], "validated": [], "waiting": []}
+        phase_jobs = [
+            job for job in self.jobs if job.phase == phase and (packs is None or job.pack in packs)
+        ]
+        worker_active = [
+            job.job_id
+            for job in phase_jobs
+            if statuses[job.job_id] in {"leased", "running", "stalled"}
+        ]
+        if worker_active:
+            return {"phase": phase, "integrated": [], "validated": [], "waiting": worker_active}
+
+        legacy_merge_pending = [
+            job
+            for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id))
+            if statuses[job.job_id] == "merge_pending"
+        ]
+        if legacy_merge_pending:
+            validation_error = self._run_integration_checks(
+                check_commands,
+                timeout_seconds=timeout_seconds,
             )
-            validated.append(job.job_id)
-        return {"phase": phase, "integrated": integrated, "validated": validated, "waiting": []}
+            if validation_error:
+                for job in legacy_merge_pending:
+                    self.state.mark_integration_failed(job.job_id, error=validation_error)
+                return {
+                    "phase": phase,
+                    "integrated": [job.job_id for job in legacy_merge_pending],
+                    "validated": [],
+                    "waiting": [],
+                    "error": validation_error,
+                }
+            validated = []
+            for job in legacy_merge_pending:
+                integrated_commit = str(self.state.jobs[job.job_id]["integrated_commit"])
+                self.state.mark_validated(job.job_id)
+                self.state.mark_done(job.job_id, integrated_commit=integrated_commit)
+                validated.append(job.job_id)
+            return {
+                "phase": phase,
+                "integrated": [],
+                "validated": validated,
+                "waiting": [],
+            }
+
+        produced = [
+            job
+            for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id))
+            if statuses[job.job_id] == "produced"
+        ]
+        if not produced:
+            waiting = [
+                job.job_id for job in phase_jobs if statuses[job.job_id] not in {"done", "skipped"}
+            ]
+            return {"phase": phase, "integrated": [], "validated": [], "waiting": waiting}
+
+        dirty = _git(self.project_root, ["status", "--porcelain", "--untracked-files=no"])
+        if dirty.returncode != 0 or dirty.stdout.strip():
+            raise SeniorStateError("integration root has tracked changes; refusing automatic cherry-pick")
+
+        try:
+            source_commits: list[str] = []
+            transaction_jobs: list[dict[str, str]] = []
+            base_sha = _git_head(self.project_root)
+            for job in produced:
+                _request_base, commit = self._validate_result_commit(job.job_id)
+                source_commits.append(commit)
+                transaction_jobs.append({"job_id": job.job_id, "source_commit": commit})
+            expected_tree = self._preview_integration_tree(
+                base_sha=base_sha,
+                commits=source_commits,
+                timeout_seconds=timeout_seconds,
+            )
+            self.state.begin_integration(
+                phase=phase,
+                base_sha=base_sha,
+                expected_tree=expected_tree,
+                jobs=transaction_jobs,
+            )
+            cherry_pick = _git(
+                self.project_root,
+                ["cherry-pick", *source_commits],
+                timeout=timeout_seconds,
+            )
+            if cherry_pick.returncode != 0:
+                _git(self.project_root, ["cherry-pick", "--abort"])
+                detail = (cherry_pick.stderr or cherry_pick.stdout).strip()[-1600:]
+                raise SeniorStateError(f"cherry-pick conflict: {detail}")
+        except (OSError, subprocess.SubprocessError, SeniorStateError) as exc:
+            self.state.abort_integration(error=str(exc))
+            for job in produced:
+                if self.state.jobs[job.job_id].get("status") in {"produced", "merge_pending"}:
+                    self.state.mark_integration_failed(job.job_id, error=str(exc))
+            return {
+                "phase": phase,
+                "integrated": [],
+                "validated": [],
+                "waiting": [],
+                "error": str(exc),
+            }
+        completed = self._finish_integration_transaction(
+            check_commands=check_commands,
+            timeout_seconds=timeout_seconds,
+        )
+        if completed is None:
+            raise SeniorStateError("integration transaction disappeared before validation")
+        return completed
 
     def supervise_tick(
         self,
@@ -567,6 +790,7 @@ class SeniorCoordinator:
         if max_retries < 0 or max_retries > 20:
             raise ValueError("max retries must be between 0 and 20")
         current = now or _now()
+        submitted, errors = self.adopt_late_results()
         recovery = self.state.recover_stalled(
             grace_seconds=stall_grace_seconds,
             max_attempts=max_retries + 1,
@@ -576,9 +800,7 @@ class SeniorCoordinator:
             max_attempts=max_retries + 1
         )
         observed: list[str] = []
-        submitted: list[str] = []
         stalled: list[str] = []
-        errors: dict[str, str] = {}
         for job_id, record in list(self.state.jobs.items()):
             if record.get("status") not in {"leased", "running"}:
                 continue
@@ -764,7 +986,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     supervise_parser.add_argument("--cohort-size", type=int)
     supervise_parser.add_argument("--check-every-seconds", type=float, default=15.0)
-    supervise_parser.add_argument("--heartbeat-timeout-seconds", type=int, default=120)
+    supervise_parser.add_argument("--heartbeat-timeout-seconds", type=int, default=600)
     supervise_parser.add_argument("--stall-grace-seconds", type=int, default=30)
     supervise_parser.add_argument("--ttl-seconds", type=int, default=900)
     supervise_parser.add_argument("--max-retries", type=int, default=2)

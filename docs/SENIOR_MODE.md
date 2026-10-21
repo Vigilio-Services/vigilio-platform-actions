@@ -1,4 +1,4 @@
-# Senior Mode (Prompt Builder 0.11)
+# Senior Mode (Prompt Builder 0.12)
 
 Senior Mode coordinates a bounded dynamic pool of isolated prompt jobs while preserving the
 existing one-prompt-at-a-time runner.
@@ -55,8 +55,10 @@ execution:
           - cargo-build
 ```
 
-Missing metadata means `strategy: serial`. `allowed_paths` remains an
-authorization boundary; it is not treated as a concurrency write-set.
+Explicit resource claims are preferred. For schema-v3 APPLY/FIX, missing or
+partially declared concurrency metadata falls back conservatively by treating
+all resolved `allowed_paths` as write claims. Explicit serial configuration
+always wins; PROPOSE/REVIEW and schema v2 remain serial without claims.
 
 ## Coordinator protocol
 
@@ -85,7 +87,7 @@ Lease one job for legacy-compatible operation:
 python senior_queue.py `
   --project-root C:\path\to\consumer `
   --prompts-dir generated\prompts\full-project `
-  lease -workers 1
+  lease --workers 1
 ```
 
 Or lease up to N conflict-free jobs (`N` is dynamically configurable from 1 to
@@ -110,7 +112,7 @@ python senior_queue.py `
   supervise `
   --workers 4 `
   --check-every-seconds 15 `
-  --heartbeat-timeout-seconds 120 `
+  --heartbeat-timeout-seconds 600 `
   --stall-grace-seconds 30 `
   --max-retries 2
 ```
@@ -152,7 +154,7 @@ python3 senior_agent_launcher.py \
   --workers 4 \
   --cohort-size 4 \
   --check-every-seconds 15 \
-  --heartbeat-timeout-seconds 120 \
+  --heartbeat-timeout-seconds 600 \
   --stall-grace-seconds 30 \
   --max-retries 2 \
   --preflight-command-json '["bash","scripts/preflight-env.sh"]' \
@@ -286,8 +288,11 @@ owner, PID, lifecycle condition, health check and cleanup.
 The supervisor does not treat a long duration as failure while new heartbeat
 continues. Re-reading the same heartbeat does not renew a lease forever. When
 heartbeat stops, the attempt transitions to `stalled`, receives cancellation,
-waits through the configured grace period and is retried alone. Exhausted
-retries transition to `failed`; the phase never advances silently.
+waits through the configured grace period and is retried alone. If the latest
+cancelled attempt finishes just after that transition, its result is accepted
+only after its lease identity, hashes, claims and commit pass the same strict
+validation; stale and already-consumed results are rejected. Exhausted retries
+transition to `failed`; the phase never advances silently.
 
 ## State and phase lifecycle
 
@@ -307,9 +312,13 @@ The state machine does not use an OS cron, visual hearts or chat visibility as
 truth. Tab mode never searches for ❤️/👎: `result.json` is the only completion
 signal. `supervise` is the central Python watchdog; leases, heartbeat,
 structured results, verified Git diffs, ordered cherry-picks and reproducible
-checks are the evidence. A complete phase wave is integrated and checked before
-the next phase is leased. The compatibility `--visual` adapter may still use
-markers locally, but they never authorize a state transition by themselves.
+checks are the evidence. It logs one compact `supervisor.tick` record every
+poll. Completed conflict-free subwaves are previewed, recorded as an integration
+transaction, cherry-picked and checked before overlapping pending jobs are
+released; a restart resumes a matching transaction instead of guessing. The
+next phase still waits for every job in the current phase. The compatibility
+`--visual` adapter may still use markers locally, but they never authorize a
+state transition by themselves.
 
 ## Safety rules
 
@@ -320,7 +329,8 @@ markers locally, but they never authorize a state transition by themselves.
 - Phase barriers prevent APPLY before all selected PROPOSE jobs finish, and
   REVIEW before APPLY finishes.
 - Overlapping paths, shared-worktree writes, or equal exclusive resources never
-  share a cohort.
+  run simultaneously; completed subwaves integrate before the conflicting next
+  subwave is leased.
 - Absolute paths, parent traversal, repository-wide `**`, stale fingerprints,
   stale leases, and out-of-scope changed files fail closed.
 - Backend adapters for Antigravity, OpenCode, CLI/API agents or independent
@@ -328,5 +338,7 @@ markers locally, but they never authorize a state transition by themselves.
 - The launcher starts one adapter process per chat. Provider-specific chat
   creation remains an adapter operation; commit validation and ordered
   integration are coordinator operations. A declared file list that differs
-  from the actual Git diff, a conflict, or a failed integration check fails
-  closed and retries only the responsible job within the configured limit.
+  from the actual Git diff or a cherry-pick conflict fails closed for the
+  affected job/subwave. When a combined integration check cannot attribute the
+  fault safely, the complete integrated subwave is marked retryable instead of
+  guessing that the final commit caused it.
