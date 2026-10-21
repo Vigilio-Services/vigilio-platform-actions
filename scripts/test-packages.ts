@@ -201,15 +201,18 @@ interface RunPnpmOptions {
 }
 
 function runPnpm(args: readonly string[], cwd: string, options: RunPnpmOptions = {}): string {
-  const nodeDirectory = path.dirname(process.execPath);
-  const corepackPnpm =
+  // Use the project-selected pnpm shim. Invoking Corepack's internal pnpm.js directly can
+  // leak Corepack's fallback version into lifecycle scripts instead of packageManager.
+  const command =
     process.platform === 'win32'
-      ? path.join(nodeDirectory, 'node_modules', 'corepack', 'dist', 'pnpm.js')
-      : path.resolve(nodeDirectory, '..', 'lib', 'node_modules', 'corepack', 'dist', 'pnpm.js');
-  const command = {
-    executable: process.execPath,
-    args: [corepackPnpm, ...args],
-  };
+      ? {
+          executable: process.env['ComSpec'] ?? 'cmd.exe',
+          args: ['/d', '/s', '/c', 'pnpm', ...args],
+        }
+      : {
+          executable: 'pnpm',
+          args,
+        };
   const result = spawnSync(command.executable, command.args, {
     cwd,
     encoding: 'utf8',
