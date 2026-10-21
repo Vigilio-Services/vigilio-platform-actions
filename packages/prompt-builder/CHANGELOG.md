@@ -6,6 +6,8 @@
 
 - Add a backend-neutral multi-agent launcher that maps each Senior Mode lease to one independent
   agent session and dedicated Git worktree.
+- Persist vertical cohorts so N selected packs complete PROPOSE, APPLY and REVIEW before the next
+  packs are admitted.
 - Make `--workers` dynamic up to a bounded safety ceiling while keeping the legacy visual runner at
   `--workers 1`.
 - Add attempt-scoped progress and immutable PASS/FAILED/BLOCKED result writers.

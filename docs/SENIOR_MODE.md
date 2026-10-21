@@ -124,6 +124,7 @@ python senior_agent_launcher.py `
   --project-root C:\path\to\consumer `
   --prompts-dir generated\prompts\full-project `
   --workers 6 `
+  --cohort-size 6 `
   --check-every-seconds 15 `
   -- <agent-adapter> --new-chat --prompt-file {agent_prompt}
 ```
@@ -132,6 +133,20 @@ Before launching, run the pinned deterministic `preflight` shown above. The
 adapter command is intentionally provider-neutral: Codex, OpenCode,
 Antigravity, an API adapter, or another agent runtime can implement it without
 changing the scheduler protocol.
+
+The launcher defaults `--cohort-size` to `--workers`. The active cohort is
+persisted in `state.json`, so restarts and a later worker-count change cannot
+silently replace its membership:
+
+```text
+cohort-0001: 6 PROPOSE → 6 APPLY → 6 REVIEW → complete
+cohort-0002: next compatible packs
+```
+
+Jobs outside the active cohort remain behind a cohort barrier. Inside it, the
+normal phase, dependency and resource barriers still apply. If only four of six
+packs are currently dependency-ready, the scheduler starts four and does not
+invent work merely to fill capacity.
 
 For each lease, the launcher:
 

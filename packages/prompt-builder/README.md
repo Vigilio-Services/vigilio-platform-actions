@@ -266,8 +266,9 @@ or `generated/`.
 `-workers 1` preserves strict sequential behavior. Capacities above one are used only when the
 coordinator proves that prerequisites, phase barriers, path claims and exclusive resources permit the
 cohort. `senior_agent_launcher.py --workers N` maps every lease to a distinct agent process/chat and
-dedicated worktree; N is a bounded maximum rather than a guarantee. A stalled attempt is cancelled and
-retried independently; completed siblings are not repeated.
+dedicated worktree; N is a bounded maximum rather than a guarantee. Its persisted vertical cohort
+advances `N PROPOSE → N APPLY → N REVIEW` before selecting the next packs. A stalled attempt is
+cancelled and retried independently; completed siblings are not repeated.
 
 Consumer repositories may expose project-specific aliases such as `context:build`, `context:validate`, `context:plan` and `context:build-all`; the package itself remains independent of the consumer's scripts.
 

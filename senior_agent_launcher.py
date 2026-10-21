@@ -319,6 +319,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--prompts-dir", type=Path, required=True)
     parser.add_argument("--state-root", type=Path)
     parser.add_argument("--workers", "-workers", type=int, default=4)
+    parser.add_argument(
+        "--cohort-size",
+        type=int,
+        help="Packs in one PROPOSE/APPLY/REVIEW wave (default: --workers).",
+    )
     parser.add_argument("--check-every-seconds", type=float, default=15.0)
     parser.add_argument("--heartbeat-timeout-seconds", type=int, default=120)
     parser.add_argument("--stall-grace-seconds", type=int, default=30)
@@ -333,6 +338,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.workers < 1 or args.workers > MAX_WORKERS:
         parser.error(f"--workers must be between 1 and {MAX_WORKERS}")
+    if args.cohort_size is not None and not 1 <= args.cohort_size <= MAX_WORKERS:
+        parser.error(f"--cohort-size must be between 1 and {MAX_WORKERS}")
     if args.check_every_seconds < 1 or args.check_every_seconds > 300:
         parser.error("--check-every-seconds must be between 1 and 300")
     if args.agent_command[:1] == ["--"]:
@@ -376,6 +383,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     heartbeat_timeout_seconds=args.heartbeat_timeout_seconds,
                     stall_grace_seconds=args.stall_grace_seconds,
                     max_retries=args.max_retries,
+                    cohort_size=args.cohort_size or args.workers,
                 )
             for value in tick["leased_requests"]:
                 request_path = Path(value)

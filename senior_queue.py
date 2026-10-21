@@ -20,7 +20,13 @@ from typing import Any
 
 from chatgpt_automation_lock import RunLock
 from prompt_builder_compat import ExecutionPlan, load_execution_plan
-from senior_scheduler import ResourceClaims, SeniorJob, SeniorScheduler, jobs_from_execution_plan
+from senior_scheduler import (
+    COMPLETE_STATUSES,
+    ResourceClaims,
+    SeniorJob,
+    SeniorScheduler,
+    jobs_from_execution_plan,
+)
 from senior_state import SeniorStateError, SeniorStateStore
 from senior_worker import (
     SeniorWorkerResultError,
@@ -116,19 +122,102 @@ class SeniorCoordinator:
         self.by_id = {job.job_id: job for job in self.jobs}
         self.steps = {step.step_id: step for step in self.plan.steps}
 
-    def ready(self, *, max_workers: int) -> tuple[SeniorJob, ...]:
-        return self.scheduler.ready_batch(self.state.statuses(), max_workers=max_workers)
+    def _current_cohort_packs(self) -> frozenset[str] | None:
+        cohort = self.state.data.get("cohort")
+        if not isinstance(cohort, dict):
+            return None
+        packs = cohort.get("packs")
+        if not isinstance(packs, list) or not all(isinstance(pack, str) for pack in packs):
+            raise SeniorStateError("active cohort has invalid packs")
+        return frozenset(packs)
+
+    def _cohort_is_complete(self, packs: frozenset[str], statuses: dict[str, str]) -> bool:
+        jobs = [job for job in self.jobs if job.pack in packs]
+        return bool(jobs) and all(statuses[job.job_id] in COMPLETE_STATUSES for job in jobs)
+
+    def _eligible_vertical_packs(
+        self,
+        statuses: dict[str, str],
+        *,
+        cohort_size: int,
+    ) -> tuple[str, ...]:
+        pack_order: list[str] = []
+        for job in self.jobs:
+            if job.pack not in pack_order:
+                pack_order.append(job.pack)
+        selected: list[str] = []
+        phase_rank = {phase: index for index, phase in enumerate(self.plan.phases)}
+        for pack in pack_order:
+            unfinished = [
+                job for job in self.jobs if job.pack == pack and statuses[job.job_id] not in COMPLETE_STATUSES
+            ]
+            if not unfinished:
+                continue
+            current_rank = min(phase_rank[job.phase] for job in unfinished)
+            current_jobs = [job for job in unfinished if phase_rank[job.phase] == current_rank]
+            external_dependencies = {
+                dependency
+                for job in current_jobs
+                for dependency in job.prerequisites
+                if self.by_id[dependency].pack != pack
+            }
+            if any(statuses[dependency] not in COMPLETE_STATUSES for dependency in external_dependencies):
+                continue
+            selected.append(pack)
+            if len(selected) >= cohort_size:
+                break
+        return tuple(selected)
+
+    def reconcile_vertical_cohort(self, *, cohort_size: int) -> frozenset[str] | None:
+        _validate_workers(cohort_size)
+        statuses = self.state.statuses()
+        active = self._current_cohort_packs()
+        if active is not None and self._cohort_is_complete(active, statuses):
+            self.state.close_cohort()
+            active = None
+        if active is None:
+            packs = self._eligible_vertical_packs(statuses, cohort_size=cohort_size)
+            if packs:
+                self.state.activate_cohort(packs)
+                active = frozenset(packs)
+        return active
+
+    def ready(
+        self,
+        *,
+        max_workers: int,
+        cohort_size: int | None = None,
+    ) -> tuple[SeniorJob, ...]:
+        allowed_packs = (
+            self.reconcile_vertical_cohort(cohort_size=cohort_size)
+            if cohort_size is not None
+            else None
+        )
+        return self.scheduler.ready_batch(
+            self.state.statuses(),
+            max_workers=max_workers,
+            allowed_packs=allowed_packs,
+        )
 
     def status_report(self) -> dict[str, Any]:
         statuses = self.state.statuses()
-        ready = self.ready(max_workers=len(self.jobs) or 1)
+        cohort_packs = self._current_cohort_packs()
+        ready = self.scheduler.ready_batch(
+            statuses,
+            max_workers=len(self.jobs) or 1,
+            allowed_packs=cohort_packs,
+        )
         return {
             "schema_version": 1,
             "workflow_id": self.plan.plan_id,
             "plan_schema_version": self.plan.schema_version,
             "plan_fingerprint": self.plan.plan_fingerprint,
             "state_revision": self.state.data["revision"],
-            "active_phase": self.scheduler.active_phase(statuses),
+            "active_phase": self.scheduler.active_phase(
+                statuses,
+                allowed_packs=cohort_packs,
+            ),
+            "active_cohort": self.state.data.get("cohort"),
             "preflight": self.state.data.get("preflight"),
             "ready": [job.job_id for job in ready],
             "jobs": {
@@ -138,20 +227,30 @@ class SeniorCoordinator:
                     "status": statuses[job.job_id],
                     "attempt": self.state.jobs[job.job_id].get("attempt", 0),
                     "activity": self.state.jobs[job.job_id].get("activity"),
-                    "blocked_reason": self.scheduler.blocked_reason(job, statuses),
+                    "blocked_reason": self.scheduler.blocked_reason(
+                        job,
+                        statuses,
+                        allowed_packs=cohort_packs,
+                    ),
                 }
                 for job in self.jobs
             },
         }
 
-    def lease_ready(self, *, max_workers: int, ttl_seconds: int) -> list[Path]:
+    def lease_ready(
+        self,
+        *,
+        max_workers: int,
+        ttl_seconds: int,
+        cohort_size: int | None = None,
+    ) -> list[Path]:
         _validate_workers(max_workers)
         base_sha = _git_head(self.project_root)
         if not self.state.preflight_ready(base_sha=base_sha):
             raise SeniorStateError(
                 "preflight is missing or stale for the current plan/base SHA; run the preflight command first"
             )
-        ready = self.ready(max_workers=max_workers)
+        ready = self.ready(max_workers=max_workers, cohort_size=cohort_size)
         leases = self.state.lease(
             [job.job_id for job in ready],
             ttl_seconds=ttl_seconds,
@@ -274,6 +373,7 @@ class SeniorCoordinator:
         heartbeat_timeout_seconds: int,
         stall_grace_seconds: int,
         max_retries: int,
+        cohort_size: int | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         _validate_workers(max_workers)
@@ -383,7 +483,11 @@ class SeniorCoordinator:
         newly_retryable = self.state.recover_retryable_results(
             max_attempts=max_retries + 1
         )
-        leased = self.lease_ready(max_workers=max_workers, ttl_seconds=ttl_seconds)
+        leased = self.lease_ready(
+            max_workers=max_workers,
+            ttl_seconds=ttl_seconds,
+            cohort_size=cohort_size,
+        )
         return {
             "checked_at": current.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "heartbeats_observed": observed,
@@ -427,8 +531,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     preflight_parser.add_argument("preflight_command", nargs=argparse.REMAINDER)
     next_parser = subparsers.add_parser("next")
     next_parser.add_argument("--workers", "-workers", "--max-workers", dest="max_workers", type=int, default=4)
+    next_parser.add_argument("--cohort-size", type=int)
     lease_parser = subparsers.add_parser("lease")
     lease_parser.add_argument("--workers", "-workers", "--max-workers", dest="max_workers", type=int, default=4)
+    lease_parser.add_argument("--cohort-size", type=int)
     lease_parser.add_argument("--ttl-seconds", type=int, default=900)
     submit_parser = subparsers.add_parser("submit")
     submit_parser.add_argument("--job-id", required=True)
@@ -445,6 +551,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     supervise_parser.add_argument(
         "--workers", "-workers", "--max-workers", dest="max_workers", type=int, default=4
     )
+    supervise_parser.add_argument("--cohort-size", type=int)
     supervise_parser.add_argument("--check-every-seconds", type=float, default=15.0)
     supervise_parser.add_argument("--heartbeat-timeout-seconds", type=int, default=120)
     supervise_parser.add_argument("--stall-grace-seconds", type=int, default=30)
@@ -485,6 +592,7 @@ def main(argv: list[str] | None = None) -> int:
                         heartbeat_timeout_seconds=args.heartbeat_timeout_seconds,
                         stall_grace_seconds=args.stall_grace_seconds,
                         max_retries=args.max_retries,
+                        cohort_size=args.cohort_size,
                     )
             except (RuntimeError, SeniorStateError, SeniorWorkerResultError, ValueError) as exc:
                 print(f"SENIOR_MODE_ERROR: {exc}", file=sys.stderr)
@@ -508,13 +616,20 @@ def main(argv: list[str] | None = None) -> int:
                     command = command[1:]
                 output = coordinator.run_preflight(command, timeout_seconds=args.timeout_seconds)
             elif args.command == "next":
-                output = [job.job_id for job in coordinator.ready(max_workers=args.max_workers)]
+                output = [
+                    job.job_id
+                    for job in coordinator.ready(
+                        max_workers=args.max_workers,
+                        cohort_size=args.cohort_size,
+                    )
+                ]
             elif args.command == "lease":
                 output = [
                     str(path)
                     for path in coordinator.lease_ready(
                         max_workers=args.max_workers,
                         ttl_seconds=args.ttl_seconds,
+                        cohort_size=args.cohort_size,
                     )
                 ]
             elif args.command == "submit":

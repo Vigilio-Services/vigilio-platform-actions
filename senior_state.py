@@ -68,6 +68,8 @@ class SeniorStateStore:
                 "created_at": now,
                 "updated_at": now,
                 "preflight": None,
+                "cohort": None,
+                "cohort_counter": 0,
                 "jobs": {},
             }
             self._persist(data)
@@ -86,6 +88,8 @@ class SeniorStateStore:
             )
         if not isinstance(data.get("jobs"), dict):
             raise SeniorStateError("Senior Mode state jobs must be an object")
+        data.setdefault("cohort", None)
+        data.setdefault("cohort_counter", 0)
         return data
 
     def _persist(self, data: dict[str, Any]) -> None:
@@ -164,6 +168,30 @@ class SeniorStateStore:
 
     def statuses(self) -> dict[str, str]:
         return {job_id: str(record.get("status", "pending")) for job_id, record in self.jobs.items()}
+
+    def activate_cohort(self, packs: Iterable[str]) -> dict[str, Any]:
+        if self.data.get("cohort") is not None:
+            raise SeniorStateError("a Senior Mode cohort is already active")
+        normalized = tuple(dict.fromkeys(str(pack).strip() for pack in packs if str(pack).strip()))
+        if not normalized:
+            raise SeniorStateError("cannot activate an empty cohort")
+        counter = int(self.data.get("cohort_counter", 0)) + 1
+        cohort = {
+            "cohort_id": f"cohort-{counter:04d}",
+            "packs": list(normalized),
+            "started_at": _timestamp(),
+        }
+        self.data["cohort_counter"] = counter
+        self.data["cohort"] = cohort
+        self._commit("cohort.activated", data=cohort)
+        return cohort
+
+    def close_cohort(self) -> None:
+        cohort = self.data.get("cohort")
+        if not isinstance(cohort, dict):
+            raise SeniorStateError("no Senior Mode cohort is active")
+        self.data["cohort"] = None
+        self._commit("cohort.completed", data={"cohort_id": cohort.get("cohort_id")})
 
     def record_preflight(
         self,

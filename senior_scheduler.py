@@ -200,17 +200,33 @@ class SeniorScheduler:
             if missing:
                 raise SeniorPlanError(f"{job.job_id} has missing prerequisites: {missing}")
 
-    def active_phase(self, statuses: Mapping[str, Any]) -> str | None:
+    def active_phase(
+        self,
+        statuses: Mapping[str, Any],
+        *,
+        allowed_packs: frozenset[str] | None = None,
+    ) -> str | None:
         for phase in self.phase_order:
-            phase_jobs = [job for job in self.jobs if job.phase == phase]
+            phase_jobs = [
+                job
+                for job in self.jobs
+                if job.phase == phase
+                and (allowed_packs is None or job.pack in allowed_packs)
+            ]
             if phase_jobs and any(_status(statuses, job.job_id) not in COMPLETE_STATUSES for job in phase_jobs):
                 return phase
         return None
 
-    def ready_batch(self, statuses: Mapping[str, Any], *, max_workers: int) -> tuple[SeniorJob, ...]:
+    def ready_batch(
+        self,
+        statuses: Mapping[str, Any],
+        *,
+        max_workers: int,
+        allowed_packs: frozenset[str] | None = None,
+    ) -> tuple[SeniorJob, ...]:
         if max_workers < 1:
             raise ValueError("max_workers must be at least 1")
-        phase = self.active_phase(statuses)
+        phase = self.active_phase(statuses, allowed_packs=allowed_packs)
         if phase is None:
             return ()
         active = [job for job in self.jobs if _status(statuses, job.job_id) in ACTIVE_STATUSES]
@@ -224,6 +240,8 @@ class SeniorScheduler:
         for job in self.jobs:
             if len(selected) >= available_workers:
                 break
+            if allowed_packs is not None and job.pack not in allowed_packs:
+                continue
             if job.phase != phase or _status(statuses, job.job_id) != "pending":
                 continue
             if any(_status(statuses, dependency) not in COMPLETE_STATUSES for dependency in job.prerequisites):
@@ -233,8 +251,16 @@ class SeniorScheduler:
             selected.append(job)
         return tuple(selected)
 
-    def blocked_reason(self, job: SeniorJob, statuses: Mapping[str, Any]) -> str | None:
-        phase = self.active_phase(statuses)
+    def blocked_reason(
+        self,
+        job: SeniorJob,
+        statuses: Mapping[str, Any],
+        *,
+        allowed_packs: frozenset[str] | None = None,
+    ) -> str | None:
+        if allowed_packs is not None and job.pack not in allowed_packs:
+            return "cohort barrier: waiting for the active vertical cohort"
+        phase = self.active_phase(statuses, allowed_packs=allowed_packs)
         if phase is not None and job.phase != phase:
             return f"phase barrier: waiting for {phase}"
         pending = [dep for dep in job.prerequisites if _status(statuses, dep) not in COMPLETE_STATUSES]

@@ -141,6 +141,25 @@ class SeniorSchedulerTests(unittest.TestCase):
             ["a:apply", "b:apply"],
         )
 
+    def test_vertical_cohort_advances_before_unselected_packs(self) -> None:
+        jobs = [
+            job(1, "a", "propose", "openspec/changes/a/**"),
+            job(2, "b", "propose", "openspec/changes/b/**"),
+            job(3, "c", "propose", "openspec/changes/c/**"),
+            job(4, "a", "apply", "apps/a/**", prerequisites=("a:propose",)),
+            job(5, "b", "apply", "apps/b/**", prerequisites=("b:propose",)),
+            job(6, "c", "apply", "apps/c/**", prerequisites=("c:propose",)),
+        ]
+        scheduler = SeniorScheduler(jobs, phase_order=("propose", "apply"))
+        cohort = frozenset({"a", "b"})
+
+        first = scheduler.ready_batch({}, max_workers=6, allowed_packs=cohort)
+        self.assertEqual([item.job_id for item in first], ["a:propose", "b:propose"])
+        statuses = {"a:propose": "done", "b:propose": "done"}
+        second = scheduler.ready_batch(statuses, max_workers=6, allowed_packs=cohort)
+        self.assertEqual([item.job_id for item in second], ["a:apply", "b:apply"])
+        self.assertNotIn("c:propose", [item.job_id for item in (*first, *second)])
+
     def test_invalid_or_overbroad_claims_are_rejected(self) -> None:
         for invalid in ("../secret", "C:/absolute", "/absolute", "**"):
             with self.subTest(invalid=invalid):
@@ -280,6 +299,19 @@ class SeniorStateTests(unittest.TestCase):
 
         self.assertTrue(store.preflight_ready(base_sha="1" * 40))
         self.assertFalse(store.preflight_ready(base_sha="3" * 40))
+
+    def test_active_cohort_is_persistent_and_single_writer(self) -> None:
+        store = self.store()
+
+        cohort = store.activate_cohort(["a", "b", "a"])
+
+        self.assertEqual(cohort["packs"], ["a", "b"])
+        resumed = self.store()
+        self.assertEqual(resumed.data["cohort"]["cohort_id"], "cohort-0001")
+        with self.assertRaisesRegex(SeniorStateError, "already active"):
+            resumed.activate_cohort(["c"])
+        resumed.close_cohort()
+        self.assertIsNone(resumed.data["cohort"])
 
 
 class SeniorWorkerTests(unittest.TestCase):
@@ -598,33 +630,31 @@ class SeniorAgentLauncherTests(unittest.TestCase):
                 self.assertTrue((session.workspace / ".git").exists())
 
 class SeniorPlanCompatibilityTests(unittest.TestCase):
-    def _write_v3_plan(self, root: Path) -> Path:
+    def _write_v3_plan(self, root: Path, *, pack_count: int = 1) -> Path:
         prompts = root / "generated" / "prompts" / "full-project"
         prompts.mkdir(parents=True)
-        prompt = prompts / "0001-a.propose.md"
-        lock = prompts / "0001-a.propose.lock.json"
-        prompt.write_text("prompt", encoding="utf-8")
-        lock.write_text("{}", encoding="utf-8")
-        plan = {
-            "schema_version": 3,
-            "plan_id": "full-project",
-            "phases": ["propose"],
-            "selection": {"mode": "enabled-packs", "source": None, "sha256": None},
-            "steps": [
+        steps = []
+        for index in range(1, pack_count + 1):
+            pack = chr(ord("a") + index - 1)
+            prompt = prompts / f"{index:04d}-{pack}.propose.md"
+            lock = prompts / f"{index:04d}-{pack}.propose.lock.json"
+            prompt.write_text("prompt", encoding="utf-8")
+            lock.write_text("{}", encoding="utf-8")
+            steps.append(
                 {
-                    "sequence": 1,
+                    "sequence": index,
                     "dependency_level": 0,
-                    "pack": "a",
+                    "pack": pack,
                     "selection_reason": "enabled",
                     "phase": "propose",
                     "depends_on": [],
                     "depends_on_previous_phase_step": None,
-                    "step_id": "a:propose",
+                    "step_id": f"{pack}:propose",
                     "prerequisite_step_ids": [],
                     "concurrency": {
                         "strategy": "resource-claims",
                         "isolation": "dedicated-worktree",
-                        "write_paths": ["openspec/changes/a/**"],
+                        "write_paths": [f"openspec/changes/{pack}/**"],
                         "read_paths": [],
                         "exclusive_resources": [],
                     },
@@ -633,7 +663,13 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                     "prompt_status": "GENERATED",
                     "execution_status": "READY",
                 }
-            ],
+            )
+        plan = {
+            "schema_version": 3,
+            "plan_id": "full-project",
+            "phases": ["propose"],
+            "selection": {"mode": "enabled-packs", "source": None, "sha256": None},
+            "steps": steps,
         }
         fingerprint_plan = {
             **plan,
@@ -737,6 +773,58 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                 (requests[0].parent / "cancel.json").is_file(),
                 "the stale attempt must receive a cancellation marker",
             )
+
+    def test_coordinator_persists_vertical_cohorts_and_then_advances(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "fixture"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            prompts = self._write_v3_plan(root, pack_count=3)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+
+            first = coordinator.lease_ready(max_workers=6, ttl_seconds=30, cohort_size=2)
+
+            self.assertEqual(len(first), 2)
+            self.assertEqual(coordinator.state.data["cohort"]["packs"], ["a", "b"])
+            for request_path in first:
+                request = json.loads(request_path.read_text(encoding="utf-8"))
+                coordinator.state.record_result(
+                    request["job_id"],
+                    token=request["lease_token"],
+                    result={
+                        "status": "PASS",
+                        "result_commit": "1" * 40,
+                        "retryable": False,
+                    },
+                )
+                coordinator.state.mark_validated(request["job_id"])
+                coordinator.state.mark_done(request["job_id"], integrated_commit="2" * 40)
+
+            second = coordinator.lease_ready(max_workers=6, ttl_seconds=30, cohort_size=2)
+
+            self.assertEqual(len(second), 1)
+            self.assertEqual(coordinator.state.data["cohort"]["packs"], ["c"])
 
 
 if __name__ == "__main__":
