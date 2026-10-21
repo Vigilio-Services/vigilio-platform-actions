@@ -21,6 +21,7 @@ from senior_agent_launcher import (
 )
 from senior_scheduler import ResourceClaims, SeniorJob, SeniorPlanError, SeniorScheduler
 from senior_state import SeniorStateError, SeniorStateStore
+from senior_tab_controller import SeniorTabController
 from senior_worker import (
     SeniorWorkerResultError,
     run_managed_command,
@@ -552,6 +553,23 @@ class SeniorWorkerTests(unittest.TestCase):
 
 
 class SeniorAgentLauncherTests(unittest.TestCase):
+    def test_visual_tabs_uses_one_display_for_four_chats(self) -> None:
+        args = parse_launcher_args(
+            [
+                "--prompts-dir", "generated/prompts/full-project",
+                "--workers", "4",
+                "--visual-tabs",
+                "--linux",
+                "--display", ":1",
+                "--send-with-enter",
+                "--new-chat-mode", "each",
+            ]
+        )
+
+        self.assertTrue(args.visual_tabs)
+        self.assertEqual(args.display, [":1"])
+        self.assertEqual(args.workers, 4)
+
     def test_visual_mode_preserves_legacy_ui_flags_and_dynamic_displays(self) -> None:
         args = parse_launcher_args(
             [
@@ -680,6 +698,111 @@ class SeniorAgentLauncherTests(unittest.TestCase):
                 record_unreported_exit(session, returncode)
                 self.assertTrue((session.request_path.parent / "result.json").is_file())
                 self.assertTrue((session.workspace / ".git").exists())
+
+
+class SeniorTabControllerTests(unittest.TestCase):
+    def test_dispatches_four_tabs_without_visual_status_markers(self) -> None:
+        class FakePyAutoGui:
+            def __init__(self) -> None:
+                self.actions: list[tuple[object, ...]] = []
+
+            def hotkey(self, *keys: str) -> None:
+                self.actions.append(("hotkey", *keys))
+
+            def write(self, value: str, interval: float = 0) -> None:
+                self.actions.append(("write", value, interval))
+
+            def press(self, key: str) -> None:
+                self.actions.append(("press", key))
+
+        class FakeDriver:
+            instances: list["FakeDriver"] = []
+
+            def __init__(self, *_args, **_kwargs) -> None:
+                self.prompts: list[str] = []
+                self.new_chats = 0
+                self.completed = 0
+                self.instances.append(self)
+
+            def new_chat(self) -> None:
+                self.new_chats += 1
+
+            def send_prompt(self, prompt: str) -> None:
+                self.prompts.append(prompt)
+
+            def mark_response_complete(self) -> None:
+                self.completed += 1
+
+        class FakeUi:
+            pyautogui = FakePyAutoGui()
+            ChatGPTUIDriver = FakeDriver
+            validation: dict[str, object] = {}
+
+            @staticmethod
+            def configure_ui_runtime(**_kwargs) -> None:
+                return None
+
+            @staticmethod
+            def validate_runtime(
+                os_mode,
+                assets_dir,
+                need_new_chat,
+                allow_resolution_mismatch,
+                need_status_markers=True,
+            ) -> None:
+                FakeUi.validation = {
+                    "os_mode": os_mode,
+                    "assets_dir": assets_dir,
+                    "need_new_chat": need_new_chat,
+                    "allow_resolution_mismatch": allow_resolution_mismatch,
+                    "need_status_markers": need_status_markers,
+                }
+
+            @staticmethod
+            def ScreenMatcher(_assets):
+                return object()
+
+        controller = SeniorTabController(
+            workers=4,
+            display=":1",
+            os_mode="linux",
+            ui_module_path=Path("unused.py"),
+            assets_dir=Path("."),
+            chat_url="https://agent.example/",
+            chat_pane="auto",
+            workflow_file=None,
+            allow_resolution_mismatch=True,
+            send_with_enter=True,
+            keepalive_click=False,
+            keepalive_interval_seconds=30,
+            response_timeout_seconds=5400,
+            new_chat_mode="each",
+            page_load_seconds=0,
+            tab_switch_seconds=0,
+            ui_module=FakeUi,
+        )
+
+        for slot in range(4):
+            controller.dispatch(
+                slot=slot,
+                request_path=Path(f"request-{slot}.json"),
+                prompt=f"prompt-{slot}",
+            )
+
+        self.assertFalse(FakeUi.validation["need_status_markers"])
+        self.assertEqual(
+            sum(action == ("hotkey", "ctrl", "t") for action in FakeUi.pyautogui.actions),
+            3,
+        )
+        self.assertEqual(
+            [driver.prompts for driver in FakeDriver.instances],
+            [["prompt-0"], ["prompt-1"], ["prompt-2"], ["prompt-3"]],
+        )
+        self.assertEqual(controller.assignments.keys(), {0, 1, 2, 3})
+
+        for slot in range(4):
+            controller.release(slot)
+        self.assertEqual(controller.assignments, {})
 
 class SeniorPlanCompatibilityTests(unittest.TestCase):
     def _write_v3_plan(self, root: Path, *, pack_count: int = 1) -> Path:

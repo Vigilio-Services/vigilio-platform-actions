@@ -1,4 +1,4 @@
-# Senior Mode (Prompt Builder 0.10)
+# Senior Mode (Prompt Builder 0.11)
 
 Senior Mode coordinates a bounded dynamic pool of isolated prompt jobs while preserving the
 existing one-prompt-at-a-time runner.
@@ -11,9 +11,12 @@ existing one-prompt-at-a-time runner.
   declare complete, non-conflicting resource claims.
 - `chatgpt_prompt_queue.py` visual automation remains capacity one because it
   shares one screen, cursor and clipboard. Use it unchanged for `--workers 1`.
-- `senior_agent_launcher.py --visual --workers N` supports visual parallelism
-  only when it receives N distinct Linux X11 displays. It never multiplexes
-  multiple workers through one cursor or clipboard.
+- `senior_agent_launcher.py --visual-tabs --workers N` is the recommended
+  visual mode: one DISPLAY, one dedicated browser window and one fixed tab per
+  worker. One controller serializes cursor/clipboard actions while chats
+  generate concurrently. This mode supports up to eight tabs.
+- `senior_agent_launcher.py --visual --workers N` remains a compatibility mode
+  for installations that already provision one isolated DISPLAY per worker.
 - `senior_agent_launcher.py --workers N` invokes the configured agent adapter N
   times. Every invocation must create one new independent chat/session and stay
   attached until that agent finishes.
@@ -137,8 +140,9 @@ adapter command is intentionally provider-neutral: Codex, OpenCode,
 Antigravity, an API adapter, or another agent runtime can implement it without
 changing the scheduler protocol.
 
-The launcher can run and pin that preflight itself. This is the complete visual
-four-worker form; add or remove `--display` entries together with `--workers`:
+The launcher can run and pin that preflight itself. Before starting tab mode,
+focus a dedicated browser window containing exactly one tab and an authenticated
+agent session. This is the complete four-worker form:
 
 ```bash
 python3 senior_agent_launcher.py \
@@ -152,8 +156,9 @@ python3 senior_agent_launcher.py \
   --max-retries 2 \
   --preflight-command-json '["bash","scripts/preflight-env.sh"]' \
   --integration-check-json '["pnpm","test"]' \
-  --visual --linux \
-  --display :1 --display :2 --display :3 --display :4 \
+  --visual-tabs --linux \
+  --display :1 \
+  --chat-url https://chatgpt.com/ \
   --ui-module ./chatgpt_docs_automation.py \
   --assets ./opencode-assets \
   --chat-pane auto \
@@ -169,10 +174,13 @@ python3 senior_agent_launcher.py \
   --include-context-only
 ```
 
-Every display gets one process, worktree, request, heartbeat, session log and
-result. The legacy flags were not removed; the bundled visual adapter consumes
-them per request. Windows remains one visual worker because multiple isolated
-interactive desktops are not provisioned by this launcher.
+The controller navigates the first tab, creates the remaining tabs, then sends
+one prompt per tab in slot order. Prompt submission is sequential because one
+cursor and clipboard are shared; generation continues concurrently after each
+send. Every job still gets its own worktree, request, heartbeat, result and tab
+mapping in `session.json`. The fixed tabs are reused for the next wave, avoiding
+four browser processes and four desktop servers. Tabs still consume RAM, but
+substantially less infrastructure than the isolated-display mode.
 
 The launcher defaults `--cohort-size` to `--workers`. The active cohort is
 persisted in `state.json`, so restarts and a later worker-count change cannot
@@ -295,11 +303,12 @@ resource conflicts still serialize unsafe pairs. One failing job never rewinds
 completed siblings.
 
 The state machine does not use an OS cron, visual hearts or chat visibility as
-truth. In visual mode ❤️/👎 only wakes the display adapter; it cannot mark a job
-done. `supervise` is the central Python watchdog; leases, heartbeat, structured
-results, verified Git diffs, ordered cherry-picks and reproducible checks are
-the evidence. A complete phase wave is integrated and checked before the next
-phase is leased.
+truth. Tab mode never searches for ❤️/👎: `result.json` is the only completion
+signal. `supervise` is the central Python watchdog; leases, heartbeat,
+structured results, verified Git diffs, ordered cherry-picks and reproducible
+checks are the evidence. A complete phase wave is integrated and checked before
+the next phase is leased. The compatibility `--visual` adapter may still use
+markers locally, but they never authorize a state transition by themselves.
 
 ## Safety rules
 

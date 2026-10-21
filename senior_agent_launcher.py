@@ -24,6 +24,11 @@ from typing import Any, Sequence
 from chatgpt_automation_lock import RunLock
 from senior_queue import MAX_WORKERS, SeniorCoordinator
 from senior_state import SeniorStateError
+from senior_tab_controller import (
+    MAX_BROWSER_TABS,
+    SeniorTabController,
+    SeniorTabControllerError,
+)
 from senior_worker import (
     SeniorWorkerResultError,
     write_worker_heartbeat,
@@ -31,7 +36,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.1.0"
+SCRIPT_VERSION = "1.2.0"
 PLACEHOLDERS = (
     "request",
     "prompt",
@@ -113,7 +118,12 @@ def prepare_workspace(request_path: Path) -> Path:
     return workspace
 
 
-def build_agent_prompt(request_path: Path, *, worker_script: Path) -> Path:
+def build_agent_prompt(
+    request_path: Path,
+    *,
+    worker_script: Path,
+    structured_result_only: bool = False,
+) -> Path:
     request = _load_json(request_path)
     source_prompt = Path(str(request["prompt"])).resolve()
     try:
@@ -158,6 +168,14 @@ For a technical failure use `fail --retryable`; for an external or authority
 blocker use `block --severity LOW|MEDIUM|HIGH|CRITICAL`. Never claim PASS merely
 because another session is unfinished. A true dependency is scheduled by the
 supervisor and must not be reconstructed from half-written files.
+"""
+    if structured_result_only:
+        runtime_contract += """
+
+This request runs in single-display multi-tab mode. Regardless of any legacy
+prompt wording, do not use ❤️/👎 or another visual marker as completion
+evidence. Finish by writing the attempt-scoped structured result.json. The
+Python supervisor observes that file directly while this tab may stay hidden.
 """
     output = request_path.parent / "agent-prompt.md"
     output.write_text(prompt_text.rstrip() + runtime_contract + "\n", encoding="utf-8", newline="\n")
@@ -215,6 +233,19 @@ class AgentSession:
     def close_output(self) -> None:
         if not self.output_handle.closed:
             self.output_handle.close()
+
+
+@dataclass
+class TabAgentSession:
+    request_path: Path
+    workspace: Path
+    slot: int
+    display: str | None
+
+    @property
+    def key(self) -> tuple[str, str]:
+        request = _load_json(self.request_path)
+        return str(request["job_id"]), str(request["attempt_id"])
 
 
 def launch_agent_session(
@@ -294,6 +325,48 @@ def launch_agent_session(
         raise
 
 
+def launch_tab_session(
+    request_path: Path,
+    *,
+    controller: SeniorTabController,
+    worker_script: Path,
+    slot: int,
+    display: str | None,
+) -> TabAgentSession:
+    request_path = request_path.resolve()
+    request = _load_json(request_path)
+    workspace = prepare_workspace(request_path)
+    agent_prompt = build_agent_prompt(
+        request_path,
+        worker_script=worker_script,
+        structured_result_only=True,
+    )
+    write_worker_heartbeat(
+        request_path,
+        status="starting",
+        current_command=f"dispatching browser tab slot {slot + 1}",
+        progress="controller is sending the attempt prompt",
+    )
+    controller.dispatch(
+        slot=slot,
+        request_path=request_path,
+        prompt=agent_prompt.read_text(encoding="utf-8"),
+    )
+    session = {
+        "schema_version": 1,
+        "job_id": request["job_id"],
+        "attempt_id": request["attempt_id"],
+        "backend_executable": "single-display-browser-tab",
+        "workspace": str(workspace),
+        "worker_slot": slot,
+        "browser_tab_number": slot + 1,
+        "display": display,
+        "result_protocol": "structured-file-only",
+    }
+    _atomic_json(request_path.parent / "session.json", session)
+    return TabAgentSession(request_path, workspace, slot, display)
+
+
 def record_unreported_exit(session: AgentSession, returncode: int) -> None:
     request = _load_json(session.request_path)
     result_file = Path(str(request["result_file"]))
@@ -332,7 +405,7 @@ def _terminate_session(session: AgentSession) -> None:
                 pass
 
 
-def _session_cancel_requested(session: AgentSession) -> bool:
+def _session_cancel_requested(session: AgentSession | TabAgentSession) -> bool:
     request = _load_json(session.request_path)
     return Path(str(request["cancel_file"])).is_file()
 
@@ -419,10 +492,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help='Repeatable post-cohort check command encoded as a JSON string array.',
     )
     parser.add_argument("--integration-timeout-seconds", type=int, default=1800)
-    parser.add_argument(
+    visual_group = parser.add_mutually_exclusive_group()
+    visual_group.add_argument(
         "--visual",
         action="store_true",
-        help="Launch the bundled ChatGPT UI adapter; one isolated DISPLAY is required per worker.",
+        help="Compatibility mode: one isolated DISPLAY and browser process per worker.",
+    )
+    visual_group.add_argument(
+        "--visual-tabs",
+        action="store_true",
+        help="One DISPLAY/browser with one fixed independent tab per worker; result.json is authoritative.",
     )
     os_group = parser.add_mutually_exclusive_group()
     os_group.add_argument("--linux", action="store_true")
@@ -453,6 +532,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--blocked-repair-rounds", type=int, default=2)
     parser.add_argument("--retry-interrupted", action="store_true")
     parser.add_argument("--include-context-only", action="store_true")
+    parser.add_argument("--chat-url", default="https://chatgpt.com/")
+    parser.add_argument("--tab-page-load-seconds", type=float, default=5.0)
+    parser.add_argument("--tab-switch-seconds", type=float, default=0.8)
     parser.add_argument(
         "agent_command",
         nargs=argparse.REMAINDER,
@@ -469,9 +551,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         parser.error("--integration-timeout-seconds must be between 1 and 7200")
     if args.agent_command[:1] == ["--"]:
         args.agent_command = args.agent_command[1:]
-    if args.visual and args.agent_command:
-        parser.error("--visual owns the backend command; do not add a command after --")
-    if not args.visual and not args.agent_command:
+    if (args.visual or args.visual_tabs) and args.agent_command:
+        parser.error("bundled visual modes own the backend command; do not add a command after --")
+    if not (args.visual or args.visual_tabs) and not args.agent_command:
         parser.error("an agent backend command is required after --")
     if args.visual:
         if args.response_timeout_seconds < 60:
@@ -492,6 +574,25 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
                 f"visual --workers {args.workers} requires {args.workers} unique --display values"
             )
         args.display = displays
+    if args.visual_tabs:
+        if args.workers > MAX_BROWSER_TABS:
+            parser.error(f"--visual-tabs supports at most {MAX_BROWSER_TABS} workers")
+        if args.tab_page_load_seconds < 1 or args.tab_page_load_seconds > 120:
+            parser.error("--tab-page-load-seconds must be between 1 and 120")
+        if args.tab_switch_seconds < 0.1 or args.tab_switch_seconds > 10:
+            parser.error("--tab-switch-seconds must be between 0.1 and 10")
+        displays = list(dict.fromkeys(args.display))
+        if args.windows:
+            if displays:
+                parser.error("--windows --visual-tabs does not use --display")
+        else:
+            if not displays:
+                inherited_display = os.environ.get("DISPLAY")
+                if inherited_display:
+                    displays.append(inherited_display)
+            if len(displays) != 1:
+                parser.error("--visual-tabs requires exactly one --display on Linux")
+        args.display = displays
     return args
 
 
@@ -507,9 +608,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     worker_script = Path(__file__).with_name("senior_worker.py")
     lock_path = project_root / ".prompt-runner" / "senior-coordinator.lock"
     sessions: dict[tuple[str, str], AgentSession] = {}
+    tab_sessions: dict[tuple[str, str], TabAgentSession] = {}
+    tab_controller: SeniorTabController | None = None
     target_cohort_id: str | None = None
     try:
         while True:
+            for key, session in list(tab_sessions.items()):
+                if _session_cancel_requested(session):
+                    if tab_controller is not None:
+                        tab_controller.cancel(session.slot)
+                    del tab_sessions[key]
             for key, session in list(sessions.items()):
                 if _session_cancel_requested(session):
                     _terminate_session(session)
@@ -555,6 +663,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 active_cohort = coordinator.state.data.get("cohort")
                 if target_cohort_id is None and isinstance(active_cohort, dict):
                     target_cohort_id = str(active_cohort.get("cohort_id"))
+                for key, session in list(tab_sessions.items()):
+                    record = coordinator.state.jobs.get(key[0], {})
+                    if record.get("status") not in {"leased", "running"}:
+                        if tab_controller is not None:
+                            if _session_cancel_requested(session):
+                                tab_controller.cancel(session.slot)
+                            else:
+                                tab_controller.release(session.slot)
+                        del tab_sessions[key]
             for key, session in list(sessions.items()):
                 if _session_cancel_requested(session):
                     _terminate_session(session)
@@ -562,8 +679,78 @@ def main(argv: Sequence[str] | None = None) -> int:
                     del sessions[key]
             for value in tick["leased_requests"]:
                 request_path = Path(value)
-                slot = _available_slot(sessions, args.workers)
-                display = args.display[slot] if args.visual and args.display else None
+                occupied_tab_slots = {session.slot for session in tab_sessions.values()}
+                if args.visual_tabs:
+                    slot = next(
+                        (candidate for candidate in range(args.workers) if candidate not in occupied_tab_slots),
+                        -1,
+                    )
+                    if slot < 0:
+                        raise SeniorLauncherError("coordinator leased more jobs than browser tab slots")
+                else:
+                    slot = _available_slot(sessions, args.workers)
+                display = (
+                    args.display[0]
+                    if args.visual_tabs and args.display
+                    else args.display[slot] if args.visual and args.display else None
+                )
+                if args.visual_tabs:
+                    if tab_controller is None:
+                        tab_controller = SeniorTabController(
+                            workers=args.workers,
+                            display=display,
+                            os_mode="windows" if args.windows else "linux",
+                            ui_module_path=args.ui_module.resolve(),
+                            assets_dir=args.assets.resolve(),
+                            chat_url=args.chat_url,
+                            chat_pane=args.chat_pane,
+                            workflow_file=args.workflow_file.resolve() if args.workflow_file else None,
+                            allow_resolution_mismatch=args.allow_resolution_mismatch,
+                            send_with_enter=args.send_with_enter,
+                            keepalive_click=args.keepalive_click,
+                            keepalive_interval_seconds=args.keepalive_interval_seconds,
+                            response_timeout_seconds=args.response_timeout_seconds,
+                            new_chat_mode=args.new_chat_mode,
+                            page_load_seconds=args.tab_page_load_seconds,
+                            tab_switch_seconds=args.tab_switch_seconds,
+                        )
+                    try:
+                        tab_session = launch_tab_session(
+                            request_path,
+                            controller=tab_controller,
+                            worker_script=worker_script,
+                            slot=slot,
+                            display=display,
+                        )
+                    except (OSError, RuntimeError, SeniorTabControllerError) as exc:
+                        if tab_controller is not None:
+                            tab_controller.release(slot)
+                        write_worker_result(
+                            request_path,
+                            status="FAILED",
+                            error=f"browser tab dispatch failed: {exc}",
+                            failure_type="TAB_DISPATCH",
+                            retryable=True,
+                        )
+                        continue
+                    tab_sessions[tab_session.key] = tab_session
+                    print(
+                        json.dumps(
+                            {
+                                "event": "agent.tab_dispatched",
+                                "job_id": tab_session.key[0],
+                                "attempt_id": tab_session.key[1],
+                                "worker_slot": tab_session.slot,
+                                "browser_tab_number": tab_session.slot + 1,
+                                "display": tab_session.display,
+                                "workspace": str(tab_session.workspace),
+                            },
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
+                        flush=True,
+                    )
+                    continue
                 command_template = (
                     _visual_command(args, display)
                     if args.visual
@@ -603,12 +790,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ),
                     flush=True,
                 )
-            if args.one_cohort and target_cohort_id and not sessions:
+            if args.one_cohort and target_cohort_id and not sessions and not tab_sessions:
                 current = coordinator.state.data.get("cohort")
                 if not isinstance(current, dict) or current.get("cohort_id") != target_cohort_id:
                     return 0
             time.sleep(args.check_every_seconds)
     except KeyboardInterrupt:
+        for session in tab_sessions.values():
+            request = _load_json(session.request_path)
+            Path(str(request["cancel_file"])).write_text(
+                '{"schema_version":1,"reason":"launcher interrupted"}\n',
+                encoding="utf-8",
+            )
+            if tab_controller is not None:
+                tab_controller.cancel(session.slot)
         for session in sessions.values():
             request = _load_json(session.request_path)
             Path(str(request["cancel_file"])).write_text(
@@ -618,7 +813,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             _terminate_session(session)
             session.close_output()
         return 130
-    except (RuntimeError, SeniorStateError, SeniorWorkerResultError, SeniorLauncherError) as exc:
+    except (
+        RuntimeError,
+        SeniorStateError,
+        SeniorWorkerResultError,
+        SeniorLauncherError,
+        SeniorTabControllerError,
+    ) as exc:
         print(f"SENIOR_LAUNCHER_ERROR: {exc}", file=sys.stderr)
         return 2
 

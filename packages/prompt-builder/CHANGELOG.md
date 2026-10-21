@@ -1,5 +1,14 @@
 # @vigilio-services/prompt-builder
 
+## 0.11.0
+
+### Minor Changes
+
+- Add single-display multi-tab Senior Mode: one browser controller dispatches up to eight independent
+  chats while structured `result.json` files, not visual emoji, determine completion.
+- Persist an attempt-to-tab mapping, reuse fixed tabs between waves and cancel only the affected slot.
+- Allow the UI runtime to omit READY/BLOCKED image assets when structured-result mode is active.
+
 ## 0.10.0
 
 ### Minor Changes

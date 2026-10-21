@@ -147,7 +147,7 @@ def require_gui_automation_dependencies() -> None:
 # GLOBAL CONFIGURATION — requested defaults
 # ============================================================
 
-SCRIPT_VERSION = "2026.10.12-v35-configurable-runtime"
+SCRIPT_VERSION = "2026.10.21-v36-structured-tabs"
 SCRIPT_DIR = Path(__file__).resolve().parent
 # The legacy assets/ folder contains mixed-generation footer captures.  Use a
 # coherent current dark-theme profile by default; light-theme runs can select
@@ -2584,6 +2584,7 @@ def validate_runtime(
     assets_dir: Path,
     need_new_chat: bool,
     allow_resolution_mismatch: bool,
+    need_status_markers: bool = True,
 ) -> None:
     global ASSET_STATUS_6, ASSET_STATUS_4, ALWAYS_ALLOW_ENABLED, ASSET_COPY_RESPONSE, COPY_RESPONSE_ENABLED
 
@@ -2633,16 +2634,19 @@ def validate_runtime(
             "Blocker history will still keep timestamps/status/screenshots."
         )
 
-    ASSET_STATUS_6 = _resolve_first_existing_asset(
-        assets_dir,
-        ASSET_STATUS_6_CANDIDATES,
-        "COMPLETE / 6 thumbs-up",
-    )
-    ASSET_STATUS_4 = _resolve_first_existing_asset(
-        assets_dir,
-        ASSET_STATUS_4_CANDIDATES,
-        "INCOMPLETE / 4 thumbs-down",
-    )
+    if need_status_markers:
+        ASSET_STATUS_6 = _resolve_first_existing_asset(
+            assets_dir,
+            ASSET_STATUS_6_CANDIDATES,
+            "COMPLETE / 6 thumbs-up",
+        )
+        ASSET_STATUS_4 = _resolve_first_existing_asset(
+            assets_dir,
+            ASSET_STATUS_4_CANDIDATES,
+            "INCOMPLETE / 4 thumbs-down",
+        )
+    else:
+        logging.info("Structured-result mode: visual READY/BLOCKED markers are not required.")
 
     if os_mode == "linux" and not os.environ.get("DISPLAY"):
         logging.warning(
