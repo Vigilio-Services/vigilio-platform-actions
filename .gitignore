@@ -14,3 +14,4 @@ __pycache__/
 .chatgpt_docs_automation_progress.json
 .chatgpt_docs_automation_progress.json.tmp
 .DS_Store
+/packages/prompt-builder/*.zip
