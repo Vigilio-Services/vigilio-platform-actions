@@ -12,7 +12,13 @@ from pathlib import Path
 
 from prompt_builder_compat import PromptBuilderCompatibilityError, load_execution_plan
 from senior_queue import SeniorCoordinator
-from senior_agent_launcher import launch_agent_session, record_unreported_exit
+from senior_agent_launcher import (
+    _visual_command,
+    launch_agent_session,
+    parse_args as parse_launcher_args,
+    prepare_workspace,
+    record_unreported_exit,
+)
 from senior_scheduler import ResourceClaims, SeniorJob, SeniorPlanError, SeniorScheduler
 from senior_state import SeniorStateError, SeniorStateStore
 from senior_worker import (
@@ -546,6 +552,52 @@ class SeniorWorkerTests(unittest.TestCase):
 
 
 class SeniorAgentLauncherTests(unittest.TestCase):
+    def test_visual_mode_preserves_legacy_ui_flags_and_dynamic_displays(self) -> None:
+        args = parse_launcher_args(
+            [
+                "--project-root", ".",
+                "--prompts-dir", "generated/prompts/full-project",
+                "--workers", "4",
+                "--visual",
+                "--linux",
+                "--display", ":1",
+                "--display", ":2",
+                "--display", ":3",
+                "--display", ":4",
+                "--chat-pane", "auto",
+                "--send-with-enter",
+                "--new-chat-mode", "each",
+                "--automation",
+                "--auto-apply-recommended",
+                "--retry-blocked",
+                "--retry-interrupted",
+                "--include-context-only",
+            ]
+        )
+
+        command = _visual_command(args, args.display[2])
+
+        self.assertEqual(args.display, [":1", ":2", ":3", ":4"])
+        self.assertIn("{request}", command)
+        self.assertIn("--send-with-enter", command)
+        self.assertIn("--new-chat-mode", command)
+        self.assertIn("--auto-apply-recommended", command)
+        self.assertIn("--retry-interrupted", command)
+        self.assertEqual(command[command.index("--display") + 1], ":3")
+
+    def test_visual_mode_rejects_shared_display_for_multiple_workers(self) -> None:
+        with self.assertRaises(SystemExit):
+            parse_launcher_args(
+                [
+                    "--prompts-dir", "generated/prompts/full-project",
+                    "--workers", "2",
+                    "--visual",
+                    "--linux",
+                    "--display", ":1",
+                    "--display", ":1",
+                ]
+            )
+
     def test_six_leases_launch_six_distinct_agent_processes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -774,6 +826,80 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                 "the stale attempt must receive a cancellation marker",
             )
 
+    def test_supervisor_integrates_and_validates_complete_phase_wave(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "config", "user.email", "senior-mode@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(
+                ["git", "config", "user.name", "Senior Mode Test"],
+                cwd=root,
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "fixture"], cwd=root, check=True, capture_output=True)
+            prompts = self._write_v3_plan(root, pack_count=2)
+            subprocess.run(["git", "add", "generated"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "plan"], cwd=root, check=True, capture_output=True)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            requests = coordinator.lease_ready(max_workers=2, ttl_seconds=60, cohort_size=2)
+
+            for request_path in requests:
+                request = json.loads(request_path.read_text(encoding="utf-8"))
+                workspace = prepare_workspace(request_path)
+                pack = request["pack"]
+                changed = f"openspec/changes/{pack}/proposal.md"
+                target = workspace / changed
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(f"proposal {pack}\n", encoding="utf-8")
+                subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+                subprocess.run(
+                    ["git", "commit", "-m", f"propose {pack}"],
+                    cwd=workspace,
+                    check=True,
+                    capture_output=True,
+                )
+                commit = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=workspace,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                write_worker_result(
+                    request_path,
+                    status="PASS",
+                    result_commit=commit,
+                    changed_files=[changed],
+                    checks=[{"command": "focused-test", "exit_code": 0}],
+                )
+
+            tick = coordinator.supervise_tick(
+                max_workers=2,
+                ttl_seconds=60,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                cohort_size=2,
+                integration_checks=[[sys.executable, "-c", "raise SystemExit(0)"]],
+            )
+
+            self.assertEqual(set(tick["results_submitted"]), {"a:propose", "b:propose"})
+            self.assertEqual(set(tick["integration"]["validated"]), {"a:propose", "b:propose"})
+            self.assertEqual(coordinator.state.statuses()["a:propose"], "done")
+            self.assertEqual(coordinator.state.statuses()["b:propose"], "done")
+            self.assertTrue((root / "openspec/changes/a/proposal.md").is_file())
+            self.assertTrue((root / "openspec/changes/b/proposal.md").is_file())
+
     def test_coordinator_persists_vertical_cohorts_and_then_advances(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -807,6 +933,7 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
 
             self.assertEqual(len(first), 2)
             self.assertEqual(coordinator.state.data["cohort"]["packs"], ["a", "b"])
+            first_cohort_id = coordinator.state.data["cohort"]["cohort_id"]
             for request_path in first:
                 request = json.loads(request_path.read_text(encoding="utf-8"))
                 coordinator.state.record_result(
@@ -821,6 +948,18 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                 coordinator.state.mark_validated(request["job_id"])
                 coordinator.state.mark_done(request["job_id"], integrated_commit="2" * 40)
 
+            stopped = coordinator.supervise_tick(
+                max_workers=6,
+                ttl_seconds=30,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                cohort_size=2,
+                stop_after_cohort_id=first_cohort_id,
+            )
+
+            self.assertEqual(stopped["leased_requests"], [])
+            self.assertIsNone(coordinator.state.data["cohort"])
             second = coordinator.lease_ready(max_workers=6, ttl_seconds=30, cohort_size=2)
 
             self.assertEqual(len(second), 1)

@@ -315,9 +315,31 @@ class SeniorStateStore:
         record["stalled_at"] = None
         self._commit(event, job_id=job_id)
 
+    def mark_merged(self, job_id: str, *, integrated_commit: str) -> None:
+        if not re.fullmatch(r"[a-fA-F0-9]{7,64}", integrated_commit):
+            raise SeniorStateError("integrated_commit is not a Git object id")
+        record = self._transition(job_id, {"produced"}, "merge_pending")
+        record["integrated_commit"] = integrated_commit.lower()
+        self._commit(
+            "job.merged",
+            job_id=job_id,
+            data={"integrated_commit": integrated_commit.lower()},
+        )
+
     def mark_validated(self, job_id: str) -> None:
-        record = self._transition(job_id, {"produced"}, "validated")
+        record = self._transition(job_id, {"produced", "merge_pending"}, "validated")
         self._commit("job.validated", job_id=job_id, data={"commit": record.get("result", {}).get("result_commit")})
+
+    def mark_integration_failed(self, job_id: str, *, error: str) -> None:
+        record = self._transition(job_id, {"produced", "merge_pending"}, "failed")
+        record["last_error"] = error[:2000]
+        record["result"] = {
+            "status": "FAILED",
+            "failure_type": "INTEGRATION_FAILED",
+            "error": error[:2000],
+            "retryable": True,
+        }
+        self._commit("job.integration_failed", job_id=job_id, data={"error": error[:2000]})
 
     def mark_done(self, job_id: str, *, integrated_commit: str) -> None:
         if not re.fullmatch(r"[a-fA-F0-9]{7,64}", integrated_commit):

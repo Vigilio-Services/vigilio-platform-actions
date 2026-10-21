@@ -1,5 +1,17 @@
 # @vigilio-services/prompt-builder
 
+## 0.10.0
+
+### Minor Changes
+
+- Add the bundled multi-display visual adapter so every Senior Mode lease maps to one isolated
+  ChatGPT UI session while preserving the legacy UI flags.
+- Make structured results and verified Git commits authoritative; visual markers only signal that a
+  response is ready to inspect.
+- Integrate a complete phase wave in deterministic order and run configured integration checks
+  before the next phase is leased.
+- Terminate stale owned sessions after cancellation and preserve dynamic `--workers 1..64` safety.
+
 ## 0.9.0
 
 ### Minor Changes

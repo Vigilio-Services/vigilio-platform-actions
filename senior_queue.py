@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from chatgpt_automation_lock import RunLock
 from prompt_builder_compat import ExecutionPlan, load_execution_plan
@@ -35,7 +35,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.2.0"
+SCRIPT_VERSION = "1.3.0"
 MAX_WORKERS = 64
 
 
@@ -76,6 +76,19 @@ def _git_head(project_root: Path) -> str:
     if completed.returncode != 0 or not value:
         raise RuntimeError("Senior Mode requires a Git repository with a valid HEAD")
     return value
+
+
+def _git(project_root: Path, arguments: Sequence[str], *, timeout: int = 120) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *arguments],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
+    )
 
 
 def _claims_json(claims: ResourceClaims) -> dict[str, Any]:
@@ -365,6 +378,173 @@ class SeniorCoordinator:
         self.state.record_result(job_id, token=lease["token"], result=report)
         return report
 
+    def _attempt_request(self, job_id: str) -> dict[str, Any]:
+        record = self.state.jobs[job_id]
+        attempt = int(record.get("attempt", 0))
+        path = (
+            self.state.root
+            / "jobs"
+            / job_id.replace(":", "__")
+            / f"attempt-{attempt:04d}"
+            / "request.json"
+        )
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SeniorStateError(f"cannot read integration request for {job_id}: {exc}") from exc
+        if not isinstance(value, dict):
+            raise SeniorStateError(f"invalid integration request for {job_id}")
+        return value
+
+    def _validate_result_commit(self, job_id: str) -> tuple[str, str]:
+        record = self.state.jobs[job_id]
+        result = record.get("result")
+        if not isinstance(result, dict):
+            raise SeniorStateError(f"produced job has no result: {job_id}")
+        commit = str(result.get("result_commit", ""))
+        request = self._attempt_request(job_id)
+        base_sha = str(request.get("base_sha", ""))
+        exists = _git(self.project_root, ["cat-file", "-e", f"{commit}^{{commit}}"])
+        if exists.returncode != 0:
+            raise SeniorStateError(f"worker commit does not exist for {job_id}: {commit}")
+        ancestor = _git(self.project_root, ["merge-base", "--is-ancestor", base_sha, commit])
+        if ancestor.returncode != 0:
+            raise SeniorStateError(f"worker commit is not based on the leased SHA for {job_id}")
+        count = _git(self.project_root, ["rev-list", "--count", f"{base_sha}..{commit}"])
+        if count.returncode != 0 or count.stdout.strip() != "1":
+            raise SeniorStateError(
+                f"worker result must contain exactly one commit for {job_id}; "
+                f"found {count.stdout.strip() or 'unknown'}"
+            )
+        diff_check = _git(self.project_root, ["diff", "--check", base_sha, commit])
+        if diff_check.returncode != 0:
+            raise SeniorStateError(
+                f"worker commit has whitespace errors for {job_id}: "
+                f"{(diff_check.stderr or diff_check.stdout).strip()[-1000:]}"
+            )
+        changed = _git(self.project_root, ["diff", "--name-only", base_sha, commit])
+        if changed.returncode != 0:
+            raise SeniorStateError(f"cannot inspect worker commit for {job_id}")
+        actual = {line.strip().replace("\\", "/") for line in changed.stdout.splitlines() if line.strip()}
+        declared = {
+            str(path).strip().replace("\\", "/")
+            for path in result.get("changed_files", [])
+            if str(path).strip()
+        }
+        if actual != declared:
+            raise SeniorStateError(
+                f"worker changed_files mismatch for {job_id}: "
+                f"declared={sorted(declared)} actual={sorted(actual)}"
+            )
+        return base_sha, commit
+
+    def integrate_ready_phase(
+        self,
+        *,
+        check_commands: Sequence[Sequence[str]] = (),
+        timeout_seconds: int = 1800,
+    ) -> dict[str, Any]:
+        """Integrate a complete phase wave; never test against half-written worktrees."""
+        statuses = self.state.statuses()
+        packs = self._current_cohort_packs()
+        phase = self.scheduler.active_phase(statuses, allowed_packs=packs)
+        if not phase:
+            return {"phase": None, "integrated": [], "validated": [], "waiting": []}
+        phase_jobs = [
+            job for job in self.jobs if job.phase == phase and (packs is None or job.pack in packs)
+        ]
+        waiting = [
+            job.job_id
+            for job in phase_jobs
+            if statuses[job.job_id] not in {"produced", "merge_pending", "done"}
+        ]
+        if waiting:
+            return {"phase": phase, "integrated": [], "validated": [], "waiting": waiting}
+
+        dirty = _git(self.project_root, ["status", "--porcelain", "--untracked-files=no"])
+        if dirty.returncode != 0 or dirty.stdout.strip():
+            raise SeniorStateError("integration root has tracked changes; refusing automatic cherry-pick")
+
+        integrated: list[str] = []
+        for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id)):
+            record = self.state.jobs[job.job_id]
+            if record.get("status") != "produced":
+                continue
+            try:
+                _base_sha, commit = self._validate_result_commit(job.job_id)
+                cherry_pick = _git(self.project_root, ["cherry-pick", commit], timeout=timeout_seconds)
+                if cherry_pick.returncode != 0:
+                    _git(self.project_root, ["cherry-pick", "--abort"])
+                    detail = (cherry_pick.stderr or cherry_pick.stdout).strip()[-1600:]
+                    raise SeniorStateError(f"cherry-pick conflict for {job.job_id}: {detail}")
+                integrated_head = _git_head(self.project_root)
+                self.state.mark_merged(job.job_id, integrated_commit=integrated_head)
+                integrated.append(job.job_id)
+            except (OSError, subprocess.SubprocessError, SeniorStateError) as exc:
+                if self.state.jobs[job.job_id].get("status") in {"produced", "merge_pending"}:
+                    self.state.mark_integration_failed(job.job_id, error=str(exc))
+                return {
+                    "phase": phase,
+                    "integrated": integrated,
+                    "validated": [],
+                    "waiting": [],
+                    "error": str(exc),
+                }
+
+        validation_error: str | None = None
+        for command in check_commands:
+            if not command:
+                continue
+            try:
+                completed = subprocess.run(
+                    list(command),
+                    cwd=self.project_root,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=timeout_seconds,
+                    check=False,
+                    shell=False,
+                )
+                if completed.returncode != 0:
+                    detail = (completed.stderr or completed.stdout).strip()[-1600:]
+                    validation_error = f"integration check failed ({' '.join(command)}): {detail}"
+                    break
+            except (OSError, subprocess.SubprocessError) as exc:
+                validation_error = f"integration check could not run ({' '.join(command)}): {exc}"
+                break
+
+        merge_pending = [
+            job for job in sorted(phase_jobs, key=lambda item: (item.sequence, item.job_id))
+            if self.state.jobs[job.job_id].get("status") == "merge_pending"
+        ]
+        if validation_error and merge_pending:
+            for job in merge_pending[:-1]:
+                self.state.mark_validated(job.job_id)
+                self.state.mark_done(
+                    job.job_id,
+                    integrated_commit=str(self.state.jobs[job.job_id]["integrated_commit"]),
+                )
+            self.state.mark_integration_failed(merge_pending[-1].job_id, error=validation_error)
+            return {
+                "phase": phase,
+                "integrated": integrated,
+                "validated": [job.job_id for job in merge_pending[:-1]],
+                "waiting": [],
+                "error": validation_error,
+            }
+
+        validated: list[str] = []
+        for job in merge_pending:
+            self.state.mark_validated(job.job_id)
+            self.state.mark_done(
+                job.job_id,
+                integrated_commit=str(self.state.jobs[job.job_id]["integrated_commit"]),
+            )
+            validated.append(job.job_id)
+        return {"phase": phase, "integrated": integrated, "validated": validated, "waiting": []}
+
     def supervise_tick(
         self,
         *,
@@ -374,6 +554,9 @@ class SeniorCoordinator:
         stall_grace_seconds: int,
         max_retries: int,
         cohort_size: int | None = None,
+        integration_checks: Sequence[Sequence[str]] = (),
+        integration_timeout_seconds: int = 1800,
+        stop_after_cohort_id: str | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         _validate_workers(max_workers)
@@ -483,11 +666,36 @@ class SeniorCoordinator:
         newly_retryable = self.state.recover_retryable_results(
             max_attempts=max_retries + 1
         )
-        leased = self.lease_ready(
-            max_workers=max_workers,
-            ttl_seconds=ttl_seconds,
-            cohort_size=cohort_size,
+        integration = self.integrate_ready_phase(
+            check_commands=integration_checks,
+            timeout_seconds=integration_timeout_seconds,
         )
+        post_integration_recovery = self.state.recover_retryable_results(
+            max_attempts=max_retries + 1
+        )
+        active_cohort = self.state.data.get("cohort")
+        stop_cohort_complete = bool(
+            stop_after_cohort_id
+            and isinstance(active_cohort, dict)
+            and active_cohort.get("cohort_id") == stop_after_cohort_id
+            and self._cohort_is_complete(
+                frozenset(str(pack) for pack in active_cohort.get("packs", [])),
+                self.state.statuses(),
+            )
+        )
+        if integration.get("integrated"):
+            # Git HEAD changed.  Do not lease from a stale preflight in this
+            # tick; the launcher reruns its configured preflight next tick.
+            leased = []
+        elif stop_cohort_complete:
+            self.state.close_cohort()
+            leased: list[Path] = []
+        else:
+            leased = self.lease_ready(
+                max_workers=max_workers,
+                ttl_seconds=ttl_seconds,
+                cohort_size=cohort_size,
+            )
         return {
             "checked_at": current.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
             "heartbeats_observed": observed,
@@ -499,6 +707,7 @@ class SeniorCoordinator:
                         *recovery["retried"],
                         *retryable_recovery["retried"],
                         *newly_retryable["retried"],
+                        *post_integration_recovery["retried"],
                     )
                 )
             ),
@@ -508,10 +717,12 @@ class SeniorCoordinator:
                         *recovery["exhausted"],
                         *retryable_recovery["exhausted"],
                         *newly_retryable["exhausted"],
+                        *post_integration_recovery["exhausted"],
                     )
                 )
             ),
             "leased_requests": [str(path) for path in leased],
+            "integration": integration,
             "errors": errors,
             "status": self.status_report(),
         }

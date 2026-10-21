@@ -1,4 +1,4 @@
-# Senior Mode (Prompt Builder 0.9)
+# Senior Mode (Prompt Builder 0.10)
 
 Senior Mode coordinates a bounded dynamic pool of isolated prompt jobs while preserving the
 existing one-prompt-at-a-time runner.
@@ -10,7 +10,10 @@ existing one-prompt-at-a-time runner.
 - Execution-plan schema v3 enables concurrency only for jobs whose prompt packs
   declare complete, non-conflicting resource claims.
 - `chatgpt_prompt_queue.py` visual automation remains capacity one because it
-  shares one screen, cursor and clipboard.
+  shares one screen, cursor and clipboard. Use it unchanged for `--workers 1`.
+- `senior_agent_launcher.py --visual --workers N` supports visual parallelism
+  only when it receives N distinct Linux X11 displays. It never multiplexes
+  multiple workers through one cursor or clipboard.
 - `senior_agent_launcher.py --workers N` invokes the configured agent adapter N
   times. Every invocation must create one new independent chat/session and stay
   attached until that agent finishes.
@@ -134,6 +137,43 @@ adapter command is intentionally provider-neutral: Codex, OpenCode,
 Antigravity, an API adapter, or another agent runtime can implement it without
 changing the scheduler protocol.
 
+The launcher can run and pin that preflight itself. This is the complete visual
+four-worker form; add or remove `--display` entries together with `--workers`:
+
+```bash
+python3 senior_agent_launcher.py \
+  --project-root /path/to/consumer \
+  --prompts-dir /path/to/consumer/generated/prompts/full-project \
+  --workers 4 \
+  --cohort-size 4 \
+  --check-every-seconds 15 \
+  --heartbeat-timeout-seconds 120 \
+  --stall-grace-seconds 30 \
+  --max-retries 2 \
+  --preflight-command-json '["bash","scripts/preflight-env.sh"]' \
+  --integration-check-json '["pnpm","test"]' \
+  --visual --linux \
+  --display :1 --display :2 --display :3 --display :4 \
+  --ui-module ./chatgpt_docs_automation.py \
+  --assets ./opencode-assets \
+  --chat-pane auto \
+  --keepalive-click \
+  --keepalive-interval-seconds 30 \
+  --response-timeout-seconds 5400 \
+  --send-with-enter \
+  --new-chat-mode each \
+  --automation \
+  --auto-apply-recommended \
+  --retry-blocked \
+  --retry-interrupted \
+  --include-context-only
+```
+
+Every display gets one process, worktree, request, heartbeat, session log and
+result. The legacy flags were not removed; the bundled visual adapter consumes
+them per request. Windows remains one visual worker because multiple isolated
+interactive desktops are not provisioned by this launcher.
+
 The launcher defaults `--cohort-size` to `--workers`. The active cohort is
 persisted in `state.json`, so restarts and a later worker-count change cannot
 silently replace its membership:
@@ -212,7 +252,7 @@ same command is requested twice in the same attempt, an active duplicate is
 rejected and a completed result is reused. A deliberate re-run must supply a
 different `--retry-id`.
 
-Agents finish without visual emoji detection:
+Agents finish by writing structured evidence:
 
 ```powershell
 python senior_worker.py complete `
@@ -255,8 +295,11 @@ resource conflicts still serialize unsafe pairs. One failing job never rewinds
 completed siblings.
 
 The state machine does not use an OS cron, visual hearts or chat visibility as
-truth. `supervise` is the central Python watchdog; leases, heartbeat, structured
-results, Git commits and reproducible checks are the evidence.
+truth. In visual mode ❤️/👎 only wakes the display adapter; it cannot mark a job
+done. `supervise` is the central Python watchdog; leases, heartbeat, structured
+results, verified Git diffs, ordered cherry-picks and reproducible checks are
+the evidence. A complete phase wave is integrated and checked before the next
+phase is leased.
 
 ## Safety rules
 
@@ -272,7 +315,8 @@ results, Git commits and reproducible checks are the evidence.
   stale leases, and out-of-scope changed files fail closed.
 - Backend adapters for Antigravity, OpenCode, CLI/API agents or independent
   desktops consume the same request/heartbeat/result protocol.
-- The launcher starts one adapter process per chat, but provider-specific chat
-  creation and commit integration remain explicit adapter operations; the
-  coordinator never guesses a provider API or silently marks an unintegrated
-  commit done.
+- The launcher starts one adapter process per chat. Provider-specific chat
+  creation remains an adapter operation; commit validation and ordered
+  integration are coordinator operations. A declared file list that differs
+  from the actual Git diff, a conflict, or a failed integration check fails
+  closed and retries only the responsible job within the configured limit.
