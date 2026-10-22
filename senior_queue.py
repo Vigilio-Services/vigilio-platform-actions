@@ -12,11 +12,13 @@ import argparse
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -37,7 +39,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.4.0"
+SCRIPT_VERSION = "1.4.1"
 MAX_WORKERS = 64
 
 
@@ -61,6 +63,11 @@ def _parse_timestamp(value: Any) -> datetime:
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _is_audit_job(job: SeniorJob) -> bool:
+    """Return whether a job must prove results without mutating the repository."""
+    return job.phase == "review" or job.claims.isolation == "read-only"
 
 
 def _git_head(project_root: Path) -> str:
@@ -266,6 +273,9 @@ class SeniorCoordinator:
                 "preflight is missing or stale for the current plan/base SHA; run the preflight command first"
             )
         ready = self.ready(max_workers=max_workers, cohort_size=cohort_size)
+        for job in ready:
+            next_attempt = int(self.state.jobs[job.job_id].get("attempt", 0)) + 1
+            self._quarantine_existing_attempt(job.job_id, f"attempt-{next_attempt:04d}")
         leases = self.state.lease(
             [job.job_id for job in ready],
             ttl_seconds=ttl_seconds,
@@ -278,6 +288,7 @@ class SeniorCoordinator:
             attempt_root = self.state.root / "jobs" / job_id.replace(":", "__") / lease["attempt_id"]
             attempt_root.mkdir(parents=True, exist_ok=False)
             worktree_required = job.claims.isolation == "dedicated-worktree"
+            result_mode = "audit" if _is_audit_job(job) else "commit"
             request = {
                 "schema_version": 1,
                 "workflow_id": self.plan.plan_id,
@@ -303,6 +314,7 @@ class SeniorCoordinator:
                 "commands_dir": str(attempt_root / "commands"),
                 "cancel_file": str(attempt_root / "cancel.json"),
                 "worktree_required": worktree_required,
+                "result_mode": result_mode,
                 "concurrency": _claims_json(job.claims),
                 "terminal_safety": {
                     "heartbeat_required": True,
@@ -317,6 +329,43 @@ class SeniorCoordinator:
             )
             request_paths.append(request_path)
         return request_paths
+
+    def _quarantine_existing_attempt(self, job_id: str, attempt_id: str) -> None:
+        """Preserve an unexpected attempt directory without reusing stale tokens."""
+        job_root = self.state.root / "jobs" / job_id.replace(":", "__")
+        attempt_root = job_root / attempt_id
+        if not attempt_root.exists() and not attempt_root.is_symlink():
+            return
+        quarantine_root = self.state.root / "orphaned" / job_id.replace(":", "__")
+        quarantine_root.mkdir(parents=True, exist_ok=True)
+        stamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
+        destination = quarantine_root / f"{attempt_id}-{stamp}-{uuid.uuid4().hex[:8]}"
+        attempt_root.replace(destination)
+        metadata = {
+            "schema_version": 1,
+            "job_id": job_id,
+            "attempt_id": attempt_id,
+            "quarantined_at": _now().isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "reason": "attempt directory existed before a new lease and may contain stale tokens",
+        }
+        (destination / "quarantine.json").write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    @staticmethod
+    def _quarantine_invalid_attempt_file(path: Path, *, reason: str) -> Path:
+        """Move a stale attempt artifact aside so it cannot fail every poll."""
+        quarantine = path.parent / "invalid"
+        quarantine.mkdir(parents=True, exist_ok=True)
+        stamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
+        destination = quarantine / f"{path.stem}-{stamp}-{uuid.uuid4().hex[:8]}{path.suffix}"
+        path.replace(destination)
+        (destination.with_suffix(destination.suffix + ".reason.txt")).write_text(
+            reason.strip() + "\n",
+            encoding="utf-8",
+        )
+        return destination
 
     def run_preflight(self, command: list[str], *, timeout_seconds: int) -> dict[str, Any]:
         if not command:
@@ -421,6 +470,8 @@ class SeniorCoordinator:
             if attempt < 1:
                 continue
             attempt_id = f"attempt-{attempt:04d}"
+            if record.get("last_result_attempt") == attempt_id:
+                continue
             result_file = (
                 self.state.root
                 / "jobs"
@@ -456,6 +507,7 @@ class SeniorCoordinator:
         return value
 
     def _validate_result_commit(self, job_id: str) -> tuple[str, str]:
+        job = self.by_id[job_id]
         record = self.state.jobs[job_id]
         result = record.get("result")
         if not isinstance(result, dict):
@@ -466,6 +518,22 @@ class SeniorCoordinator:
         exists = _git(self.project_root, ["cat-file", "-e", f"{commit}^{{commit}}"])
         if exists.returncode != 0:
             raise SeniorStateError(f"worker commit does not exist for {job_id}: {commit}")
+        if _is_audit_job(job):
+            if commit != base_sha:
+                raise SeniorStateError(
+                    f"audit result must report its leased base SHA for {job_id}: {commit} != {base_sha}"
+                )
+            if result.get("changed_files"):
+                raise SeniorStateError(f"audit result changed files for {job_id}")
+            workspace = Path(str(request.get("workspace_root", self.project_root)))
+            if workspace.is_dir() and (workspace / ".git").exists():
+                head = _git(workspace, ["rev-parse", "HEAD"])
+                dirty = _git(workspace, ["status", "--porcelain", "--untracked-files=all"])
+                if head.returncode != 0 or head.stdout.strip() != base_sha:
+                    raise SeniorStateError(f"audit workspace moved away from its leased base for {job_id}")
+                if dirty.returncode != 0 or dirty.stdout.strip():
+                    raise SeniorStateError(f"audit workspace contains repository changes for {job_id}")
+            return base_sha, commit
         ancestor = _git(self.project_root, ["merge-base", "--is-ancestor", base_sha, commit])
         if ancestor.returncode != 0:
             raise SeniorStateError(f"worker commit is not based on the leased SHA for {job_id}")
@@ -476,7 +544,11 @@ class SeniorCoordinator:
                 f"found {count.stdout.strip() or 'unknown'}"
             )
         diff_check = _git(self.project_root, ["diff", "--check", base_sha, commit])
-        if diff_check.returncode != 0:
+        if diff_check.returncode != 0 and not self._only_markdown_blank_eof(
+            base_sha=base_sha,
+            commit=commit,
+            output=(diff_check.stderr or diff_check.stdout),
+        ):
             raise SeniorStateError(
                 f"worker commit has whitespace errors for {job_id}: "
                 f"{(diff_check.stderr or diff_check.stdout).strip()[-1000:]}"
@@ -496,6 +568,21 @@ class SeniorCoordinator:
                 f"declared={sorted(declared)} actual={sorted(actual)}"
             )
         return base_sha, commit
+
+    def _only_markdown_blank_eof(self, *, base_sha: str, commit: str, output: str) -> bool:
+        """Allow only Git's harmless blank-at-EOF finding for Markdown files."""
+        offenders = []
+        for line in output.splitlines():
+            match = re.match(r"^(.*?):\d+:\s+new blank line at EOF\.\s*$", line.strip())
+            if match:
+                offenders.append(match.group(1))
+        if not offenders or any(Path(path).suffix.casefold() not in {".md", ".mdx"} for path in offenders):
+            return False
+        relaxed = _git(
+            self.project_root,
+            ["-c", "core.whitespace=-blank-at-eof", "diff", "--check", base_sha, commit],
+        )
+        return relaxed.returncode == 0
 
     def _run_integration_checks(
         self,
@@ -537,6 +624,11 @@ class SeniorCoordinator:
         workspace = temporary_root / "worktree"
         attached = False
         try:
+            pruned = _git(self.project_root, ["worktree", "prune"])
+            if pruned.returncode != 0:
+                raise SeniorStateError(
+                    f"cannot prune stale integration worktrees: {(pruned.stderr or pruned.stdout).strip()[-1600:]}"
+                )
             add = _git(
                 self.project_root,
                 ["worktree", "add", "--detach", str(workspace), base_sha],
@@ -718,7 +810,64 @@ class SeniorCoordinator:
 
         dirty = _git(self.project_root, ["status", "--porcelain", "--untracked-files=no"])
         if dirty.returncode != 0 or dirty.stdout.strip():
-            raise SeniorStateError("integration root has tracked changes; refusing automatic cherry-pick")
+            raise SeniorStateError("integration root has tracked changes; refusing automatic validation")
+
+        audit_jobs = [job for job in produced if _is_audit_job(job)]
+        if audit_jobs:
+            if len(audit_jobs) != len(produced):
+                error = "one integration subwave cannot mix mutating jobs with read-only audits"
+                for job in produced:
+                    self.state.mark_integration_failed(job.job_id, error=error)
+                return {
+                    "phase": phase,
+                    "integrated": [],
+                    "validated": [],
+                    "waiting": [],
+                    "error": error,
+                }
+            current_head = _git_head(self.project_root)
+            try:
+                for job in audit_jobs:
+                    base_sha, _commit = self._validate_result_commit(job.job_id)
+                    if base_sha != current_head:
+                        raise SeniorStateError(
+                            f"audit base is stale for {job.job_id}: {base_sha} != {current_head}"
+                        )
+            except SeniorStateError as exc:
+                for job in audit_jobs:
+                    self.state.mark_integration_failed(job.job_id, error=str(exc))
+                return {
+                    "phase": phase,
+                    "integrated": [],
+                    "validated": [],
+                    "waiting": [],
+                    "error": str(exc),
+                }
+            validation_error = self._run_integration_checks(
+                check_commands,
+                timeout_seconds=timeout_seconds,
+            )
+            if validation_error:
+                for job in audit_jobs:
+                    self.state.mark_integration_failed(job.job_id, error=validation_error)
+                return {
+                    "phase": phase,
+                    "integrated": [],
+                    "validated": [],
+                    "waiting": [],
+                    "error": validation_error,
+                }
+            validated: list[str] = []
+            for job in audit_jobs:
+                self.state.mark_validated(job.job_id)
+                self.state.mark_done(job.job_id, integrated_commit=current_head)
+                validated.append(job.job_id)
+            return {
+                "phase": phase,
+                "integrated": [],
+                "validated": validated,
+                "waiting": [],
+            }
 
         try:
             source_commits: list[str] = []
@@ -842,6 +991,17 @@ class SeniorCoordinator:
                         observed.append(job_id)
                 except (SeniorStateError, SeniorWorkerResultError, OSError) as exc:
                     errors[job_id] = f"invalid heartbeat: {exc}"
+                    if (
+                        heartbeat_file.is_file()
+                        and "stale or mismatched" in str(exc).casefold()
+                    ):
+                        try:
+                            self._quarantine_invalid_attempt_file(
+                                heartbeat_file,
+                                reason=str(exc),
+                            )
+                        except OSError as quarantine_error:
+                            errors[job_id] += f"; quarantine failed: {quarantine_error}"
             refreshed = self.state.jobs[job_id]
             refreshed_lease = refreshed.get("lease")
             if not isinstance(refreshed_lease, dict):

@@ -71,6 +71,22 @@ class DocsAutomationDryRunTests(unittest.TestCase):
         finally:
             runner.CHAT_PANE_POLICY = previous
 
+    def test_editor_roi_expands_to_full_anchor_on_narrow_screen(self) -> None:
+        driver = object.__new__(runner.ChatGPTUIDriver)
+        driver.screen_width = 1024
+        driver.screen_height = 768
+        driver._chat_surface_x = None
+        anchor = runner.Match(x=268, y=570, w=307, h=48, score=0.997)
+        driver.matcher = MagicMock()
+        driver.matcher.locate.return_value = anchor
+
+        roi = driver._editor_roi()
+
+        self.assertEqual(roi[0], 0)
+        self.assertGreaterEqual(roi[0] + roi[2], anchor.x + anchor.w)
+        self.assertGreater(roi[2], int(driver.screen_width * 0.56))
+        self.assertLessEqual(roi[0] + roi[2], driver.screen_width)
+
     def test_direct_status_uses_calibrated_primary_and_fallback_thresholds(self) -> None:
         driver = object.__new__(runner.ChatGPTUIDriver)
         driver._status_search_roi = MagicMock(return_value=(0, 500, 940, 580))

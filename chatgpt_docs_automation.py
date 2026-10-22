@@ -1625,21 +1625,56 @@ class ChatGPTUIDriver:
             int(self.screen_height * 0.65),
         )
 
-    def _remember_chat_surface_from_anchor(self, anchor_x: int) -> None:
-        """Infer the ChatGPT horizontal pane from a known composer/send X."""
-        width = int(self.screen_width)
-        x = int(anchor_x)
+    def _remember_chat_surface_from_anchor(
+        self,
+        anchor_x: int,
+        *,
+        anchor_left: Optional[int] = None,
+        anchor_right: Optional[int] = None,
+    ) -> None:
+        """Infer a pane that contains the complete composer/send anchor.
+
+        The historical 56% split is only a starting point. Narrow displays can
+        put the right edge of a wide composer template just beyond that limit,
+        so expand the pane to include the observed anchor plus a small margin.
+        """
+        width = max(1, int(self.screen_width))
+        x = max(0, min(width - 1, int(anchor_x)))
+        observed_left = max(
+            0,
+            min(width - 1, int(anchor_left if anchor_left is not None else x)),
+        )
+        observed_right = max(
+            observed_left + 1,
+            min(width, int(anchor_right if anchor_right is not None else x + 1)),
+        )
+        edge_margin = max(8, min(48, int(round(width * 0.02))))
 
         # Split-screen layouts are common in Webtop: ChatGPT on one half and a
         # terminal on the other. Use a conservative pane boundary so terminal
         # logs can never become status-image candidates. Full-screen ChatGPT has
         # its composer near the center and therefore keeps the full width.
         if x < int(width * 0.44):
-            bounds = (0, int(width * 0.56))
+            bounds = (
+                0,
+                min(width, max(int(width * 0.56), observed_right + edge_margin)),
+            )
         elif x > int(width * 0.56):
-            bounds = (int(width * 0.44), width)
+            bounds = (
+                max(0, min(int(width * 0.44), observed_left - edge_margin)),
+                width,
+            )
         else:
             bounds = (0, width)
+
+        # Repeated detections may use differently sized templates. Never shrink
+        # a pane that was already expanded by a complete observed anchor.
+        previous = self._chat_surface_x
+        if previous is not None:
+            if bounds[0] == 0 and previous[0] == 0:
+                bounds = (0, max(bounds[1], previous[1]))
+            elif bounds[1] == width and previous[1] == width:
+                bounds = (min(bounds[0], previous[0]), width)
 
         if bounds != self._chat_surface_x:
             self._chat_surface_x = bounds
@@ -1661,7 +1696,11 @@ class ChatGPTUIDriver:
                 logging.debug("Chat surface discovery failed for %s: %s", filename, exc)
                 match = None
             if match is not None:
-                self._remember_chat_surface_from_anchor(match.center[0])
+                self._remember_chat_surface_from_anchor(
+                    match.center[0],
+                    anchor_left=match.x,
+                    anchor_right=match.x + match.w,
+                )
                 return self._chat_surface_x
         return self._chat_surface_x
 
@@ -1894,7 +1933,11 @@ class ChatGPTUIDriver:
             )
 
         filename, anchor = located
-        self._remember_chat_surface_from_anchor(anchor.center[0])
+        self._remember_chat_surface_from_anchor(
+            anchor.center[0],
+            anchor_left=anchor.x,
+            anchor_right=anchor.x + anchor.w,
+        )
         if filename == ASSET_SEARCH_INPUT:
             focus = anchor.center
         else:
@@ -2018,7 +2061,11 @@ class ChatGPTUIDriver:
                         timeout=3.0,
                         roi=self._full_editor_roi(),
                     )
-                    self._remember_chat_surface_from_anchor(editor.center[0])
+                    self._remember_chat_surface_from_anchor(
+                        editor.center[0],
+                        anchor_left=editor.x,
+                        anchor_right=editor.x + editor.w,
+                    )
                     logging.info(
                         "NEW CHAT primary succeeded; composer ready, secondary step skipped."
                     )

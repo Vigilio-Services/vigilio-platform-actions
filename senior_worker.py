@@ -410,6 +410,8 @@ def write_worker_result(
     result_commit: str | None = None,
     changed_files: Sequence[str] = (),
     checks: Sequence[Mapping[str, Any]] = (),
+    summary: str | None = None,
+    evidence: Sequence[str] = (),
     error: str | None = None,
     failure_type: str | None = None,
     retryable: bool = False,
@@ -424,6 +426,12 @@ def write_worker_result(
         raise SeniorWorkerResultError(f"worker result is immutable and already exists: {result_file}")
     if normalized_status == "PASS" and not result_commit:
         raise SeniorWorkerResultError("PASS requires result_commit")
+    if (
+        normalized_status == "PASS"
+        and request.get("result_mode") == "audit"
+        and not (summary or "").strip()
+    ):
+        raise SeniorWorkerResultError("audit PASS requires a summary")
     if normalized_status != "PASS" and not error:
         raise SeniorWorkerResultError(f"{normalized_status} requires an error summary")
     normalized_severity = severity.upper() if severity else None
@@ -445,6 +453,8 @@ def write_worker_result(
         "result_commit": result_commit,
         "changed_files": list(changed_files),
         "checks": [dict(check) for check in checks],
+        "summary": summary.strip() if isinstance(summary, str) and summary.strip() else None,
+        "evidence": [str(item).strip() for item in evidence if str(item).strip()],
         "error": error,
         "failure_type": failure_type,
         "retryable": bool(retryable),
@@ -505,8 +515,18 @@ def validate_worker_result(
     if not isinstance(changed, list) or not all(isinstance(item, str) for item in changed):
         raise SeniorWorkerResultError("worker result changed_files must be an array of paths")
     normalized = [normalize_claim_path(item) for item in changed]
-    if claims.isolation == "read-only" and normalized:
-        raise SeniorWorkerResultError("read-only worker changed files")
+    audit_only = job_id.endswith(":review") or claims.isolation == "read-only"
+    if audit_only and normalized:
+        raise SeniorWorkerResultError("read-only audit worker changed files")
+    if audit_only and commit.casefold() != base_sha.casefold():
+        raise SeniorWorkerResultError("read-only audit must report its leased base SHA")
+    if audit_only:
+        _required_string(report, "summary")
+    evidence = report.get("evidence", [])
+    if not isinstance(evidence, list) or not all(
+        isinstance(item, str) and item.strip() for item in evidence
+    ):
+        raise SeniorWorkerResultError("worker result evidence must be an array of non-empty strings")
     for item in normalized:
         candidate = ResourcePath(repository=".", path=item)
         if not any(_claim_matches_file(allowed, candidate) for allowed in claims.write_paths):
@@ -542,6 +562,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     complete.add_argument("--request", type=Path, required=True)
     complete.add_argument("--commit", required=True)
     complete.add_argument("--changed-file", action="append", default=[])
+    complete.add_argument("--summary")
+    complete.add_argument("--evidence", action="append", default=[])
     complete.add_argument(
         "--check",
         action="append",
@@ -587,6 +609,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result_commit=args.commit,
                 changed_files=args.changed_file,
                 checks=[{"command": item, "exit_code": 0} for item in args.check],
+                summary=args.summary,
+                evidence=args.evidence,
             )
             print(path)
             return 0

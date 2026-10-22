@@ -10,6 +10,7 @@ their attempt-scoped request, heartbeat, progress and result files.
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 from dataclasses import dataclass
 import json
 import os
@@ -36,7 +37,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.4.0"
+SCRIPT_VERSION = "1.4.1"
 PLACEHOLDERS = (
     "request",
     "prompt",
@@ -112,6 +113,7 @@ def prepare_workspace(request_path: Path) -> Path:
                 return workspace
             raise SeniorLauncherError(f"planned worktree path already exists: {workspace}")
         workspace.parent.mkdir(parents=True, exist_ok=True)
+        _run_git(source, ["worktree", "prune"])
         _run_git(source, ["worktree", "add", "--detach", str(workspace), str(request["base_sha"])])
     elif not workspace.is_dir():
         raise SeniorLauncherError(f"worker workspace is missing: {workspace}")
@@ -132,6 +134,7 @@ def build_agent_prompt(
         raise SeniorLauncherError(f"generated prompt is unreadable: {source_prompt}: {exc}") from exc
     request_arg = str(request_path.resolve())
     worker_arg = str(worker_script.resolve())
+    audit_only = request.get("result_mode") == "audit"
     runtime_contract = f"""
 
 ---
@@ -157,12 +160,34 @@ Run every terminal command through the deduplicating managed wrapper:
 
 Do not start watch mode, an interactive terminal, or an unmanaged background
 service. Execute only tests affected by changed files and their import/contract
-dependents. Before PASS, commit the work, confirm owned processes are closed,
-and write the immutable result exactly once:
+dependents.
+"""
+    if audit_only:
+        runtime_contract += f"""
+
+This is a non-mutating audit. Do not edit or commit repository files, including
+OpenSpec review notes. Record commands and findings in the attempt-scoped
+heartbeat/result evidence. If documentation or code must change, report the gap
+so a later FIX/APPLY job can receive explicit write claims. Before PASS, verify
+the workspace is clean, confirm owned processes are closed, and report the
+leased base SHA with no `--changed-file` argument:
+
+```text
+{sys.executable} {worker_arg} complete --request {request_arg} --commit {request["base_sha"]} --check "<passing command>" \
+  --summary "<audit outcome>" --evidence "<finding or artifact>"
+```
+"""
+    else:
+        runtime_contract += f"""
+
+Before PASS, commit the work, confirm owned processes are closed, and write the
+immutable result exactly once:
 
 ```text
 {sys.executable} {worker_arg} complete --request {request_arg} --commit <sha> --changed-file <path> --check "<passing command>"
 ```
+"""
+    runtime_contract += """
 
 For a technical failure use `fail --retryable`; for an external or authority
 blocker use `block --severity LOW|MEDIUM|HIGH|CRITICAL`. Never claim PASS merely
@@ -617,7 +642,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     tab_sessions: dict[tuple[str, str], TabAgentSession] = {}
     tab_controller: SeniorTabController | None = None
     target_cohort_id: str | None = None
+    lifetime = ExitStack()
+    run_lock = RunLock(lock_path)
     try:
+        lifetime.enter_context(run_lock)
         while True:
             for key, session in list(tab_sessions.items()):
                 if _session_cancel_requested(session):
@@ -636,7 +664,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 session.close_output()
                 record_unreported_exit(session, int(returncode))
                 del sessions[key]
-            with RunLock(lock_path):
+            with run_lock:
                 coordinator = SeniorCoordinator(
                     project_root=project_root,
                     prompts_dir=prompts_dir,
@@ -857,6 +885,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     ) as exc:
         print(f"SENIOR_LAUNCHER_ERROR: {exc}", file=sys.stderr)
         return 2
+    finally:
+        lifetime.close()
 
 
 if __name__ == "__main__":

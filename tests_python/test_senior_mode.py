@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,7 @@ from prompt_builder_compat import PromptBuilderCompatibilityError, load_executio
 from senior_queue import SeniorCoordinator
 from senior_agent_launcher import (
     _visual_command,
+    build_agent_prompt,
     launch_agent_session,
     parse_args as parse_launcher_args,
     prepare_workspace,
@@ -495,6 +497,53 @@ class SeniorWorkerTests(unittest.TestCase):
                     claims=claims("apps/a/src/*.ts"),
                 )
 
+    def test_review_result_is_non_mutating_and_reports_the_leased_base(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            result = Path(directory) / "result.json"
+            base_sha = "a" * 40
+            payload = {
+                "schema_version": 1,
+                "job_id": "a:review",
+                "attempt_id": "attempt-0001",
+                "lease_token": "lease",
+                "base_sha": base_sha,
+                "prompt_sha256": "b" * 64,
+                "lock_sha256": "c" * 64,
+                "status": "PASS",
+                "result_commit": base_sha,
+                "changed_files": [],
+                "checks": [{"command": "cargo check", "exit_code": 0}],
+                "summary": "Implementation matches the reviewed contract.",
+                "evidence": ["cargo check exited 0"],
+            }
+            result.write_text(json.dumps(payload), encoding="utf-8")
+
+            report = validate_worker_result(
+                result,
+                job_id="a:review",
+                attempt_id="attempt-0001",
+                lease_token="lease",
+                base_sha=base_sha,
+                prompt_sha256="b" * 64,
+                lock_sha256="c" * 64,
+                claims=claims("openspec/changes/a/**"),
+            )
+            self.assertEqual(report["status"], "PASS")
+
+            payload["changed_files"] = ["openspec/changes/a/review.md"]
+            result.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(SeniorWorkerResultError, "audit worker changed files"):
+                validate_worker_result(
+                    result,
+                    job_id="a:review",
+                    attempt_id="attempt-0001",
+                    lease_token="lease",
+                    base_sha=base_sha,
+                    prompt_sha256="b" * 64,
+                    lock_sha256="c" * 64,
+                    claims=claims("openspec/changes/a/**"),
+                )
+
     def test_result_writer_is_attempt_scoped_and_immutable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -591,6 +640,86 @@ class SeniorWorkerTests(unittest.TestCase):
 
 
 class SeniorAgentLauncherTests(unittest.TestCase):
+    def test_audit_prompt_forbids_repository_edits_and_uses_base_sha(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prompt = root / "review.md"
+            prompt.write_text("review the implementation\n", encoding="utf-8")
+            request_path = root / "request.json"
+            base_sha = "a" * 40
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "job_id": "a:review",
+                        "attempt_id": "attempt-0001",
+                        "result_mode": "audit",
+                        "base_sha": base_sha,
+                        "prompt": str(prompt),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            output = build_agent_prompt(
+                request_path,
+                worker_script=Path(__file__).resolve().parents[1] / "senior_worker.py",
+            ).read_text(encoding="utf-8")
+
+            self.assertIn("This is a non-mutating audit", output)
+            self.assertIn(f"--commit {base_sha}", output)
+            self.assertNotIn("Before PASS, commit the work", output)
+
+    def test_prepare_workspace_prunes_missing_registered_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Test"], cwd=root, check=True)
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "fixture"], cwd=root, check=True, capture_output=True)
+            base_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            workspace = root.parent / f"{root.name}-missing-worktree"
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", str(workspace), base_sha],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            shutil.rmtree(workspace)
+            attempt = root / ".prompt-runner" / "job" / "attempt-0001"
+            attempt.mkdir(parents=True)
+            request_path = attempt / "request.json"
+            request_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "project_root": str(root),
+                        "workspace_root": str(workspace),
+                        "worktree_required": True,
+                        "base_sha": base_sha,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            try:
+                self.assertEqual(prepare_workspace(request_path), workspace.resolve())
+                self.assertTrue((workspace / ".git").is_file())
+            finally:
+                subprocess.run(
+                    ["git", "worktree", "remove", "--force", str(workspace)],
+                    cwd=root,
+                    check=False,
+                    capture_output=True,
+                )
     def test_visual_tabs_uses_one_display_for_four_chats(self) -> None:
         args = parse_launcher_args(
             [
@@ -908,6 +1037,236 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
         (prompts / "execution-plan.json").write_text(json.dumps(plan), encoding="utf-8")
         return prompts
 
+    def _init_git_project(self, root: Path) -> str:
+        subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "senior-mode@example.invalid"],
+            cwd=root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Senior Mode Test"],
+            cwd=root,
+            check=True,
+        )
+        (root / "README.md").write_text("fixture\n", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=root, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "fixture"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def test_existing_attempt_directory_is_quarantined_before_new_lease(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            stale = coordinator.state.root / "jobs" / "a__propose" / "attempt-0001"
+            stale.mkdir(parents=True)
+            (stale / "heartbeat.json").write_text(
+                '{"lease_token":"stale"}\n',
+                encoding="utf-8",
+            )
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=30)
+
+            self.assertFalse((request_path.parent / "heartbeat.json").exists())
+            quarantined = list(
+                (coordinator.state.root / "orphaned" / "a__propose").glob(
+                    "attempt-0001-*"
+                )
+            )
+            self.assertEqual(len(quarantined), 1)
+            self.assertTrue((quarantined[0] / "heartbeat.json").is_file())
+            self.assertTrue((quarantined[0] / "quarantine.json").is_file())
+
+    def test_stale_heartbeat_is_quarantined_instead_of_failing_every_tick(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=300)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            heartbeat = request_path.parent / "heartbeat.json"
+            heartbeat.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "job_id": request["job_id"],
+                        "attempt_id": request["attempt_id"],
+                        "lease_token": "old-token",
+                        "heartbeat_id": "old-heartbeat",
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "status": "running",
+                        "processes": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            first = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=30,
+                max_retries=2,
+            )
+            second = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=30,
+                max_retries=2,
+            )
+
+            self.assertIn(request["job_id"], first["errors"])
+            self.assertEqual(second["errors"], {})
+            self.assertFalse(heartbeat.exists())
+            self.assertEqual(len(list((request_path.parent / "invalid").glob("heartbeat-*.json"))), 1)
+
+    def test_review_audit_validates_without_creating_or_cherry_picking_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root, phase="review")
+            subprocess.run(["git", "add", "generated"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "review plan"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            initial_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            self.assertEqual(request["result_mode"], "audit")
+            prepare_workspace(request_path)
+            write_worker_result(
+                request_path,
+                status="PASS",
+                result_commit=request["base_sha"],
+                changed_files=[],
+                checks=[{"command": "cargo check", "exit_code": 0}],
+                summary="Implementation matches the reviewed contract.",
+                evidence=["cargo check exited 0"],
+            )
+
+            tick = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=60,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                integration_checks=[[sys.executable, "-c", "raise SystemExit(0)"]],
+            )
+
+            self.assertEqual(tick["integration"]["validated"], ["a:review"])
+            self.assertEqual(coordinator.state.statuses()["a:review"], "done")
+            current_head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual(current_head, initial_head)
+
+    def test_markdown_blank_line_at_eof_is_tolerated_but_other_whitespace_is_not(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prompts = self._write_v3_plan(root)
+            self._init_git_project(root)
+            subprocess.run(
+                ["git", "config", "core.whitespace", "blank-at-eol,blank-at-eof,space-before-tab"],
+                cwd=root,
+                check=True,
+            )
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+            changed = "openspec/changes/a/design.md"
+            target = workspace / changed
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("# Design\n\n", encoding="utf-8")
+            subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "propose a"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            strict = subprocess.run(
+                ["git", "diff", "--check", request["base_sha"], commit],
+                cwd=root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(strict.returncode, 0)
+            self.assertIn("new blank line at EOF", strict.stdout)
+            result_file = write_worker_result(
+                request_path,
+                status="PASS",
+                result_commit=commit,
+                changed_files=[changed],
+                checks=[{"command": "markdownlint", "exit_code": 0}],
+            )
+            coordinator.accept_result(job_id=request["job_id"], result_file=result_file)
+
+            self.assertEqual(
+                coordinator._validate_result_commit(request["job_id"]),
+                (request["base_sha"], commit),
+            )
+            self.assertFalse(
+                coordinator._only_markdown_blank_eof(
+                    base_sha=request["base_sha"],
+                    commit=commit,
+                    output="src/lib.rs:1: trailing whitespace.",
+                )
+            )
+
     def test_loads_v3_claims_and_verifies_fingerprint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1139,6 +1498,15 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             self.assertEqual(adopted, ["a:propose"])
             self.assertEqual(errors, {})
             self.assertEqual(coordinator.state.statuses()["a:propose"], "produced")
+
+            coordinator.state.mark_integration_failed(
+                "a:propose",
+                error="synthetic integration failure",
+            )
+            coordinator.state.recover_retryable_results(max_attempts=2)
+            adopted_again, errors_again = coordinator.adopt_late_results()
+            self.assertEqual(adopted_again, [])
+            self.assertEqual(errors_again, {})
 
     def test_conflicting_apply_jobs_advance_through_integrated_subwaves(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
