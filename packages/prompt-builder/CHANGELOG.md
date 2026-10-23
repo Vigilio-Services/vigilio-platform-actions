@@ -12,6 +12,8 @@
   and persist crash-resumable integration transactions.
 - Raise the default heartbeat timeout to 600 seconds and print a compact supervisor status event on
   every poll so a long agent run is observable without visual emoji.
+- Bound Senior Mode disk usage by removing inactive attempt worktrees while preserving JSON history,
+  compact failure patches and recoverable refs for commits that fail integration.
 
 ## 0.11.1
 

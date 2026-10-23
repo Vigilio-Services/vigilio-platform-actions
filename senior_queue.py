@@ -20,7 +20,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Collection, Sequence
 
 from chatgpt_automation_lock import RunLock
 from prompt_builder_compat import ExecutionPlan, load_execution_plan
@@ -39,8 +39,12 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.4.1"
+SCRIPT_VERSION = "1.5.0"
 MAX_WORKERS = 64
+MAX_RECOVERY_PATCH_BYTES = 5 * 1024 * 1024
+WORKTREE_ACTIVE_STATUSES = frozenset(
+    {"leased", "running", "stalled", "produced", "merge_pending", "validated"}
+)
 
 
 def _validate_workers(value: int) -> None:
@@ -98,6 +102,45 @@ def _git(project_root: Path, arguments: Sequence[str], *, timeout: int = 120) ->
         timeout=timeout,
         check=False,
     )
+
+
+def _git_bounded_output(
+    project_root: Path,
+    arguments: Sequence[str],
+    *,
+    limit_bytes: int,
+) -> tuple[int, bytes, bool]:
+    """Capture local Git output without allowing a recovery patch to exhaust RAM."""
+    process = subprocess.Popen(
+        ["git", *arguments],
+        cwd=project_root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        shell=False,
+    )
+    if process.stdout is None:  # pragma: no cover - guaranteed by PIPE
+        process.kill()
+        return 2, b"", False
+    output = bytearray()
+    exceeded = False
+    try:
+        while True:
+            chunk = process.stdout.read(64 * 1024)
+            if not chunk:
+                break
+            if len(output) + len(chunk) > limit_bytes:
+                exceeded = True
+                process.kill()
+                break
+            output.extend(chunk)
+        returncode = process.wait()
+    except BaseException:
+        process.kill()
+        process.wait()
+        raise
+    finally:
+        process.stdout.close()
+    return returncode, bytes(output), exceeded
 
 
 def _claims_json(claims: ResourceClaims) -> dict[str, Any]:
@@ -336,6 +379,13 @@ class SeniorCoordinator:
         attempt_root = job_root / attempt_id
         if not attempt_root.exists() and not attempt_root.is_symlink():
             return
+        self._remove_attempt_worktree(
+            job_id=job_id,
+            attempt_id=attempt_id,
+            attempt_root=attempt_root,
+            reason="attempt directory existed before a new lease",
+            preserve_recovery=True,
+        )
         quarantine_root = self.state.root / "orphaned" / job_id.replace(":", "__")
         quarantine_root.mkdir(parents=True, exist_ok=True)
         stamp = _now().strftime("%Y%m%dT%H%M%S%fZ")
@@ -366,6 +416,297 @@ class SeniorCoordinator:
             encoding="utf-8",
         )
         return destination
+
+    @staticmethod
+    def _load_optional_object(path: Path) -> dict[str, Any]:
+        if not path.is_file():
+            return {}
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _safe_ref_component(value: str) -> str:
+        normalized = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip(".-")
+        while ".." in normalized:
+            normalized = normalized.replace("..", "-")
+        if normalized.endswith(".lock"):
+            normalized += "-ref"
+        return normalized or "unknown"
+
+    def _capture_failed_attempt(
+        self,
+        *,
+        job_id: str,
+        attempt_id: str,
+        attempt_root: Path,
+        workspace: Path,
+    ) -> dict[str, Any]:
+        """Keep compact recovery evidence without retaining a complete checkout."""
+        result = self._load_optional_object(attempt_root / "result.json")
+        recovery: dict[str, Any] = {
+            "schema_version": 1,
+            "job_id": job_id,
+            "attempt_id": attempt_id,
+            "captured_at": _now().isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "recovery_ref": None,
+            "patch_file": None,
+            "patch_omitted_reason": None,
+            "untracked_files_skipped": [],
+        }
+
+        result_commit = str(result.get("result_commit", ""))
+        if re.fullmatch(r"[a-fA-F0-9]{7,64}", result_commit):
+            exists = _git(self.project_root, ["cat-file", "-e", f"{result_commit}^{{commit}}"])
+            if exists.returncode == 0:
+                ref = "/".join(
+                    (
+                        "refs/vigilio/senior",
+                        self._safe_ref_component(self.plan.plan_id),
+                        self._safe_ref_component(job_id),
+                        self._safe_ref_component(attempt_id),
+                    )
+                )
+                updated = _git(self.project_root, ["update-ref", ref, result_commit])
+                if updated.returncode == 0:
+                    recovery["recovery_ref"] = ref
+                else:
+                    recovery["patch_omitted_reason"] = (
+                        "could not preserve result commit: "
+                        + (updated.stderr or updated.stdout).strip()[-1000:]
+                    )
+
+        patch_parts: list[bytes] = []
+        tracked_code, tracked_output, tracked_exceeded = _git_bounded_output(
+            workspace,
+            ["diff", "--binary", "HEAD"],
+            limit_bytes=MAX_RECOVERY_PATCH_BYTES,
+        )
+        if tracked_exceeded:
+            recovery["patch_omitted_reason"] = (
+                f"tracked recovery patch exceeded {MAX_RECOVERY_PATCH_BYTES} bytes"
+            )
+        elif tracked_code == 0 and tracked_output:
+            patch_parts.append(tracked_output)
+
+        remaining = MAX_RECOVERY_PATCH_BYTES - sum(len(part) for part in patch_parts)
+        untracked_code, untracked_output, untracked_exceeded = _git_bounded_output(
+            workspace,
+            ["ls-files", "--others", "--exclude-standard", "-z"],
+            limit_bytes=min(MAX_RECOVERY_PATCH_BYTES, 1024 * 1024),
+        )
+        if untracked_exceeded and not recovery["patch_omitted_reason"]:
+            recovery["patch_omitted_reason"] = "untracked file inventory exceeded 1048576 bytes"
+        if untracked_code == 0 and not untracked_exceeded:
+            decoded_untracked = untracked_output.decode("utf-8", errors="replace")
+            for relative in (item for item in decoded_untracked.split("\0") if item):
+                candidate = (workspace / relative).resolve()
+                try:
+                    candidate.relative_to(workspace.resolve())
+                except ValueError:
+                    recovery["untracked_files_skipped"].append(relative)
+                    continue
+                if not candidate.is_file() or candidate.is_symlink():
+                    recovery["untracked_files_skipped"].append(relative)
+                    continue
+                if candidate.stat().st_size > MAX_RECOVERY_PATCH_BYTES:
+                    recovery["untracked_files_skipped"].append(relative)
+                    continue
+                addition_code, addition_output, addition_exceeded = _git_bounded_output(
+                    workspace,
+                    ["diff", "--no-index", "--binary", "--", "/dev/null", relative],
+                    limit_bytes=max(1, remaining),
+                )
+                if addition_exceeded:
+                    recovery["untracked_files_skipped"].append(relative)
+                    continue
+                if addition_code in {0, 1} and addition_output:
+                    patch_parts.append(addition_output)
+                    remaining -= len(addition_output)
+
+        patch = b"".join(patch_parts)
+        if patch:
+            if len(patch) <= MAX_RECOVERY_PATCH_BYTES:
+                patch_path = attempt_root / "recovery.patch"
+                patch_path.write_bytes(patch)
+                recovery["patch_file"] = patch_path.name
+            elif not recovery["patch_omitted_reason"]:
+                recovery["patch_omitted_reason"] = (
+                    f"recovery patch exceeded {MAX_RECOVERY_PATCH_BYTES} bytes"
+                )
+
+        (attempt_root / "recovery.json").write_text(
+            json.dumps(recovery, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return recovery
+
+    def _registered_worktrees(self) -> set[Path]:
+        listing = _git(self.project_root, ["worktree", "list", "--porcelain"])
+        if listing.returncode != 0:
+            raise SeniorStateError(
+                "cannot inspect registered worktrees: "
+                + (listing.stderr or listing.stdout).strip()[-1600:]
+            )
+        paths: set[Path] = set()
+        for line in listing.stdout.splitlines():
+            if line.startswith("worktree "):
+                paths.add(Path(line.removeprefix("worktree ")).resolve())
+        return paths
+
+    def _remove_attempt_worktree(
+        self,
+        *,
+        job_id: str,
+        attempt_id: str,
+        attempt_root: Path,
+        reason: str,
+        preserve_recovery: bool,
+    ) -> dict[str, Any] | None:
+        if attempt_root.is_symlink():
+            raise SeniorStateError(f"refusing to follow attempt directory symlink: {attempt_root}")
+        attempt_root = attempt_root.resolve()
+        expected_root = (
+            self.state.root / "jobs" / job_id.replace(":", "__") / attempt_id
+        ).resolve()
+        orphan_root = (self.state.root / "orphaned").resolve()
+        if attempt_root != expected_root and not attempt_root.is_relative_to(orphan_root):
+            raise SeniorStateError(f"refusing worktree cleanup outside attempt roots: {attempt_root}")
+        workspace = attempt_root / "worktree"
+        if not workspace.exists() and not workspace.is_symlink():
+            return None
+        if workspace.is_symlink() or (
+            hasattr(workspace, "is_junction") and workspace.is_junction()
+        ):
+            raise SeniorStateError(f"refusing to follow attempt worktree symlink: {workspace}")
+
+        if preserve_recovery:
+            self._capture_failed_attempt(
+                job_id=job_id,
+                attempt_id=attempt_id,
+                attempt_root=attempt_root,
+                workspace=workspace,
+            )
+
+        removed = _git(
+            self.project_root,
+            ["worktree", "remove", "--force", str(workspace)],
+            timeout=600,
+        )
+        if removed.returncode != 0 and workspace.exists():
+            _git(self.project_root, ["worktree", "prune"])
+            if workspace.resolve() in self._registered_worktrees():
+                raise SeniorStateError(
+                    f"cannot remove registered attempt worktree {workspace}: "
+                    + (removed.stderr or removed.stdout).strip()[-1600:]
+                )
+            shutil.rmtree(workspace)
+        if workspace.exists() or workspace.is_symlink():
+            raise SeniorStateError(f"attempt worktree still exists after cleanup: {workspace}")
+        _git(self.project_root, ["worktree", "prune"])
+        cleanup = {
+            "schema_version": 1,
+            "job_id": job_id,
+            "attempt_id": attempt_id,
+            "removed_at": _now().isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+            "reason": reason,
+            "workspace_removed": not workspace.exists(),
+        }
+        (attempt_root / "cleanup.json").write_text(
+            json.dumps(cleanup, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return cleanup
+
+    def cleanup_inactive_worktrees(
+        self,
+        *,
+        protected_attempts: Collection[tuple[str, str]] | None = None,
+        keep_failed_worktrees: bool = False,
+    ) -> dict[str, Any]:
+        """Remove inactive checkouts while retaining compact attempt history.
+
+        ``None`` is conservative for a standalone supervisor: the latest pending
+        attempt is retained because an external worker may still be shutting down.
+        The launcher passes its exact session set, including an empty set, after it
+        has reaped processes, allowing pending retry worktrees to be collected.
+        """
+        protected = set(protected_attempts or ())
+        explicit_session_inventory = protected_attempts is not None
+        removed: list[str] = []
+        kept: list[str] = []
+        errors: dict[str, str] = {}
+
+        for job_id, record in self.state.jobs.items():
+            job_root = self.state.root / "jobs" / job_id.replace(":", "__")
+            if not job_root.is_dir():
+                continue
+            current_attempt = f"attempt-{int(record.get('attempt', 0)):04d}"
+            status = str(record.get("status", "pending"))
+            for attempt_root in sorted(job_root.glob("attempt-*")):
+                if not attempt_root.is_dir():
+                    continue
+                attempt_id = attempt_root.name
+                key = (job_id, attempt_id)
+                workspace = attempt_root / "worktree"
+                if not workspace.exists() and not workspace.is_symlink():
+                    continue
+                is_current = attempt_id == current_attempt
+                should_keep = key in protected
+                if is_current and status in WORKTREE_ACTIVE_STATUSES:
+                    should_keep = True
+                if is_current and status == "pending" and not explicit_session_inventory:
+                    should_keep = True
+                attempt_result = self._load_optional_object(attempt_root / "result.json")
+                attempt_result_status = attempt_result.get("status")
+                failed_attempt = attempt_result_status in {"FAILED", "BLOCKED"} or (
+                    is_current and status in {"failed", "blocked"}
+                )
+                preserve_recovery = (
+                    failed_attempt
+                    or status == "pending"
+                    or (not is_current and attempt_result_status == "PASS")
+                )
+                if keep_failed_worktrees and failed_attempt:
+                    should_keep = True
+                label = f"{job_id}/{attempt_id}"
+                if should_keep:
+                    kept.append(label)
+                    continue
+                try:
+                    self._remove_attempt_worktree(
+                        job_id=job_id,
+                        attempt_id=attempt_id,
+                        attempt_root=attempt_root,
+                        reason=f"attempt is inactive (job status: {status})",
+                        preserve_recovery=preserve_recovery,
+                    )
+                    removed.append(label)
+                except (OSError, subprocess.SubprocessError, SeniorStateError) as exc:
+                    errors[label] = str(exc)
+
+        orphaned = self.state.root / "orphaned"
+        if orphaned.is_dir() and not keep_failed_worktrees:
+            for workspace in orphaned.glob("**/worktree"):
+                attempt_root = workspace.parent
+                job_id = attempt_root.parent.name.replace("__", ":")
+                attempt_id = attempt_root.name.split("-20", 1)[0]
+                label = f"orphaned/{attempt_root.relative_to(orphaned).as_posix()}"
+                try:
+                    self._remove_attempt_worktree(
+                        job_id=job_id,
+                        attempt_id=attempt_id,
+                        attempt_root=attempt_root,
+                        reason="orphaned attempt retained metadata only",
+                        preserve_recovery=True,
+                    )
+                    removed.append(label)
+                except (OSError, subprocess.SubprocessError, SeniorStateError) as exc:
+                    errors[label] = str(exc)
+
+        return {"removed": removed, "kept": kept, "errors": errors}
 
     def run_preflight(self, command: list[str], *, timeout_seconds: int) -> dict[str, Any]:
         if not command:
@@ -930,6 +1271,8 @@ class SeniorCoordinator:
         integration_timeout_seconds: int = 1800,
         stop_after_cohort_id: str | None = None,
         now: datetime | None = None,
+        protected_attempts: Collection[tuple[str, str]] | None = None,
+        keep_failed_worktrees: bool = False,
     ) -> dict[str, Any]:
         _validate_workers(max_workers)
         if heartbeat_timeout_seconds < 5:
@@ -1065,6 +1408,19 @@ class SeniorCoordinator:
                 self.state.statuses(),
             )
         )
+        cleanup = self.cleanup_inactive_worktrees(
+            protected_attempts=protected_attempts,
+            keep_failed_worktrees=keep_failed_worktrees,
+        )
+        stale_protected: list[str] = []
+        for job_id, attempt_id in protected_attempts or ():
+            record = self.state.jobs.get(job_id, {})
+            lease = record.get("lease")
+            same_attempt = isinstance(lease, dict) and lease.get("attempt_id") == attempt_id
+            if record.get("status") not in {"leased", "running"} or not same_attempt:
+                stale_protected.append(f"{job_id}/{attempt_id}")
+        if cleanup["errors"]:
+            errors["__cleanup__"] = "inactive worktree cleanup failed; refusing new leases"
         if integration.get("integrated"):
             # Git HEAD changed.  Do not lease from a stale preflight in this
             # tick; the launcher reruns its configured preflight next tick.
@@ -1072,6 +1428,11 @@ class SeniorCoordinator:
         elif stop_cohort_complete:
             self.state.close_cohort()
             leased: list[Path] = []
+        elif cleanup["errors"] or stale_protected:
+            # The launcher reaps terminal/obsolete sessions immediately after
+            # this tick. Waiting one poll prevents a retry from competing with
+            # its previous process or exceeding the worker-slot ceiling.
+            leased = []
         else:
             leased = self.lease_ready(
                 max_workers=max_workers,
@@ -1105,6 +1466,8 @@ class SeniorCoordinator:
             ),
             "leased_requests": [str(path) for path in leased],
             "integration": integration,
+            "cleanup": cleanup,
+            "sessions_waiting_for_reap": stale_protected,
             "errors": errors,
             "status": self.status_report(),
         }
@@ -1150,6 +1513,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     supervise_parser.add_argument("--stall-grace-seconds", type=int, default=30)
     supervise_parser.add_argument("--ttl-seconds", type=int, default=900)
     supervise_parser.add_argument("--max-retries", type=int, default=2)
+    supervise_parser.add_argument("--keep-failed-worktrees", action="store_true")
     supervise_parser.add_argument("--once", action="store_true")
     return parser.parse_args(argv)
 
@@ -1186,6 +1550,7 @@ def main(argv: list[str] | None = None) -> int:
                         stall_grace_seconds=args.stall_grace_seconds,
                         max_retries=args.max_retries,
                         cohort_size=args.cohort_size,
+                        keep_failed_worktrees=args.keep_failed_worktrees,
                     )
             except (RuntimeError, SeniorStateError, SeniorWorkerResultError, ValueError) as exc:
                 print(f"SENIOR_MODE_ERROR: {exc}", file=sys.stderr)

@@ -37,7 +37,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.4.1"
+SCRIPT_VERSION = "1.5.0"
 PLACEHOLDERS = (
     "request",
     "prompt",
@@ -503,6 +503,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--stall-grace-seconds", type=int, default=30)
     parser.add_argument("--ttl-seconds", type=int, default=900)
     parser.add_argument("--max-retries", type=int, default=2)
+    parser.add_argument(
+        "--keep-failed-worktrees",
+        action="store_true",
+        help="Debug only: retain failed/BLOCKED worktrees instead of compact recovery evidence.",
+    )
     parser.add_argument("--one-cohort", action="store_true")
     parser.add_argument(
         "--preflight-command-json",
@@ -693,19 +698,33 @@ def main(argv: Sequence[str] | None = None) -> int:
                     integration_checks=args.integration_check_json,
                     integration_timeout_seconds=args.integration_timeout_seconds,
                     stop_after_cohort_id=target_cohort_id if args.one_cohort else None,
+                    protected_attempts={*sessions, *tab_sessions},
+                    keep_failed_worktrees=args.keep_failed_worktrees,
                 )
                 active_cohort = coordinator.state.data.get("cohort")
                 if target_cohort_id is None and isinstance(active_cohort, dict):
                     target_cohort_id = str(active_cohort.get("cohort_id"))
                 for key, session in list(tab_sessions.items()):
                     record = coordinator.state.jobs.get(key[0], {})
-                    if record.get("status") not in {"leased", "running"}:
+                    lease = record.get("lease")
+                    same_attempt = isinstance(lease, dict) and lease.get("attempt_id") == key[1]
+                    if record.get("status") not in {"leased", "running"} or not same_attempt:
                         if tab_controller is not None:
                             if _session_cancel_requested(session):
                                 tab_controller.cancel(session.slot)
                             else:
                                 tab_controller.release(session.slot)
                         del tab_sessions[key]
+                for key, session in list(sessions.items()):
+                    record = coordinator.state.jobs.get(key[0], {})
+                    lease = record.get("lease")
+                    same_attempt = isinstance(lease, dict) and lease.get("attempt_id") == key[1]
+                    if record.get("status") in {"leased", "running"} and same_attempt:
+                        continue
+                    if session.poll() is None:
+                        _terminate_session(session)
+                    session.close_output()
+                    del sessions[key]
             job_report = tick.get("status", {}).get("jobs", {})
             status_counts: dict[str, int] = {}
             blocked_reasons: list[str] = []
@@ -727,6 +746,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                         "ready": tick.get("status", {}).get("ready", []),
                         "active_sessions": len(sessions) + len(tab_sessions),
                         "waiting": tick.get("integration", {}).get("waiting", []),
+                        "cleanup": tick.get("cleanup", {}),
+                        "sessions_waiting_for_reap": tick.get("sessions_waiting_for_reap", []),
                         "blocked_reasons": blocked_reasons[:8],
                         "errors": tick.get("errors", {}),
                     },

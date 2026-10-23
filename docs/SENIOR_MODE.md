@@ -208,7 +208,9 @@ For each lease, the launcher:
    PID and log;
 4. observes the attempt through heartbeat/progress/result files;
 5. retries only that job when an immutable result explicitly says it is
-   retryable or its heartbeat stalls.
+   retryable or its heartbeat stalls;
+6. removes the detached worktree after the result is integrated or the failed
+   attempt is safely captured. The JSON history remains.
 
 If the scheduler proves that only four of six jobs are safe, it launches four.
 The other two remain pending until their dependencies or resource locks clear.
@@ -230,12 +232,39 @@ Each attempt directory has a strict protocol:
 ├── agent-prompt.md
 ├── session.json
 ├── cancel.json       # created only when cancellation is requested
-└── result.json
+├── result.json
+├── recovery.json     # failed attempts only; compact recovery metadata
+├── recovery.patch    # optional, bounded source-only patch
+└── cleanup.json      # records safe worktree removal
 ```
 
 `request.json` pins the job, attempt, lease, Git base, prompt/lock hashes,
 resource claims and terminal contract. Heartbeat and results must repeat the
 same identities. Stale or cross-attempt files fail closed.
+
+### Bounded worktree retention
+
+An attempt worktree is execution scratch space, not runtime history. It may
+contain large ignored outputs such as Rust `target/`, `node_modules/`, coverage
+or generated build files, so retaining one checkout per prompt is forbidden.
+
+- `leased`, `running`, `stalled`, `produced`, `merge_pending` and `validated`
+  attempts keep their worktree because the worker or integration still needs it.
+- `done`, terminal `failed`/`blocked`, superseded retry and orphaned attempts
+  remove their worktree with an exact-path `git worktree remove --force`, then
+  run `git worktree prune`.
+- Active launcher sessions are passed to the coordinator as a protected set;
+  cleanup never removes those paths, even when another retry is already leased.
+- Successful code is durable in the integrated Git commit. A failed attempt
+  retains JSON evidence plus a bounded source patch; a produced commit that
+  later fails integration is anchored under `refs/vigilio/senior/...`.
+- `--keep-failed-worktrees` is an explicit debugging escape hatch. It is off by
+  default and must not be used for normal long queues.
+- Quarantine retains metadata and recovery evidence, never build directories.
+
+Therefore `.prompt-runner` should normally contain small JSON/log artifacts and
+at most one temporary checkout per active worker, rather than one multi-GB copy
+per completed prompt.
 
 ## Worker heartbeat and terminal safety
 

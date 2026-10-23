@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from prompt_builder_compat import PromptBuilderCompatibilityError, load_execution_plan
-from senior_queue import SeniorCoordinator
+from senior_queue import MAX_RECOVERY_PATCH_BYTES, SeniorCoordinator
 from senior_agent_launcher import (
     _visual_command,
     build_agent_prompt,
@@ -1073,6 +1073,14 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
             stale = coordinator.state.root / "jobs" / "a__propose" / "attempt-0001"
             stale.mkdir(parents=True)
+            stale_workspace = stale / "worktree"
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", str(stale_workspace), "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            (stale_workspace / "README.md").write_text("recover me\n", encoding="utf-8")
             (stale / "heartbeat.json").write_text(
                 '{"lease_token":"stale"}\n',
                 encoding="utf-8",
@@ -1093,6 +1101,17 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             self.assertEqual(len(quarantined), 1)
             self.assertTrue((quarantined[0] / "heartbeat.json").is_file())
             self.assertTrue((quarantined[0] / "quarantine.json").is_file())
+            self.assertTrue((quarantined[0] / "cleanup.json").is_file())
+            self.assertTrue((quarantined[0] / "recovery.patch").is_file())
+            self.assertFalse((quarantined[0] / "worktree").exists())
+            registered = subprocess.run(
+                ["git", "worktree", "list", "--porcelain"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            self.assertNotIn(str(stale_workspace), registered)
 
     def test_stale_heartbeat_is_quarantined_instead_of_failing_every_tick(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1170,7 +1189,7 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
             request = json.loads(request_path.read_text(encoding="utf-8"))
             self.assertEqual(request["result_mode"], "audit")
-            prepare_workspace(request_path)
+            workspace = prepare_workspace(request_path)
             write_worker_result(
                 request_path,
                 status="PASS",
@@ -1192,6 +1211,11 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
 
             self.assertEqual(tick["integration"]["validated"], ["a:review"])
             self.assertEqual(coordinator.state.statuses()["a:review"], "done")
+            self.assertFalse(workspace.exists())
+            self.assertTrue((request_path.parent / "request.json").is_file())
+            self.assertTrue((request_path.parent / "result.json").is_file())
+            self.assertTrue((request_path.parent / "cleanup.json").is_file())
+            self.assertEqual(tick["cleanup"]["removed"], ["a:review/attempt-0001"])
             current_head = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
                 cwd=root,
@@ -1200,6 +1224,164 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
                 text=True,
             ).stdout.strip()
             self.assertEqual(current_head, initial_head)
+
+    def test_failed_attempt_keeps_compact_recovery_and_removes_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            workspace = prepare_workspace(request_path)
+            (workspace / "README.md").write_text("unfinished tracked change\n", encoding="utf-8")
+            source = workspace / "src" / "new_file.py"
+            source.parent.mkdir(parents=True)
+            source.write_text("VALUE = 1\n", encoding="utf-8")
+            (workspace / "large-debug.bin").write_bytes(
+                b"x" * (MAX_RECOVERY_PATCH_BYTES + 1)
+            )
+            write_worker_result(
+                request_path,
+                status="FAILED",
+                error="focused test failed",
+                failure_type="TEST_FAILED",
+                retryable=False,
+            )
+
+            tick = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=60,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=0,
+                protected_attempts=set(),
+            )
+
+            self.assertFalse(workspace.exists())
+            self.assertTrue((request_path.parent / "result.json").is_file())
+            self.assertTrue((request_path.parent / "cleanup.json").is_file())
+            recovery = json.loads(
+                (request_path.parent / "recovery.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(recovery["patch_file"], "recovery.patch")
+            self.assertIn("large-debug.bin", recovery["untracked_files_skipped"])
+            patch = (request_path.parent / "recovery.patch").read_text(encoding="utf-8")
+            self.assertLessEqual(
+                (request_path.parent / "recovery.patch").stat().st_size,
+                MAX_RECOVERY_PATCH_BYTES,
+            )
+            self.assertIn("unfinished tracked change", patch)
+            self.assertIn("src/new_file.py", patch)
+            self.assertEqual(tick["cleanup"]["errors"], {})
+
+    def test_active_and_debug_retained_worktrees_are_never_collected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+
+            active = coordinator.cleanup_inactive_worktrees(
+                protected_attempts={(request["job_id"], request["attempt_id"])}
+            )
+            self.assertTrue(workspace.is_dir())
+            self.assertEqual(active["removed"], [])
+
+            result_file = write_worker_result(
+                request_path,
+                status="BLOCKED",
+                error="human credential required",
+                failure_type="HUMAN_ACTION",
+                retryable=False,
+                severity="HIGH",
+            )
+            coordinator.accept_result(job_id=request["job_id"], result_file=result_file)
+            debug = coordinator.cleanup_inactive_worktrees(
+                protected_attempts=set(),
+                keep_failed_worktrees=True,
+            )
+            self.assertTrue(workspace.is_dir())
+            self.assertEqual(debug["removed"], [])
+
+            cleaned = coordinator.cleanup_inactive_worktrees(protected_attempts=set())
+            self.assertFalse(workspace.exists())
+            self.assertEqual(cleaned["removed"], ["a:propose/attempt-0001"])
+
+    def test_produced_commit_is_retained_until_integration_then_anchored_on_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=60)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+            changed = "openspec/changes/a/proposal.md"
+            target = workspace / changed
+            target.parent.mkdir(parents=True)
+            target.write_text("proposal\n", encoding="utf-8")
+            subprocess.run(["git", "add", changed], cwd=workspace, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "proposal"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=workspace,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            result_file = write_worker_result(
+                request_path,
+                status="PASS",
+                result_commit=commit,
+                changed_files=[changed],
+                checks=[{"command": "focused-test", "exit_code": 0}],
+            )
+            coordinator.accept_result(job_id=request["job_id"], result_file=result_file)
+
+            produced = coordinator.cleanup_inactive_worktrees(protected_attempts=set())
+            self.assertTrue(workspace.is_dir())
+            self.assertEqual(produced["removed"], [])
+
+            coordinator.state.mark_integration_failed(
+                request["job_id"],
+                error="integration test failed",
+            )
+            failed = coordinator.cleanup_inactive_worktrees(protected_attempts=set())
+
+            self.assertFalse(workspace.exists())
+            self.assertEqual(failed["removed"], ["a:propose/attempt-0001"])
+            recovery = json.loads(
+                (request_path.parent / "recovery.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(recovery["recovery_ref"].startswith("refs/vigilio/senior/"))
+            anchored = subprocess.run(
+                ["git", "rev-parse", recovery["recovery_ref"]],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            self.assertEqual(anchored, commit)
 
     def test_markdown_blank_line_at_eof_is_tolerated_but_other_whitespace_is_not(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1507,6 +1689,70 @@ class SeniorPlanCompatibilityTests(unittest.TestCase):
             adopted_again, errors_again = coordinator.adopt_late_results()
             self.assertEqual(adopted_again, [])
             self.assertEqual(errors_again, {})
+
+    def test_retry_waits_for_previous_session_reap_then_removes_old_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._init_git_project(root)
+            prompts = self._write_v3_plan(root)
+            coordinator = SeniorCoordinator(project_root=root, prompts_dir=prompts)
+            coordinator.run_preflight(
+                [sys.executable, "-c", "raise SystemExit(0)"],
+                timeout_seconds=30,
+            )
+            [request_path] = coordinator.lease_ready(max_workers=1, ttl_seconds=300)
+            request = json.loads(request_path.read_text(encoding="utf-8"))
+            workspace = prepare_workspace(request_path)
+            write_worker_heartbeat(
+                request_path,
+                status="running",
+                current_command="focused-test",
+                progress="still working",
+            )
+            observed_at = datetime.now(timezone.utc)
+            coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                now=observed_at,
+                protected_attempts={(request["job_id"], request["attempt_id"])},
+            )
+
+            waiting = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                now=observed_at + timedelta(seconds=121),
+                protected_attempts={(request["job_id"], request["attempt_id"])},
+            )
+
+            self.assertEqual(waiting["leased_requests"], [])
+            self.assertEqual(
+                waiting["sessions_waiting_for_reap"],
+                ["a:propose/attempt-0001"],
+            )
+            self.assertTrue(workspace.is_dir())
+
+            resumed = coordinator.supervise_tick(
+                max_workers=1,
+                ttl_seconds=300,
+                heartbeat_timeout_seconds=120,
+                stall_grace_seconds=0,
+                max_retries=2,
+                now=observed_at + timedelta(seconds=122),
+                protected_attempts=set(),
+            )
+
+            self.assertFalse(workspace.exists())
+            self.assertEqual(len(resumed["leased_requests"]), 1)
+            retry_request = json.loads(
+                Path(resumed["leased_requests"][0]).read_text(encoding="utf-8")
+            )
+            self.assertEqual(retry_request["attempt_id"], "attempt-0002")
 
     def test_conflicting_apply_jobs_advance_through_integrated_subwaves(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
