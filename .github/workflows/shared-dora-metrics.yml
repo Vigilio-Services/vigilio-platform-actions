@@ -42,16 +42,16 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@027a572cb183e40f3daa76967f573d06baec2416 # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
           install: 'false'
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/configure-github-packages@027a572cb183e40f3daa76967f573d06baec2416 # v1
         with:
           token: ${{ secrets.GITHUB_PACKAGES_TOKEN || github.token }}
       - run: pnpm install --frozen-lockfile --prefer-offline
@@ -60,7 +60,7 @@ jobs:
           DORA_ENVIRONMENT: ${{ inputs.environment }}
           GITHUB_TOKEN: ${{ github.token }}
           WINDOW_DAYS: ${{ inputs.window-days }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dora-metrics-${{ github.run_id }}
           path: ${{ inputs.working-directory }}/reports/dora-metrics.*
