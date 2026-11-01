@@ -11,7 +11,11 @@ const repositoryRoot = path.resolve(packageRoot, '..', '..');
 const skillsSource = path.join(repositoryRoot, 'skills');
 const profilesYamlSource = path.join(repositoryRoot, 'skill-profiles.yaml');
 const profilesJsonSource = path.join(repositoryRoot, 'skill-profiles.json');
-const docsSource = path.resolve(repositoryRoot, '..', 'vigilio-docs');
+const docsSource =
+  process.env['VIGILIO_DOCS_PATH'] ||
+  (existsSync(path.resolve(repositoryRoot, '..', 'vigilio-docs'))
+    ? path.resolve(repositoryRoot, '..', 'vigilio-docs')
+    : path.join(repositoryRoot, '.vigilio-docs'));
 const assetsRoot = path.join(packageRoot, 'assets');
 
 console.log('[build-assets] Starting deterministic asset compilation...');
