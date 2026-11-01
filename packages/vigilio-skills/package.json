@@ -17,6 +17,10 @@
     ".": {
       "types": "./dist/sync.d.ts",
       "import": "./dist/sync.js"
+    },
+    "./platform-context": {
+      "types": "./dist/platform-context.d.ts",
+      "import": "./dist/platform-context.js"
     }
   },
   "scripts": {
@@ -34,6 +38,10 @@
     "dist",
     "README.md"
   ],
+  "dependencies": {
+    "ajv": "8.20.0",
+    "yaml": "2.9.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@types/node": "24.10.4",

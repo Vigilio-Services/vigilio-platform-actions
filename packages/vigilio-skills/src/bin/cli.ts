@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validatePlatformContext } from '../platform-context.js';
 import {
   checkSkills,
   hashFileIfPresent,
@@ -18,6 +19,13 @@ const packageVersion = readPackageVersion(path.join(packageRoot, 'package.json')
 const sourceRoot = path.join(packageRoot, 'assets', 'skills');
 const profilesPath = path.join(packageRoot, 'assets', 'profiles.json');
 const registryPath = path.join(packageRoot, 'assets', 'skills-registry.json');
+const platformContextSchemaPath = path.join(
+  packageRoot,
+  'assets',
+  'docs',
+  'schemas',
+  'platform-context.schema.json',
+);
 const profilesData = readProfiles(profilesPath);
 const [command, ...args] = process.argv.slice(2);
 
@@ -35,6 +43,7 @@ if (!command || command === '--help' || command === '-h') {
       '  diff [options]                   Show drift between target and upstream skills',
       '  doctor [options]                 Audit permissions, symlinks, locks and manifest health',
       '  migrate [options]                Migrate consumer manifest schema from v1 to v2',
+      '  context [options]                Validate optional .vigilio/platform-context.yaml',
       '',
       'Options:',
       '  --root <path>                    Consumer project root (default: current directory)',
@@ -44,6 +53,8 @@ if (!command || command === '--help' || command === '-h') {
       '  --dry-run                        Report changes without writing',
       '  --strict                         Fail on any unmanaged or extra file in check',
       '  --explain                        Show detailed selection rationale in resolve',
+      '  --required                       Fail context validation when the optional file is absent',
+      '  --json                           Print context validation as machine-readable JSON',
     ].join('\n'),
   );
   process.exit(0);
@@ -203,6 +214,16 @@ if (command === 'list') {
     await syncSkills(options);
     console.log('Successfully migrated .vigilio-manifest.json to schemaVersion 2.');
   }
+} else if (command === 'context') {
+  const result = await validatePlatformContext(root, platformContextSchemaPath);
+  if (args.includes('--json')) {
+    console.log(JSON.stringify(result, null, 2));
+  } else if (result.status === 'PASS') {
+    console.log(`Platform context: PASS (${result.file})`);
+  } else {
+    console.log(`Platform context: NOT_RUN (${result.reason})`);
+  }
+  if (result.status === 'NOT_RUN' && args.includes('--required')) process.exitCode = 3;
 } else {
   console.error(`Unknown command: ${command}`);
   process.exit(2);

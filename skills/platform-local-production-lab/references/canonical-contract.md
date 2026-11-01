@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/prod-local-lab](../../.vigilio-docs/platform/labs/production-local-simulation.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Preflight de motor, recursos, versiones e imágenes requeridas.
+- Setup, health checks, pruebas y teardown idempotentes.
+- Diferencias explícitas respecto de producción real.
+- Evidencia aislada sin credenciales ni datos productivos.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+El modo runtime-security puede requerir Linux o WSL2 y privilegios controlados; no debe habilitarse silenciosamente. Un lab local nunca demuestra capacidad multizona o escala productiva.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Proveer un entorno Kind reproducible con perfiles estándar y privilegiados para validar arquitectura antes de abrir PRs.
 - ❌ **Incorrecto:** Forzar a los desarrolladores a probar cambios arquitectónicos complejos directamente sobre entornos de staging en la nube.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/terraform-delivery](../../.vigilio-docs/platform/iac/terraform-delivery.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- `fmt`, validación, lint, policy checks y `terraform test` ejecutados.
+- Plan asociado al commit con resumen de altas, cambios y destrucciones.
+- Backend remoto, locking y recuperación de estado probados.
+- Drift periódico y aplicación mediante identidad federada.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+`force-unlock`, importaciones y cambios destructivos requieren revisión dual, backup de estado y runbook. Un plan generado con credenciales o variables desconocidas no es promovible.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Mantener módulos puros reutilizables, estado particionado y aplicar planes aprobados mediante OIDC federado en CI.
 - ❌ **Incorrecto:** Ejecutar terraform apply manual en producción o alojar todo el estado en un archivo monolítico sin bloqueo.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

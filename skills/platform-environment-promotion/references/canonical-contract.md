@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/environment-progression](../../.vigilio-docs/platform/environments/local-review-development-staging-production.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Digest idéntico desde el entorno origen hasta el destino.
+- Pull Request de promoción, gates ejecutados y aprobación correspondiente.
+- Resultado del rollout, análisis de SLO y rollback probado.
+- Separación de credenciales y datos por entorno.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+Un hotfix no autoriza reconstruir el artefacto ni desplegar fuera de GitOps. La reconciliación posterior debe quedar automatizada y vinculada al incidente.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Promover el mismo digest SHA-256 verificado a través de Staging hacia Producción mediante PR declarativo en GitOps.
 - ❌ **Incorrecto:** Reconstruir imágenes de Docker en cada entorno o permitir despliegues directos desde máquinas de desarrollo.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

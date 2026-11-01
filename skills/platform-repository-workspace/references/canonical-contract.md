@@ -4,28 +4,25 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/repository-boundaries](../../.vigilio-docs/platform/architecture/repository-boundaries.md) |
+| Contexto dinámico | [vigilio-docs/platform-context](../../.vigilio-docs/standards/platform/platform-context.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Inventario de repositorios, owners y límites de CI.
+- Estrategia elegida —monorepo, multirepo, submódulos o paquetes— con decisión trazable.
+- Contexto `.vigilio/platform-context.yaml` validado cuando exista.
+- Ausencia de repositorios anidados, copias y artefactos fuera de la política aprobada.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+Un repositorio anidado sin submódulo sólo se admite como fixture efímero e ignorado. Una copia de migración requiere propietario, fecha de retiro y exclusión explícita de CI.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Estratificar código de app, infraestructura Terraform y manifiestos GitOps en repositorios independientes orquestados por submódulos auditables.
 - ❌ **Incorrecto:** Mezclar código fuente, módulos de Terraform y copias masivas no versionadas en una misma carpeta sin fronteras de CI.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

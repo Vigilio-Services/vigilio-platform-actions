@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/finops-intelligence](../../.vigilio-docs/platform/finops/cloud-cost-intelligence.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Fuente de coste reconciliada con factura o ledger del proveedor.
+- Asignación por equipo, entorno, servicio y unidad de negocio.
+- Presupuesto, anomalías y coste unitario con ventana definida.
+- Ahorro propuesto comparado con impacto en SLO y capacidad.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+Una estimación local debe etiquetarse como estimación y no como factura. Recursos sin owner o dimensión de coste bloquean la declaración de coste unitario confiable.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Monitorear costos en tiempo real con OpenCost, migrar a Graviton y rechazar recursos no etiquetados.
 - ❌ **Incorrecto:** Operar infraestructura cloud sin visibilidad granular de gasto por equipo ni alertas de anomalías financieras.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

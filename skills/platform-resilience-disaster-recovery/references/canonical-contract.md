@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/resilience-dr](../../.vigilio-docs/platform/kubernetes/resilience-dr.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- BIA, dependencias críticas y objetivos RTO/RPO aprobados.
+- Simulacro de pérdida, restauración y failover con cronología real.
+- Runbook ejecutado por una persona distinta de su autor.
+- Acciones correctivas, propietario y fecha de repetición.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+Los experimentos destructivos requieren alcance aislado, criterio de aborto y recuperación previa. Un plan de DR sin simulacro vigente permanece `NOT_RUN`.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Automatizar respaldos diarios con Velero hacia cuentas aisladas y auditar el RTO mediante simulacros regulares.
 - ❌ **Incorrecto:** Confiar ciegamente en backups sin validar su restauración ni contar con runbooks documentados de contingencia.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

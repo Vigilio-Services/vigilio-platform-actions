@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/aws-foundation](../../.vigilio-docs/platform/aws/platform-foundation.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Plan IaC por cuenta y entorno con red y límites de confianza visibles.
+- Roles OIDC, políticas IAM mínimas y análisis de acceso.
+- Recursos de datos privados, cifrado y pruebas de conectividad autorizada/no autorizada.
+- Presupuesto, tags y propietarios verificables.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+La exposición pública requiere threat model, WAF o control equivalente, propietario y fecha de revisión. Credenciales estáticas no son una excepción aceptable para pipelines.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Utilizar VPCs privadas multi-AZ, endpoints de VPC privados y roles IAM efímeros federados por OIDC.
 - ❌ **Incorrecto:** Desplegar clústeres o bases de datos en subredes públicas o compartir credenciales de superadministrador.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

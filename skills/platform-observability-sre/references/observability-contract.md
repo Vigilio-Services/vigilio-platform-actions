@@ -4,6 +4,7 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato compartido | [vigilio-docs/platform-observability](../../.vigilio-docs/platform-runtime/1-observability-contract.md) |
 | Backend SLO | [vigilio-docs/backend-observability](../../.vigilio-docs/standards/observability/references/16-observability-slo.md) |
 | Frontend RUM | [vigilio-docs/frontend-observability](../../.vigilio-docs/stacks/frontend/web-mfe/observability/10-observabilidad-rum-grafana-slo.md) |
@@ -21,7 +22,7 @@ Lee completamente cada fuente aplicable.
 | Herramienta | estado con evidencia | lista aspiracional |
 | Dashboard | pregunta operativa | paneles sin propietario |
 
-## Evidencia
+## Evidencia Específica
 
 - Señales correlacionadas.
 - Cardinalidad limitada.
@@ -29,8 +30,11 @@ Lee completamente cada fuente aplicable.
 - Alertas sintéticas exitosas.
 - Runbooks accesibles.
 
+## Excepciones Específicas
+
+Una señal sin backend, retención y propietario se clasifica como parcial. La ausencia de tráfico o de una prueba sintética no demuestra disponibilidad ni cumplimiento del SLO.
+
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Instrumentar logs estructurados con correlación OTel, métricas de baja cardinalidad, SLO y privacidad verificable.
 - ❌ **Incorrecto:** Loguear tokens/PII/payloads completos, usar ID de usuario como etiqueta Prometheus o declarar trazas sin exportador.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

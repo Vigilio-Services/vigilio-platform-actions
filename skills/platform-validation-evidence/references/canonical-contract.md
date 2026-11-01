@@ -4,28 +4,24 @@
 
 | Necesidad | Fuente |
 |---|---|
+| Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
 | Contrato canónico | [vigilio-docs/operational-evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 
 Lee completamente cada fuente aplicable.
 
-## Decisión Rápida
+## Evidencia Específica
 
-| Tema | Bien | Mal |
-|---|---|---|
-| Arquitectura | Declarativa y auditable | Imperativa y opaca |
-| Entrega | Promoción inmutable con gates | Despliegue ad-hoc manual |
-| Seguridad | Fail-closed y verificada | Excepciones no documentadas |
+- Manifiesto machine-readable con commit, digest, herramienta y versión.
+- Resultados positivos, negativos y `NOT_RUN` diferenciados.
+- Checksums de artefactos y vínculo a la ejecución CI que los produjo.
+- Matriz de compatibilidad entre productor, consumidor y contrato.
 
-## Evidencia
+## Excepciones Específicas
 
-- Hashes criptográficos y firmas validadas.
-- Contratos y esquemas auditados.
-- Registro de logs estructurados y correlacionados.
-- Trazabilidad completa hacia tickets y PRs aprobados.
+Una evidencia manual sólo puede complementar, no reemplazar, un gate automatizable. Toda evidencia vencida o no reproducible se considera `NOT_RUN`.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
 - ✅ **Correcto:** Registrar evidencia criptográfica de pruebas, contratos y hashes de artefactos en matrices de compatibilidad versionadas.
 - ❌ **Incorrecto:** Asumir compatibilidad entre microservicios sin pruebas de preflight automatizadas ni verificación de esquemas.
-- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

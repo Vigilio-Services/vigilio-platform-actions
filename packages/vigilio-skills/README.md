@@ -16,7 +16,12 @@ Repositorios de plataforma usan capacidades EKS, observabilidad y trazabilidad:
 ```bash
 pnpm exec vigilio-skills sync --profile core --profile platform --profile openspec
 pnpm exec vigilio-skills check --profile core --profile platform --profile openspec
+pnpm exec vigilio-skills context --required
 ```
+
+`context` valida `.vigilio/platform-context.yaml` contra el esquema canónico distribuido. Sin
+`--required`, la ausencia del archivo produce `NOT_RUN` porque el contrato es opcional; contenido
+inválido, rutas absolutas o rutas que escapan del consumidor siempre fallan.
 
 Expo/React Native repositories use the isolated mobile profile:
 

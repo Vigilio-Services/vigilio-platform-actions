@@ -44,6 +44,72 @@ for (const filename of mdFiles(skills)) {
     if (!fs.existsSync(target)) failures.push(`${path.relative(skills, filename)} -> ${href}`);
   }
 }
+
+const platformContracts = [
+  'aws-platform-foundation/references/canonical-contract.md',
+  'kubernetes-gitops-delivery/references/canonical-contract.md',
+  'kubernetes-policy-runtime-security/references/canonical-contract.md',
+  'onprem-kubernetes-foundation/references/canonical-contract.md',
+  'platform-cicd-factory/references/canonical-contract.md',
+  'platform-data-reliability/references/canonical-contract.md',
+  'platform-environment-promotion/references/canonical-contract.md',
+  'platform-finops/references/canonical-contract.md',
+  'platform-local-production-lab/references/canonical-contract.md',
+  'platform-observability-sre/references/observability-contract.md',
+  'platform-repository-workspace/references/canonical-contract.md',
+  'platform-resilience-disaster-recovery/references/canonical-contract.md',
+  'platform-scalability-capacity/references/canonical-contract.md',
+  'platform-validation-evidence/references/canonical-contract.md',
+  'software-supply-chain-security/references/canonical-contract.md',
+  'terraform-iac-delivery/references/canonical-contract.md',
+];
+const commonContract = '../../.vigilio-docs/standards/platform/common-operational-contract.md';
+const duplicatedCommonText = [
+  'Hashes criptográficos y firmas validadas.',
+  'Arquitectura | Declarativa y auditable | Imperativa y opaca',
+  'no reescribir masivamente código heredado',
+];
+
+for (const relativeContract of platformContracts) {
+  const contractPath = path.join(skills, relativeContract);
+  if (!fs.existsSync(contractPath)) {
+    failures.push(`Missing platform contract: ${relativeContract}`);
+    continue;
+  }
+  const contract = fs.readFileSync(contractPath, 'utf8');
+  if (!contract.includes(commonContract)) {
+    failures.push(`Platform contract does not reference shared policy: ${relativeContract}`);
+  }
+  for (const duplicate of duplicatedCommonText) {
+    if (contract.includes(duplicate)) {
+      failures.push(
+        `Platform contract duplicates shared policy (${duplicate}): ${relativeContract}`,
+      );
+    }
+  }
+}
+
+for (const requiredDoc of [
+  'standards/platform/common-operational-contract.md',
+  'standards/platform/platform-context.md',
+  'schemas/platform-context.schema.json',
+]) {
+  if (!fs.existsSync(path.join(docs, requiredDoc))) {
+    failures.push(`Missing bundled platform document: ${requiredDoc}`);
+  }
+}
+
+const platformContextTemplate = path.join(
+  assets,
+  'templates',
+  'project',
+  '.vigilio',
+  'platform-context.yaml',
+);
+if (!fs.existsSync(platformContextTemplate)) {
+  failures.push('Missing consumer template: templates/project/.vigilio/platform-context.yaml');
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exitCode = 1;
