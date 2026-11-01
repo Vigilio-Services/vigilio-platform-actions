@@ -17,6 +17,7 @@ import { runtimeSecurityFixtures } from './fixtures/runtime-security/fixture-cas
 import { SCALABILITY_FIXTURES } from './fixtures/scalability/fixture-cases.js';
 import { supplyChainFixtures } from './fixtures/supply-chain/fixture-cases.js';
 import { TERRAFORM_FIXTURES } from './fixtures/terraform/fixture-cases.js';
+import { VALIDATION_EVIDENCE_FIXTURES } from './fixtures/validation-evidence/fixture-cases.js';
 import { runRoutingEvals } from './routing-eval-runner.js';
 import type { FullEvalReport } from './types.js';
 
@@ -41,6 +42,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...RESILIENCE_FIXTURES,
     ...CICD_FACTORY_FIXTURES,
     ...REPOSITORY_WORKSPACE_FIXTURES,
+    ...VALIDATION_EVIDENCE_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

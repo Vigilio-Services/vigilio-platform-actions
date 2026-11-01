@@ -1481,7 +1481,104 @@ export function evaluateRepositoryWorkspaceFixture(fixture: FixtureTestCase): Fi
   };
 }
 
+export function evaluateValidationEvidenceFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Operational evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/operational-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta archivo de evidencia operacional: reports/operational-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        verification_status?: string;
+        pii_detected?: boolean;
+        secrets_detected?: boolean;
+        contract_tests_passed?: boolean;
+        compatibility_verified?: boolean;
+      };
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight operacional falló o dependencias de verificación ausentes');
+      }
+      if (parsed.verification_status !== 'VERIFIED') {
+        violations.push(`Evidencia no verificada operacionalmente (${parsed.verification_status})`);
+      }
+      if (parsed.pii_detected === true) {
+        violations.push('Detección de información sensible o PII sin enmascarar en evidencia');
+      }
+      if (parsed.secrets_detected === true) {
+        violations.push('Detección de secretos o credenciales en texto plano en logs de evidencia');
+      }
+      if (parsed.contract_tests_passed === false) {
+        violations.push('Pruebas de contratos entre servicios interdependientes fallidas');
+      }
+      if (parsed.compatibility_verified === false) {
+        violations.push('Matriz de compatibilidad cross-repo no verificada');
+      }
+    } catch {
+      violations.push('reports/operational-evidence.json no es un JSON válido');
+    }
+  }
+
+  // 2. Compatibility matrix check
+  const compatRaw = fixture.files['compatibility.json'];
+  if (compatRaw) {
+    try {
+      const parsed = JSON.parse(compatRaw) as {
+        platform_actions?: { ref?: string };
+      };
+      const ref = parsed.platform_actions?.ref ?? '';
+      if (/unknown|dirty/i.test(ref)) {
+        violations.push('Matriz de compatibilidad apunta a ref inestable o no auditable');
+      }
+    } catch {
+      violations.push('compatibility.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de políticas de evidencia operacional, contratos y compatibilidad',
+    };
+  }
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed: fixture.expectedVerdict === 'PASS',
+    actualVerdict: 'PASS',
+    expectedVerdict: fixture.expectedVerdict,
+    violations: [],
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-validation-evidence') {
+    return evaluateValidationEvidenceFixture(fixture);
+  }
   if (fixture.skill === 'platform-repository-workspace') {
     return evaluateRepositoryWorkspaceFixture(fixture);
   }

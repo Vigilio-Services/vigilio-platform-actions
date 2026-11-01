@@ -2083,6 +2083,95 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-repository-workspace'],
     },
   },
+  {
+    id: 'EVD-TRAIN-POS-01',
+    domain: 'validation-evidence',
+    description:
+      'Generar reporte de evidencia operacional vinculado a commit y verificar matriz de compatibilidad',
+    task: 'Generar reporte de operational-evidence vinculado a commit SHA y validar compatibility-matrix cross-repo',
+    files: ['reports/operational-evidence.json', 'compatibility.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-validation-evidence'],
+      mustNotSelect: ['platform-cicd-factory', 'platform-repository-workspace'],
+    },
+  },
+  {
+    id: 'EVD-TRAIN-POS-02',
+    domain: 'validation-evidence',
+    description:
+      'Validacion de auditoria de evidencia operacional y preflight gates antes del deploy',
+    task: 'Ejecutar preflight gates y recolectar audit-evidence operacional verificando ausencia de PII y secretos',
+    files: ['reports/operational-evidence.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-validation-evidence'],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+  {
+    id: 'EVD-TRAIN-POS-03',
+    domain: 'validation-evidence',
+    description: 'Trazabilidad inmutable y validation-trail de auditoria de artefactos',
+    task: 'Consolidar validation-trail y verification-gate en la cadena de validacion de plataforma',
+    files: ['reports/operational-evidence.json', 'COMPATIBILITY.md', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-validation-evidence'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'EVD-TRAIN-POS-04',
+    domain: 'validation-evidence',
+    description:
+      'Comprobacion de compatibility-matrix y verification-gate para dependencias de plataforma',
+    task: 'Verificar compatibility-matrix y validar evidencia operacional entre repositorios dependientes',
+    files: ['compatibility.json', 'reports/operational-evidence.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-validation-evidence'],
+      mustNotSelect: ['platform-environment-promotion'],
+    },
+  },
+  {
+    id: 'EVD-TRAIN-NEG-01',
+    domain: 'validation-evidence',
+    description:
+      'Despliegue GitOps con ArgoCD ApplicationSet no debe activar validacion de evidencia',
+    task: 'Configurar sincronizacion continua con ArgoCD ApplicationSet y Progressive Syncs en Kubernetes',
+    files: ['gitops/applicationset.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['kubernetes-gitops-delivery'],
+      mustNotSelect: ['platform-validation-evidence'],
+    },
+  },
+  {
+    id: 'EVD-TRAIN-NEG-02',
+    domain: 'validation-evidence',
+    description:
+      'Optimizacion FinOps de recursos computacionales no debe activar validacion de evidencia',
+    task: 'Configurar OpenCost e informes de asignacion de costos de pods y nodos en Kubernetes',
+    files: ['finops/opencost.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-validation-evidence'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2664,6 +2753,35 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['platform-cicd-factory'],
       mustNotSelect: ['platform-repository-workspace'],
+    },
+  },
+  {
+    id: 'EVD-HOLD-POS-01',
+    domain: 'validation-evidence',
+    description:
+      'Verificacion de audit-evidence y validation-trail en matriz de compatibilidad cross-repo',
+    task: 'Verificar validation-trail y audit-evidence operacional contra la compatibility-matrix de plataforma',
+    files: ['compatibility.json', 'reports/operational-evidence.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-validation-evidence'],
+      mustNotSelect: ['platform-cicd-factory'],
+    },
+  },
+  {
+    id: 'EVD-HOLD-NEG-01',
+    domain: 'validation-evidence',
+    description: 'Configuracion de backup con Velero no debe activar validacion de evidencia',
+    task: 'Configurar backup programado de volumenes persistentes con Velero para proteccion contra desastres RPO 1h',
+    files: ['k8s/velero-backup.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-validation-evidence'],
     },
   },
 ];

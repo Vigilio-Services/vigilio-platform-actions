@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T20:17:04.377Z",
+  "timestamp": "2026-11-01T20:33:21.824Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T20:17:04.370Z",
+    "timestamp": "2026-11-01T20:33:21.818Z",
     "overallMetrics": {
-      "total": 138,
-      "truePositives": 533,
+      "total": 146,
+      "truePositives": 576,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 108,
-      "truePositives": 405,
+      "total": 114,
+      "truePositives": 436,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 30,
-      "truePositives": 128,
+      "total": 32,
+      "truePositives": 140,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -127,6 +127,12 @@
         "accuracy": 1
       },
       "repository-workspace": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "validation-evidence": {
         "total": 8,
         "passed": 8,
         "failed": 0,
@@ -298,6 +304,9 @@
       "platform-repository-workspace": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
+      "platform-validation-evidence": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
@@ -311,8 +320,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 42,
-    "passed": 42,
+    "total": 45,
+    "passed": 45,
     "failed": 0,
     "results": [
       {
@@ -859,6 +868,47 @@
           "Falta archivo de configuración de higiene: .gitignore"
         ],
         "reason": "No se puede validar el workspace ni la higiene del repositorio: git CLI o los manifiestos no están disponibles y el preflight reporta fallo."
+      },
+      {
+        "id": "FX-EVD-CORRECT-01",
+        "skill": "platform-validation-evidence",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de evidencia operacional: registra traza inmutable vinculada al commit, preflight aprobado, ausencia de PII y secretos, y matriz de compatibilidad válida."
+      },
+      {
+        "id": "FX-EVD-INSECURE-01",
+        "skill": "platform-validation-evidence",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Preflight operacional falló o dependencias de verificación ausentes",
+          "Evidencia no verificada operacionalmente (UNTESTED)",
+          "Detección de información sensible o PII sin enmascarar en evidencia",
+          "Detección de secretos o credenciales en texto plano en logs de evidencia",
+          "Pruebas de contratos entre servicios interdependientes fallidas",
+          "Matriz de compatibilidad cross-repo no verificada",
+          "Matriz de compatibilidad apunta a ref inestable o no auditable"
+        ],
+        "reason": "Fallo de políticas de evidencia operacional, contratos y compatibilidad"
+      },
+      {
+        "id": "FX-EVD-NOTRUN-01",
+        "skill": "platform-validation-evidence",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight operacional falló o dependencias de verificación ausentes",
+          "Evidencia no verificada operacionalmente (UNKNOWN)"
+        ],
+        "reason": "No se puede validar la evidencia ni la compatibilidad: el colector de evidencia no responde o faltan herramientas de preflight, reportando fallo."
       }
     ]
   },
