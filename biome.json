@@ -12,7 +12,8 @@
       "!**/dist",
       "!coverage",
       "!reports",
-      "!packages/vigilio-skills/assets"
+      "!packages/vigilio-skills/assets",
+      "!packages/vigilio-skills/evals/results"
     ]
   },
   "formatter": {
