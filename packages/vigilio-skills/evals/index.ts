@@ -10,6 +10,7 @@ import { GITOPS_FIXTURES } from './fixtures/gitops/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
 import { ONPREM_FOUNDATION_FIXTURES } from './fixtures/onprem-foundation/fixture-cases.js';
 import { PROMOTION_FIXTURES } from './fixtures/promotion/fixture-cases.js';
+import { RESILIENCE_FIXTURES } from './fixtures/resilience/fixture-cases.js';
 import { runtimeSecurityFixtures } from './fixtures/runtime-security/fixture-cases.js';
 import { SCALABILITY_FIXTURES } from './fixtures/scalability/fixture-cases.js';
 import { supplyChainFixtures } from './fixtures/supply-chain/fixture-cases.js';
@@ -35,6 +36,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...ONPREM_FOUNDATION_FIXTURES,
     ...SCALABILITY_FIXTURES,
     ...FINOPS_FIXTURES,
+    ...RESILIENCE_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

@@ -1852,6 +1852,80 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-finops'],
     },
   },
+
+  // ------------------------------------------------------------
+  // DOMAIN 8: PLATFORM RESILIENCE & DISASTER RECOVERY
+  // ------------------------------------------------------------
+  {
+    id: 'RES-TRAIN-POS-01',
+    domain: 'resilience',
+    description:
+      'Programar backups integrales de clúster con Velero Schedule y snapshots CSI hacia región aislada',
+    task: 'Configurar backups de contingencia y disaster-recovery con Velero Schedule y snapshots de volumenes hacia region secundaria',
+    files: ['k8s/velero-schedule.yaml', 'k8s/backup.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['platform-observability-sre', 'platform-scalability-capacity'],
+    },
+  },
+  {
+    id: 'RES-TRAIN-POS-02',
+    domain: 'resilience',
+    description: 'Inyección de fallos controlados y pruebas de ingeniería del caos con Chaos Mesh',
+    task: 'Ejecutar pruebas de resiliencia con Chaos Mesh inyectando fallos de red y caidas de pods en staging',
+    files: ['k8s/chaos-mesh.yaml', 'k8s/network-chaos.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'RES-TRAIN-POS-03',
+    domain: 'resilience',
+    description:
+      'Plan de contingencia ante desastres con RTO < 1h y RPO < 15 min en arquitectura multi-región',
+    task: 'Definir plan de contingencia ante desastres con objetivos de RTO y RPO para conmutacion failover multi-region',
+    files: ['k8s/dr-plan.yaml', 'values-dr.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+  {
+    id: 'RES-TRAIN-POS-04',
+    domain: 'resilience',
+    description:
+      'Validar simulacro GameDay de recuperación ante desastres con restauración completa de namespace',
+    task: 'Validar simulacro de contingencia GameDay con restauracion completa de clúster usando Velero para certificar el RTO',
+    files: ['k8s/velero-restore.yaml', 'k8s/gameday.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+  {
+    id: 'RES-TRAIN-POS-05',
+    domain: 'resilience',
+    description:
+      'Configurar replicación de volúmenes EBS y conmutación por fallo multi-región para DR',
+    task: 'Configurar conmutacion por failover de cluster y resiliencia ante desastres en region secundaria',
+    files: ['k8s/dr-replication.yaml', 'k8s/failover.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'RES-TRAIN-NEG-01',
+    domain: 'resilience',
+    description: 'Configuración de WAL archiving en PostgreSQL no debe activar DR de clúster',
+    task: 'Configurar archivado continuo de WALs en S3 para Point-In-Time-Recovery (PITR) de PostgreSQL',
+    files: ['k8s/postgres-wal.yaml'],
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-resilience-disaster-recovery'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2356,6 +2430,32 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: [],
       mustNotSelect: ['platform-finops'],
+    },
+  },
+  // ------------------------------------------------------------
+  // HOLDOUT DOMAIN 8: RESILIENCE & DR
+  // ------------------------------------------------------------
+  {
+    id: 'RES-HOLD-POS-01',
+    domain: 'resilience',
+    description:
+      'Diseñar plan de contingencia y resiliencia ante desastres con Velero y objetivos RTO',
+    task: 'Configurar plan de contingencia y disaster-recovery con Velero Schedule y simulacro GameDay para verificar el RTO',
+    files: ['k8s/velero-contingencia.yaml', 'k8s/dr-gameday.yaml'],
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'RES-HOLD-NEG-01',
+    domain: 'resilience',
+    description: 'Configuración de ApplicationSet de ArgoCD no debe activar DR',
+    task: 'Configurar ApplicationSet de ArgoCD con generador Git para despliegue automatizado de microservicios',
+    files: ['gitops/applicationset.yaml'],
+    expected: {
+      mustSelect: ['kubernetes-gitops-delivery'],
+      mustNotSelect: ['platform-resilience-disaster-recovery'],
     },
   },
 ];

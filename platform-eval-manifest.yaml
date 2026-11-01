@@ -107,12 +107,12 @@ skills:
 
   - id: "platform-resilience-disaster-recovery"
     domain: "disaster-recovery"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-RES-CORRECT-01"
+      insecure: "FX-RES-INSECURE-01"
+      not_run: "FX-RES-NOTRUN-01"
+    cases_count: 8
 
   - id: "platform-cicd-factory"
     domain: "cicd"

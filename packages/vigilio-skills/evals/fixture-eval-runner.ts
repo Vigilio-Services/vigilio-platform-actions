@@ -1168,7 +1168,118 @@ export function evaluateFinopsFixture(fixture: FixtureTestCase): FixtureResult {
   };
 }
 
+export function evaluateResilienceFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/dr-gameday-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta evidencia de simulación DR: reports/dr-gameday-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        restore_verification_status?: string;
+        gameday_test_passed?: boolean;
+        rpo_minutes?: number;
+        rpo_target_minutes?: number;
+        rto_minutes?: number;
+        rto_target_minutes?: number;
+        backup_storage_isolated?: boolean;
+      };
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight de contingencia y DR falló o Velero no responde');
+      }
+      if (parsed.restore_verification_status !== 'VERIFIED') {
+        violations.push(
+          `Procedimiento de restauración de clúster no verificado (${parsed.restore_verification_status})`,
+        );
+      }
+      if (parsed.gameday_test_passed === false) {
+        violations.push('Simulacro de contingencia GameDay fallido');
+      }
+      if (
+        parsed.rto_minutes !== undefined &&
+        parsed.rto_target_minutes !== undefined &&
+        parsed.rto_minutes > parsed.rto_target_minutes
+      ) {
+        violations.push(
+          `RTO observado (${parsed.rto_minutes} min) excede el objetivo SLA (${parsed.rto_target_minutes} min)`,
+        );
+      }
+      if (parsed.backup_storage_isolated === false) {
+        violations.push(
+          'Almacenamiento de backup sin replicación cruzada ni aislamiento en cuenta/región secundaria',
+        );
+      }
+    } catch {
+      violations.push('reports/dr-gameday-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de contingencia y resiliencia ante desastres.',
+    };
+  }
+
+  // 2. Static YAML checks for Velero Schedule
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*Schedule/i.test(content)) {
+        if (/snapshotVolumes:\s*false/i.test(content)) {
+          violations.push(
+            `snapshotVolumes desactivado en ${filename}; volúmenes persistentes quedarán desprotegidos`,
+          );
+        }
+        if (/storageLocation:\s*default\b/i.test(content)) {
+          violations.push(
+            `storageLocation default en ${filename}; se requiere ubicación aislada en región secundaria`,
+          );
+        }
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-resilience-disaster-recovery') {
+    return evaluateResilienceFixture(fixture);
+  }
   if (fixture.skill === 'platform-scalability-capacity') {
     return evaluateScalabilityFixture(fixture);
   }
