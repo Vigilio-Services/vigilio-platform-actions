@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T20:02:56.283Z",
+  "timestamp": "2026-11-01T20:17:04.377Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T20:02:56.278Z",
+    "timestamp": "2026-11-01T20:17:04.370Z",
     "overallMetrics": {
-      "total": 130,
-      "truePositives": 492,
+      "total": 138,
+      "truePositives": 533,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 102,
-      "truePositives": 374,
+      "total": 108,
+      "truePositives": 405,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 28,
-      "truePositives": 118,
+      "total": 30,
+      "truePositives": 128,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -121,6 +121,12 @@
         "accuracy": 1
       },
       "cicd-factory": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "repository-workspace": {
         "total": 8,
         "passed": 8,
         "failed": 0,
@@ -282,10 +288,15 @@
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "platform-resilience-disaster-recovery": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-cicd-factory": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "platform-repository-workspace": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
@@ -300,8 +311,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 39,
-    "passed": 39,
+    "total": 42,
+    "passed": 42,
     "failed": 0,
     "results": [
       {
@@ -804,6 +815,50 @@
           "Pipeline no verificado operacionalmente (UNKNOWN)"
         ],
         "reason": "No se puede validar la fábrica de pipelines: el runner de GitHub Actions no responde o el repositorio central platform-actions es inaccesible, preflight reporta fallo."
+      },
+      {
+        "id": "FX-WS-CORRECT-01",
+        "skill": "platform-repository-workspace",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de gobernanza de workspace: define exclusión completa de artefactos efímeros (.terraform, node_modules, .logs), versiones fijadas en versions.yaml y límites de responsabilidad claros con preflight aprobado."
+      },
+      {
+        "id": "FX-WS-INSECURE-01",
+        "skill": "platform-repository-workspace",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Workspace no verificado operacionalmente (UNTESTED)",
+          "Higiene de workspace deficiente: existencia de artefactos efímeros o cachés",
+          "Residuos no versionados detectados en árbol de workspace",
+          "Versiones de herramientas en versions.yaml no están fijadas con precisión",
+          "Límites de responsabilidad entre repositorios/carpetas no aislados",
+          ".gitignore no excluye directorio de caché de infraestructura .terraform/",
+          ".gitignore no excluye dependencias node_modules/",
+          ".gitignore no previene commit accidental de archivos de entorno .env",
+          "versions.yaml contiene versiones flotantes no reproducibles (latest)"
+        ],
+        "reason": "Fallo de gobernanza de repositorio, workspace e higiene de artefactos"
+      },
+      {
+        "id": "FX-WS-NOTRUN-01",
+        "skill": "platform-repository-workspace",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight de workspace falló o git CLI/manifiestos inaccesibles",
+          "Workspace no verificado operacionalmente (UNKNOWN)",
+          "Falta archivo de configuración de higiene: .gitignore"
+        ],
+        "reason": "No se puede validar el workspace ni la higiene del repositorio: git CLI o los manifiestos no están disponibles y el preflight reporta fallo."
       }
     ]
   },

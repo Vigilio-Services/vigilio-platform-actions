@@ -1995,6 +1995,94 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-cicd-factory'],
     },
   },
+  {
+    id: 'WS-TRAIN-POS-01',
+    domain: 'repository-workspace',
+    description:
+      'Organización de workspace y delimitación de repositorios con estrategia declarativa multirepo',
+    task: 'Organizar workspace y delimitar fronteras de repositorios con estrategia declarativa de multirepo',
+    files: ['workspace.yaml', '.gitignore', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-repository-workspace'],
+      mustNotSelect: ['platform-cicd-factory', 'kubernetes-gitops-delivery'],
+    },
+  },
+  {
+    id: 'WS-TRAIN-POS-02',
+    domain: 'repository-workspace',
+    description:
+      'Configuración de gitmodules e higiene estricta en workspace para excluir residuos',
+    task: 'Configurar gitmodules e imponer higiene estricta en workspace para excluir residuos no versionados',
+    files: ['.gitmodules', '.gitignore', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-repository-workspace'],
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+  {
+    id: 'WS-TRAIN-POS-03',
+    domain: 'repository-workspace',
+    description:
+      'Centralización de versiones canónicas de herramientas en versions.yaml y repository-boundaries',
+    task: 'Centralizar versiones canónicas de herramientas en versions.yaml y definir repository-boundaries en workspace',
+    files: ['versions.yaml', 'workspace.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-repository-workspace'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'WS-TRAIN-POS-04',
+    domain: 'repository-workspace',
+    description:
+      'Implementación de workspace-strategy y polyrepo para desacoplar código de infraestructura',
+    task: 'Implementar workspace-strategy y polyrepo para desacoplar código de aplicación de infraestructura',
+    files: ['workspace.yaml', '.gitignore', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-repository-workspace'],
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+  {
+    id: 'WS-TRAIN-NEG-01',
+    domain: 'repository-workspace',
+    description: 'Collector de OpenTelemetry no debe activar gobernanza de workspace',
+    task: 'Configurar el OpenTelemetry collector para exportar trazas OTLP hacia Grafana Tempo con propagación W3C',
+    files: ['k8s/otel-collector.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-observability-sre'],
+      mustNotSelect: ['platform-repository-workspace'],
+    },
+  },
+  {
+    id: 'WS-TRAIN-NEG-02',
+    domain: 'repository-workspace',
+    description: 'Backup automatizado de Velero no debe activar gobernanza de workspace',
+    task: 'Configurar backup automatizado diario con Velero Schedule y snapshots CSI en clúster EKS',
+    files: ['k8s/velero-schedule.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-resilience-disaster-recovery'],
+      mustNotSelect: ['platform-repository-workspace'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2548,6 +2636,34 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['platform-scalability-capacity'],
       mustNotSelect: ['platform-cicd-factory'],
+    },
+  },
+  {
+    id: 'WS-HOLD-POS-01',
+    domain: 'repository-workspace',
+    description: 'Definición de git-hygiene y repository-boundaries en workspace multirepo',
+    task: 'Definir git-hygiene y repository-boundaries en workspace multirepo excluyendo node_modules y terraform',
+    files: ['.gitignore', 'workspace.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-repository-workspace'],
+      mustNotSelect: ['platform-finops', 'platform-data-reliability'],
+    },
+  },
+  {
+    id: 'WS-HOLD-NEG-01',
+    domain: 'repository-workspace',
+    description: 'Pipeline factory corporativo no debe activar gobernanza de workspace',
+    task: 'Configurar pipeline-factory corporativo de github-actions para construir imágenes OCI multi-arquitectura',
+    files: ['.github/workflows/pipeline-factory.yml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['platform-repository-workspace'],
     },
   },
 ];

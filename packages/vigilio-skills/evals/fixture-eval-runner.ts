@@ -1378,7 +1378,113 @@ export function evaluateCicdFactoryFixture(fixture: FixtureTestCase): FixtureRes
   };
 }
 
+export function evaluateRepositoryWorkspaceFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/workspace-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta evidencia de workspace: reports/workspace-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        verification_status?: string;
+        hygiene_clean?: boolean;
+        unversioned_residuals_detected?: boolean;
+        tool_versions_pinned?: boolean;
+        boundaries_isolated?: boolean;
+      };
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight de workspace falló o git CLI/manifiestos inaccesibles');
+      }
+      if (parsed.verification_status !== 'VERIFIED') {
+        violations.push(`Workspace no verificado operacionalmente (${parsed.verification_status})`);
+      }
+      if (parsed.hygiene_clean === false) {
+        violations.push(
+          'Higiene de workspace deficiente: existencia de artefactos efímeros o cachés',
+        );
+      }
+      if (parsed.unversioned_residuals_detected === true) {
+        violations.push('Residuos no versionados detectados en árbol de workspace');
+      }
+      if (parsed.tool_versions_pinned === false) {
+        violations.push(
+          'Versiones de herramientas en versions.yaml no están fijadas con precisión',
+        );
+      }
+      if (parsed.boundaries_isolated === false) {
+        violations.push('Límites de responsabilidad entre repositorios/carpetas no aislados');
+      }
+    } catch {
+      violations.push('reports/workspace-evidence.json no es un JSON válido');
+    }
+  }
+
+  // 2. Static checks
+  const gitignoreRaw = fixture.files['.gitignore'];
+  if (!gitignoreRaw) {
+    violations.push('Falta archivo de configuración de higiene: .gitignore');
+  } else {
+    if (!/\.terraform\b/i.test(gitignoreRaw)) {
+      violations.push('.gitignore no excluye directorio de caché de infraestructura .terraform/');
+    }
+    if (!/node_modules\b/i.test(gitignoreRaw)) {
+      violations.push('.gitignore no excluye dependencias node_modules/');
+    }
+    if (!/\.env\b/i.test(gitignoreRaw)) {
+      violations.push('.gitignore no previene commit accidental de archivos de entorno .env');
+    }
+  }
+
+  const versionsRaw = fixture.files['versions.yaml'];
+  if (versionsRaw && /latest\b/i.test(versionsRaw)) {
+    violations.push('versions.yaml contiene versiones flotantes no reproducibles (latest)');
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de gobernanza de repositorio, workspace e higiene de artefactos',
+    };
+  }
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed: fixture.expectedVerdict === 'PASS',
+    actualVerdict: 'PASS',
+    expectedVerdict: fixture.expectedVerdict,
+    violations: [],
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-repository-workspace') {
+    return evaluateRepositoryWorkspaceFixture(fixture);
+  }
   if (fixture.skill === 'platform-cicd-factory') {
     return evaluateCicdFactoryFixture(fixture);
   }

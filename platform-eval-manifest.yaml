@@ -125,12 +125,12 @@ skills:
 
   - id: "platform-repository-workspace"
     domain: "workspace"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-WS-CORRECT-01"
+      insecure: "FX-WS-INSECURE-01"
+      not_run: "FX-WS-NOTRUN-01"
+    cases_count: 8
 
   - id: "platform-validation-evidence"
     domain: "evidence"

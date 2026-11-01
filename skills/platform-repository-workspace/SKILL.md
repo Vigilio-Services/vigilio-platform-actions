@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "workspace, repository, submodules, polyrepo, git, hygiene, multirepo, monorepo"
-routing_files: ".gitmodules, .gitignore, versions.yaml, pnpm-workspace.yaml"
+routing_keywords: "workspace, repository, submodules, polyrepo, multirepo, monorepo, gitmodules, git-hygiene, repository-boundaries, workspace-strategy"
+routing_files: ".gitmodules, .gitignore, versions.yaml, pnpm-workspace.yaml, workspace.yaml"
 routing_capabilities: "platform-engineering, workspace-management"
 requires: []
 optional: []
