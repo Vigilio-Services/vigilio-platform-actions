@@ -5,9 +5,9 @@ owner: governance-platform
 lifecycle: stable
 introduced_in: 0.7.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "engineering, standards, governance, platform-observability-sre"
-routing_files: "package.json"
-routing_capabilities: "engineering-standards, governance"
+routing_keywords: "observability, opentelemetry, otel, prometheus, grafana, trace, traces, traceparent, metrics, logs, slo, sli, error-budget, burn-rate, w3c"
+routing_files: "otel-collector*.yaml, prometheus*.yaml, slo*.yaml, alert*.yaml"
+routing_capabilities: "observability, sre"
 requires: []
 optional: []
 conflicts: []

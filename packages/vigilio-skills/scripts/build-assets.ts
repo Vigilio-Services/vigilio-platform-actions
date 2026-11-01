@@ -220,8 +220,12 @@ if (existsSync(docsSource)) {
   );
 }
 
-// 8. Restore templates
-if (existsSync(templatesBackup)) {
+// 8. Bundle consumer templates
+const templatesSource = path.join(packageRoot, 'templates');
+if (existsSync(templatesSource)) {
+  await cp(templatesSource, assetsTemplates, { recursive: true });
+  console.log('[build-assets] Copied consumer templates from templates/ to assets/templates.');
+} else if (existsSync(templatesBackup)) {
   await cp(templatesBackup, assetsTemplates, { recursive: true });
   await rm(templatesBackup, { recursive: true, force: true });
   console.log('[build-assets] Restored consumer templates.');

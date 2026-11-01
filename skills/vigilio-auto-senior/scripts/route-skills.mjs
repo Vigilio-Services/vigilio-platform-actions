@@ -87,6 +87,9 @@ const signals = {
   gpui: false,
   cli: false,
   backend: false,
+  terraform: false,
+  kubernetes: false,
+  observability: false,
 };
 const MAX_FILES = 350,
   MAX_DEPTH = 4;
@@ -123,8 +126,13 @@ function traverse(dir, depth) {
         'vcpkg.json',
         'conanfile.py',
         'project.godot',
+        'Dockerfile',
       ].includes(e.name) ||
-      (/\.(?:cpp|hpp|cxx|cc|h|c|rs)$/.test(e.name) && depth <= 3)
+      (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
+      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*)\.ya?ml$/i.test(
+        e.name,
+      ) &&
+        depth <= 3)
     )
       signals.files.push(relative);
   }
@@ -168,6 +176,10 @@ for (const file of signals.files) {
   if (/\.(cpp|hpp|cc|cxx)$/.test(file)) signals.cpp = true;
   if (/\.c$/.test(file)) signals.c = true;
   if (file === 'rust-toolchain.toml') signals.rust = true;
+  if (/\.(tf|tfvars)$/i.test(file) || file.endsWith('terragrunt.hcl')) signals.terraform = true;
+  if (/(?:kustomization|Chart|values.*)\.ya?ml$/i.test(file)) signals.kubernetes = true;
+  if (/(?:otel-collector.*|prometheus.*|slo.*|alert.*)\.ya?ml$/i.test(file))
+    signals.observability = true;
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.
 const cmakeWithoutComments = combinedCMake.replace(/#[^\n]*/g, '');
@@ -190,7 +202,9 @@ signals.qt =
   /find_package\s*\(\s*Qt6\b[^)]*\b(?:Widgets|Quick|Gui)\b/i.test(combinedCMake);
 signals.webengine = /WebEngine(?:Widgets|Core|Quick)|QWebEngine/i.test(combinedCMake);
 const projectFound = signals.files.some((f) =>
-  /(package.json|composer.json|Cargo.toml|CMakeLists.txt|project.godot)$/.test(f),
+  /(package.json|composer.json|Cargo.toml|CMakeLists.txt|project.godot|\.tf|kustomization\.ya?ml|Chart\.ya?ml)$/.test(
+    f,
+  ),
 );
 // Discovery must still work when an installed skills folder doesn't exist.
 const installed = path.join(root, '.opencode/skills');
@@ -222,6 +236,13 @@ function parseMeta(content, key) {
 }
 function hasSignal(pattern) {
   const q = norm(pattern);
+  if (q.includes('*')) {
+    const parts = q.split('*').filter(Boolean);
+    return signals.files.some((f) => {
+      const nf = norm(f);
+      return parts.every((p) => nf.includes(p));
+    });
+  }
   return signals.files.some((f) => norm(f).includes(q));
 }
 // Prefer the user's explicitly named language when a monorepo contains multiple stacks.
@@ -243,6 +264,8 @@ const stack = new Set([
   ...(signals.php ? ['php', 'laravel'] : []),
   ...(signals.gpui ? ['gpui'] : []),
   ...(signals.godot ? ['godot', 'game'] : []),
+  ...(signals.terraform ? ['terraform', 'aws'] : []),
+  ...(signals.kubernetes ? ['kubernetes'] : []),
 ]);
 const reviewOnly = intent === 'review';
 const noCodePlan = !projectFound && intent === 'architecture';
@@ -341,11 +364,14 @@ for (const entry of entries) {
     '2d',
     '3d',
   ]);
-  const kwMatch = keywords.some((k) => k.length > 2 && words.includes(k) && !generic.has(k));
+  const matchedKws = keywords.filter((k) => k.length > 2 && words.includes(k) && !generic.has(k));
+  const kwMatch = matchedKws.length > 0;
   const gameIdea =
     !projectFound && test(/\b(videojuego|videojuegos|juego|juegos|game|godot|bevy)\b/);
+  const isCrossStack = ecosystems.includes('cross-stack');
   const ecoMatch =
     ecosystems.length === 0 ||
+    isCrossStack ||
     ecosystems.some((e) => stack.has(e) || e === 'any') ||
     (!projectFound && (kwMatch || gameIdea));
   const fileMatch = files.some((f) => hasSignal(f));
@@ -378,6 +404,14 @@ for (const entry of entries) {
       return true;
     });
   if (!ecoMatch || !capMatch) continue;
+  let crossStackScore = 0;
+  if (isCrossStack) {
+    crossStackScore += matchedKws.length * 3;
+    if (fileMatch) crossStackScore += 4;
+    if (caps.some((c) => words.includes(c))) crossStackScore += 2;
+  }
+  const crossStackActivated = isCrossStack ? crossStackScore >= 5 : true;
+  if (isCrossStack && !crossStackActivated) continue;
   // On greenfield ideas, only architecture candidates; test/release/build come after choosing a motor.
   if (noCodePlan && !caps.includes('architecture')) {
     // Future specialized engines may appear as candidates on an explicit no-repo request,

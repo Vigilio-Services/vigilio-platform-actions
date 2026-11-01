@@ -1,0 +1,205 @@
+{
+  "timestamp": "2026-11-01T09:13:02.774Z",
+  "routingSummary": {
+    "timestamp": "2026-11-01T09:13:02.773Z",
+    "overallMetrics": {
+      "total": 15,
+      "truePositives": 70,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositiveRate": 0,
+      "falseNegativeRate": 0,
+      "accuracy": 1
+    },
+    "trainingMetrics": {
+      "total": 11,
+      "truePositives": 52,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositiveRate": 0,
+      "falseNegativeRate": 0,
+      "accuracy": 1
+    },
+    "holdoutMetrics": {
+      "total": 4,
+      "truePositives": 18,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "trueNegatives": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositiveRate": 0,
+      "falseNegativeRate": 0,
+      "accuracy": 1
+    },
+    "domainBreakdown": {
+      "observability": {
+        "total": 12,
+        "passed": 12,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "backup-pitr": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "supply-chain": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "runtime-security": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "gitops": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "finops": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "prod-local": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "cross-stack": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "backend-nest": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "frontend-web": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "native-rust": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "native-cpp": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      },
+      "game-godot": {
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "accuracy": 0
+      }
+    },
+    "missingSkillsCount": {},
+    "unexpectedSkillsCount": {},
+    "activationReasons": {
+      "vigilio-auto-senior": ["entrada única: inspección, decisión y evidencia"],
+      "node-nest-build-feature": ["NestJS detectado"],
+      "node-nest-testing": ["testing backend"],
+      "platform-observability-sre": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "review-code-change": ["revisión posterior obligatoria, sin editar", "revisión read-only"],
+      "web-mfe-build-feature": ["React detectado"],
+      "web-mfe-contracts": ["contratos frontend"],
+      "web-mfe-testing": ["testing web"],
+      "web-mfe-technologies": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "diagnosing-bugs": ["reproducir causa antes de parche"],
+      "node-nest-persistence": ["DB NestJS"],
+      "aws-platform-foundation": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "terraform-iac-delivery": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "cpp-native-delivery": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "php-laravel-runtime": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "rust-native-delivery": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "software-supply-chain-security": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "precision-skill-reading": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "ux-web-experience": ["metadata declarativa: proyecto/keyword/ecosistema"]
+    },
+    "failures": []
+  },
+  "fixtureSummary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "results": [
+      {
+        "id": "FX-OBS-CORRECT-01",
+        "skill": "platform-observability-sre",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de observabilidad: baja cardinalidad, sin PII en trazas/métricas, alertas por burn rate con runbooks y preflight verificado."
+      },
+      {
+        "id": "FX-OBS-INSECURE-01",
+        "skill": "platform-observability-sre",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Violación de cardinalidad en monitoring/slo-rules.yaml: se detectó label de alta cardinalidad (\\buser_id\\s*:)",
+          "Violación de cardinalidad en monitoring/slo-rules.yaml: se detectó label de alta cardinalidad (\\braw_sql\\s*:)",
+          "Fuga de credenciales/PII en src/tracer.ts: se detectó registro de secretos en traza (setAttribute\\([^)]*authorization)",
+          "Fuga de credenciales/PII en src/tracer.ts: se detectó registro de secretos en traza (setAttribute\\([^)]*password)",
+          "Fuga de credenciales/PII en src/tracer.ts: se detectó registro de secretos en traza (setAttribute\\([^)]*cookie)",
+          "Fuga de credenciales/PII en src/tracer.ts: se detectó registro de secretos en traza (span\\?\\.setAttribute\\(['\"][^'\"]*password)",
+          "Alerta no accionable en monitoring/slo-rules.yaml: alerta por CPU aislada sin runbook ni cálculo de error budget"
+        ],
+        "reason": "Viola el contrato canónico: incluye user_id y raw_sql como labels en Prometheus, registra tokens en spans y carece de runbooks y error budgets."
+      },
+      {
+        "id": "FX-OBS-NOTRUN-01",
+        "skill": "platform-observability-sre",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Falta archivo obligatorio de evidencia preflight: reports/preflight-evidence.json"
+        ],
+        "reason": "Fail-closed por falta de evidencia verificable."
+      }
+    ]
+  },
+  "gateVerdict": "PASS"
+}
