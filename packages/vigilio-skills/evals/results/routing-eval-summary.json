@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-11-01T20:48:20.691Z",
+  "timestamp": "2026-11-01T20:56:38.250Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T20:48:20.684Z",
+    "timestamp": "2026-11-01T20:56:38.243Z",
     "overallMetrics": {
       "total": 154,
       "truePositives": 626,
@@ -138,7 +138,7 @@
         "failed": 0,
         "accuracy": 1
       },
-      "local-production-lab": {
+      "prod-local": {
         "total": 8,
         "passed": 8,
         "failed": 0,
