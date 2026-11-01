@@ -152,6 +152,14 @@ await writeFile(
   `${JSON.stringify(profilesJsonData, null, 2)}\n`,
 );
 await writeFile(profilesJsonSource, `${JSON.stringify(profilesJsonData, null, 2)}\n`);
+try {
+  execSync(`pnpm biome format --write "${profilesJsonSource}"`, {
+    cwd: repositoryRoot,
+    stdio: 'ignore',
+  });
+} catch {
+  // Biome fallback if executed in isolated container without pnpm
+}
 console.log(
   `[build-assets] Compiled ${Object.keys(resolvedProfiles).length} profiles into assets/profiles.json and skill-profiles.json.`,
 );

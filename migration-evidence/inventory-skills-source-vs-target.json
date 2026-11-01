@@ -1,0 +1,702 @@
+{
+  "schema": "vigilio.migration.skills.evidence.v1",
+  "timestamp": "2026-11-01T06:25:04.254Z",
+  "sourceCandidate": "C:\\Users\\Admin\\Desktop\\vigilio-docs-skills-ejemplos-correcto-incorrecto-senior-2026-10-26\\vigilio-skills\\assets\\skills",
+  "targetCanonical": "C:\\Users\\Admin\\Desktop\\VIGILIO\\arquitectura-rimac-actualizado\\platform-actions\\skills",
+  "summary": {
+    "totalCandidateSkills": 86,
+    "totalCanonicalSkills": 86,
+    "routingCompleteSkills": 86,
+    "profilesCount": 32
+  },
+  "entries": [
+    {
+      "skill": "adaptive-context-budget",
+      "sourceHash": "fab53a306a249011f0c035b99bdb2429b1a1886df6955ca63358a86d2457939c",
+      "targetHash": "8314ba5535ce3c1699d68d283036ef3a732ae08cad831a08a81a99cd1151534b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ai-rag-llmops-finops",
+      "sourceHash": "d3f2dcc68a4ebbd5f1f0682c5f4f51a7197d88cb214afff347ed79c34c941786",
+      "targetHash": "f7abdc14b30d1904ce966c0759b9531e1e093171a29fcc938ad1783a5ba38be1",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "architecture-traceability",
+      "sourceHash": "326d9a6c92d699b4eede34410cc59746edbccff374be7e4a56cb0970f458a796",
+      "targetHash": "3a0a5ca23147072d378299e0350212947f14b9dccd6e6b35f0efd75e8802d60e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "codebase-context-efficiency",
+      "sourceHash": "93492b303f85aef1344502c9834ea32041a0d9ec1de5d83ee531bb838de68986",
+      "targetHash": "eb9d925f1936e239526b64850046aa44e469250e2805ae13c740a90fb334ee22",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "coderabbit-compliance",
+      "sourceHash": "456eaf0f93fe196b51af89b5c9fb541f950ee97389415725116dd2c3a5df6a64",
+      "targetHash": "7da678a54b7423c2b28e12fec5fc98ee4fdff2a05c48efc67865b8140cb8a62d",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "commit-ai-change",
+      "sourceHash": "95d70f546a716ba34f422bef827e532033fd4e1aabb36bdf64b1305c8a4fedcd",
+      "targetHash": "9953c2084e2bd6b6d7609b8b688b2fd37ed827339bb0349afa9dac0555181faa",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "complete-work-no-shortcuts",
+      "sourceHash": "def0fc6c438bf11984b289a116ba3f8d4e18e32db22a77702b899168bb37a07a",
+      "targetHash": "eed5a431b9ea44f2f9d3c393c8445d637b6fac531413aa9ea846affe75ae52b6",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-native-build-feature",
+      "sourceHash": "8df95fb1116b43237119a78192f323a67193e9cc27eb9226b9b580eafe2a87cf",
+      "targetHash": "d01b369642ad8c32e675e78bf30ddfed022706d5928a0b63077cdf652bdcb94a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-native-delivery",
+      "sourceHash": "c263d56cfb6d9cc7b8948a76eb536be2ddb247917b39da1e61162543f217e8d7",
+      "targetHash": "91220a3a0c44a7c851491785a4275383bd14ee9c08da0502d551f1f8e7406e78",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-native-security",
+      "sourceHash": "79bf084bdc83df9b0fb9de58c7c1bda998493786abcebd4210a80dc3977bac78",
+      "targetHash": "829ea1197e6360318d091f9d2588445621e67953431bd971fdfd1b90f9038c9b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-native-testing",
+      "sourceHash": "e2818c17fb7e4eba813990511905db2763fb12ac95d62f36289cf8e52b204dcb",
+      "targetHash": "bfd6950a08141b7cee6be86ff0e6fab2b93df81a043a9ec5c404f772104e65aa",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-qt-webengine",
+      "sourceHash": "bca06429122fb49d28bfe6f8a1c37a8e62f3753c7f4564c4cb68c5819b9ca844",
+      "targetHash": "2b9ad88092aeeebe110ebe46b49c097ec87452388460ef6bf87d16cfdb998ff3",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "cpp-workspace-architecture",
+      "sourceHash": "a888c3def42592d5e4bf3a9d31fb6ca1873904311f80882df556d8b0263fa8ac",
+      "targetHash": "d47b9a39def01e762acc48f6af73d491b55b4b26e668076cbddf1c7721ce893c",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "diagnosing-bugs",
+      "sourceHash": "2b487bcd97cb5638d7a8ffbb11cebe9b1acf83ebaec5366d1be1c510d0d41ebd",
+      "targetHash": "cb0aa96ae10c2fa184a37b89f3665c119011e47bb9268f7f1dccf5dff6393c94",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-animation-audio",
+      "sourceHash": "56902453771a530455dacee3bbcdd4b07668dce1398503e28df67726fa534dbf",
+      "targetHash": "589cfdb14f47380a6b27b43465638a7d24e4029cf6952d6649694c596d0e0d6a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-backend-multiplayer",
+      "sourceHash": "433e95eca34e61e462d712373eb8bed8cc9b6b9ae0818c0be8715a43fea4d8d9",
+      "targetHash": "2a80502e9602a73540dc19fd60867e8babe4c6877538485285d60e8658425fdc",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-build-gameplay",
+      "sourceHash": "1b7fbcb35e848e277883b4740e96260367ccdd55694ca81d4567484b22335020",
+      "targetHash": "443aa9486b8a88741d3a26785e88eb2db922695b3433455a40ba289d60f05d82",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-delivery",
+      "sourceHash": "a5ada9bf0aa75ae734a780ca0f7e131c3928aeaf0d6da0f985aef5591cc5a96c",
+      "targetHash": "4209a7ba8493d436619164a435412d3104c24ae84706f795d13059698c30b369",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-project-architecture",
+      "sourceHash": "f740cd6d117dd0ce5fcd7c6964f9831829e98c92e1cfc1d1965d3e6ecf7f1367",
+      "targetHash": "bd9e2b9ff7c4b50ff320662f2ac60208f398fa1ba4cae7c788c3e19234d5c3e8",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "godot-testing-quality",
+      "sourceHash": "b0827ab84c40cddfcb6b3a35f72a424c88a830067dfccb3ada6f9da1f9f30e60",
+      "targetHash": "e7a71dc616f5becfb3062b9424dd7f9bdca81accd87610339e3d2a9be056ee9e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "grill-me",
+      "sourceHash": "b123ef8dfbac908bae2450c6d3497b4f3a3f075444700e209ee02dfe070c00a1",
+      "targetHash": "82136b2433f1341b8b81dcf91175ab92349ad1e7eacf5028d23bb09ad26d820b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "improve-codebase-architecture",
+      "sourceHash": "de9494755c4d6265641e001e55430efe1e4f1aa73daf605e61d5250549a95bf1",
+      "targetHash": "a6aac6096d0017bbe5d1d4436de16399bce676f9520f3a843ec9a1c4a49817ac",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "kubernetes-eks-delivery",
+      "sourceHash": "5bfec43d35fe25671ecbcb9bfdc5e8a2040b547a9da93f531b3c17044a2754b0",
+      "targetHash": "b1729f86fb1962731b74c791635782918f8eb7c2ee67e443af8de809b4af538d",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "mobile-mfe-build-feature",
+      "sourceHash": "7433f645aa981b27042a55eab41ea5266db51e51779b3eb467c939defeb4cc2c",
+      "targetHash": "74ee1f1cbedb50a0cb9604d27aa4fed996a367a3ea1cd4e08efb52cf54773cbf",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "mobile-mfe-contracts",
+      "sourceHash": "c2ba28a142efb6993c603c47b5593bfdd8f1a3faa4907755e4bf34dbf038a8b1",
+      "targetHash": "809e713367032e6fd1cc4dde1ca415776221e77f5ffa80cfd1b2117d2084323d",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "mobile-mfe-quality",
+      "sourceHash": "fb05c0adc0e67b1b2985c88d0df10919a4e7b9f0d26ff4c98b47acaabae7310d",
+      "targetHash": "fc8036391122dbca41a38d8a766d1c0bd63b33ef790fb67a336c7ffd51ed366a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "mobile-mfe-security-delivery",
+      "sourceHash": "7288248cebefe504f75920c76afafb7d746dd5d8d593db84f1002f6a20a8285f",
+      "targetHash": "4e05b7e576aeefee1dac4e66208e919c7790a22d357ec6597b7d72277c9d71d5",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "mobile-mfe-testing",
+      "sourceHash": "9569daeb013beab104b1110fe696ceb905c9b3bac9c09632e1b7d9432fab41bc",
+      "targetHash": "f6b6a0209836b71045234b5175e4080ab7469975e4c1b84023e4f1ce786a24ad",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-async-workers",
+      "sourceHash": "3499e677fa5dc7ce2018bb7b26bf0fecf836f421d38f4d0a533414669a5911e9",
+      "targetHash": "bbca75d901fec333cfd64d15ce83d8e933c8d66d0406ff4e1e51be75a669139b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-build-feature",
+      "sourceHash": "c6e0523dc0ec411276b10098f8134965c133c6eb52621e02f896be236414bcde",
+      "targetHash": "26d1072f4d9d1969d694d2947ab1198dc27b0cb85dd3b77645560f880e89cbad",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-persistence",
+      "sourceHash": "6fc1f895a97945c418f9feac908c82417a40b51766b2a8087c3a2b48b43322dc",
+      "targetHash": "0c913f221496dbfb007ecfb75433c9f5226750bfe4bece2806ea08e6dc0bded5",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-realtime",
+      "sourceHash": "35b7b1c72b6796f11a0503419eaeb867d46952fa8b4cd2a7b42d78cec70be564",
+      "targetHash": "17197f6fdf36fb0106bc917173803a808ddbfa498676769a05a06739ce8cba4a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-security",
+      "sourceHash": "b530e40b8945e6f8c87b38e906a35330766b3b97fdfd8eb6ab9777c337303444",
+      "targetHash": "a8d60f8b17808237ba1a79fce77d54bb25df5b4443953096eed1e066bba50bad",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-security-aws",
+      "sourceHash": "c37f1608ae84520aa35f6e15fc903ce5c4b4558114177abada8b31ad7ce63f94",
+      "targetHash": "77c910716c3f1383db10a784216ff86af909856c5cbf5929a757abf1ed9fddbc",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-technologies",
+      "sourceHash": "eb443d5bea2e75c3fd325199d250cf0df1f11213c44548984d529244148865ce",
+      "targetHash": "3e9d94c985e738cece509718835afc12508e0dd284bf0710812ae94ce18f52d0",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "node-nest-testing",
+      "sourceHash": "873c76d0ce3c92e4473ba70ad93732bbd05ee085bb01676080cb216175547dfa",
+      "targetHash": "c546aefa807e07fa8c2b380fbe42a730080ce74031a85505f3f03eb5ca06817b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-apply-change",
+      "sourceHash": "336ce3af2f4097ab3c7f5af800afd8ad2a4673e34d83969d95eddab9883b4fd9",
+      "targetHash": "50fc19174d7c5e4de4b5e4fbea672097d9ea47b86405f6d9086d20e49fc443ab",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-archive-change",
+      "sourceHash": "178411bfdcf1c6f4779182be08f1cfbd45910692da3fff207e084578b43cfb5b",
+      "targetHash": "fb45fc477630cf0282428034b1f8ec58acf7c17093ec81698fb3f7ecc7fda6a3",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-explore",
+      "sourceHash": "1a58161327a67f5326327fff6c440b9f2f2b7f37de24b098b55c7874cd2a9a5b",
+      "targetHash": "149a53558f4beef1c581bf73e0f9edbaafd7d4243867f1f128cd60c3b75ae1d9",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-propose",
+      "sourceHash": "b3e516a3f46afc02e65fb6c6d41e22ae95e356f10316ace282fe97992cb30005",
+      "targetHash": "a4ecc9da834880a57554d333945049db539b01c2c92b4c34824b5609e9022983",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-sync-specs",
+      "sourceHash": "d0f0aaf6163073232b56a9744ecbea875e3846f7df3359fcec7b77f13bb6821f",
+      "targetHash": "d54c3e8a801192ed7b9f40b5c4fd0105859c95933f89adcd5c34a6184e75e8e4",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "openspec-update-change",
+      "sourceHash": "3d9234d301c8df09b548bcc48d3bec9d72dc570b1f80c9dbe4fd27f7d520db52",
+      "targetHash": "ba2a06facf543ccc84a9370bdf17532bffbdc8e9518ae4896b7c7445a436ae53",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-build-feature",
+      "sourceHash": "114e3b32b2afad70af6e631049b0f9791590be22eaa1c0a86a3e9a7f039dd27d",
+      "targetHash": "eb0477e379b4eb335da95b849fe6bef0498dfa791e1b49301ae42d2c6f550b30",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-contracts",
+      "sourceHash": "e1bd78724292e56645d46ffd11fc5d80eb099f11a36a6e9e6110d117b36030bf",
+      "targetHash": "a5c8a8ec4913c54b2dc1d2e1acb73aa78b3ec43dad7b2ee04bb80d0399eeaa01",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-persistence",
+      "sourceHash": "bc8d3db16a7542f7a0c9c9d8e3d93d383295e286190412947b08807149ab7136",
+      "targetHash": "ced532d112b177d5f4437012942e815933bc0c02322ed7ac365b6d3cb8663d73",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-quality",
+      "sourceHash": "27725db6ac20ae75238ce36830fcd6aa1b91c511dc1cde54153b097b1ee99e8e",
+      "targetHash": "70a76e6da20bf8eea67c122ab6193afdf87daf82a4e251edec2c522494601e6f",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-queues",
+      "sourceHash": "349e1b16043686f5bca7b1f0e1a6d8de4634972dc8389f887b9947135fb4c434",
+      "targetHash": "15aa895021d43d94cf572dfc3d5ccac8ad52ea03c6f8cc6f65d32a3e8d8bbdd0",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-realtime",
+      "sourceHash": "ad39345c2990349634adc58a0a69876d2dc72d253be85bc05bc26d4999a0270a",
+      "targetHash": "365a2f3c6d3940e93721bc296ccd1178e8717967997eb78563b1ea3437b9ed07",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-runtime",
+      "sourceHash": "5c84096e09b6c46e97b97878d48d413b8fdfdf7b1ce4527d7dda94fd0976db9c",
+      "targetHash": "cd6bf7c064349b023a57f9b549b6ae1de51c273b45e2861432ed63c14fb4abdf",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-security",
+      "sourceHash": "e3a6257d43592149dc5719584d06c188e408759075f1776121adfd4f0cdab587",
+      "targetHash": "24908ca94acdd402445b48ef5b46ebcced6ccedc002435955154ba71b593248a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-technologies",
+      "sourceHash": "2d7fccd2558ba7c2a0f8fbd16699183ee00cdf214aeee17c4e2a8d8886ac744b",
+      "targetHash": "ab146c9220141c691f276437fa9295db8f751311f65a12ada3dd93640988a4b7",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "php-laravel-testing",
+      "sourceHash": "80d02dc64bd17dc27588ab40305c15a92530244e50f22aaa2e0e090abc36782f",
+      "targetHash": "61c0cd9699df0d2f0c4cc899171e2236091ca4ca6798d662629bd1891a6d5dd8",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "platform-observability-sre",
+      "sourceHash": "cdbc647496c69791802b281feff3e23f296e438e2ea31e1d80889e2391e74083",
+      "targetHash": "062921dbb7eb825bfdfe1ee3eecd6e9eb82837e89d95fc989db75171f2584cdc",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "precision-skill-reading",
+      "sourceHash": "039ab9abb9b0e6500524550f8615a737aab998792ce34cddc16efef206f16b81",
+      "targetHash": "d94346ff97635eebd1cc5c06a2b975226d9d07169120a372594b8d0006089034",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "refactor-existing-code",
+      "sourceHash": "3d7cf27b905192cf51bbcf3ba394e829690a03bce3436854386c1fc2d4d25d8f",
+      "targetHash": "87b323fa43e7f014ede024e7f15a782935683c00e1f469f205b241877051c305",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "review-code-change",
+      "sourceHash": "88ba2386332a494e76f1bbea244cb7c8b515936779a183eb3fcb87007c13eebc",
+      "targetHash": "f4a40f2d9aa0d8bea0e17fb50bf0d9ee660f3c04ab9d685e1a4f17b399b40cbe",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "rust-agent-runtime-security",
+      "sourceHash": "f389b401300274abacee3d155e6e382b723788b7efe389a298e35f23739195ec",
+      "targetHash": "43e224f9d8dd75a0d8d16cd3aebd0ff07e0272772a2b1373f71717c4da805f84",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "rust-native-build-feature",
+      "sourceHash": "5bedcc9027156a5043a71b7376cc35eba5f96d075f6ada0a4a94385660245f29",
+      "targetHash": "7552d05877873dd0373f84d648bc0f8b72a45b5731fe02e737f5c6d6031f675f",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "rust-native-delivery",
+      "sourceHash": "9f9295c46dc4e4570d7fa9f5a4b1ee50e001c9a0a1fd44a05fb89d9b820def51",
+      "targetHash": "3f6bb663311fde17214216e761559335abd4a64c7e0473a34f398b72b46b7677",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "rust-native-testing",
+      "sourceHash": "f1eac1439e71bef0a0ff6e69267704a62536647df5f2bb695e33c21cdd86130c",
+      "targetHash": "18e43ee82ed2fde6959ed20310cfa18bfac44c96532b8ef7281f237b863de829",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "rust-workspace-architecture",
+      "sourceHash": "bc8f3b4930532555fa8ccb376954beac6c7f3f993721b102bc1af8e8298f2e74",
+      "targetHash": "3cfaa492722273aa4b1b7a0a30212b67ba31cc7dc28fa356a454a7f40013456e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "shared-technologies",
+      "sourceHash": "98ae2edd5eedd125ebd0abddd4369bcb3c08468ac87ea735a81866634bcedd9a",
+      "targetHash": "35372378e7d3605932187a719986338f43d794eb0483aac980ce4974d4290c61",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "skill-create-docs",
+      "sourceHash": "81e185ab7a89af95a35d782e45b37a6c8c9005009137ba4365a17cd6b0fa05af",
+      "targetHash": "ebe459b0b1ef6070dd373a5631a58d3a1d9445775d62cc919dc752cd307987de",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "symbol-ownership-architecture",
+      "sourceHash": "c9ee60919c768245689dff70d920f65bc9968ec4b2033ad80f305026b0e4b6d1",
+      "targetHash": "989084397d2f205baebe00b0ca02ea4265c2ca4ece5e71ba31b9c4c74251978a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "token-context-compression",
+      "sourceHash": "b4484d8e040a72665dfb65df309aef61c79cf3ff0d40e8f6723dd46d2c86c336",
+      "targetHash": "54540a2a94a7e87c6080f27265abf857dad518eb59e6c899a81361e825f4869e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ui-art-direction",
+      "sourceHash": "7c716c364bacf5f65ff38936ba7a68988d3cfb9a9d9bb43d2a06e4a2d1b84671",
+      "targetHash": "b0ea63a1f8d3427d0bf8095d7534b922aff4c4ef8bbb171c3fd724e90df179d8",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ui-design-system",
+      "sourceHash": "5bb3051064e5f90dc86941d7d24e08abe9e4a6507a4d60bded4166679268ba76",
+      "targetHash": "7c638aed4aa225be40f9fdcea2b722078ca0dd93968d8b5f44361d2156371bd1",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ui-interaction-motion",
+      "sourceHash": "9a639e4723dfdf5335339460e0033b8ce2f81fe755229649a2217faac59a8e19",
+      "targetHash": "77aa468d36d2994c3c81d37166ac79f6fad6b68fe921ff4d0a106ad9247a7f14",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ui-prototyping-handoff",
+      "sourceHash": "0ac340d69dea83d4861d1791f9b4966b6536e263aa9c94ecd5ef96e73cbf09de",
+      "targetHash": "390e8cb8e19945275bdb3472706e560dd0baec66ac5d2a7462f47592fedc0037",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ui-quality-review",
+      "sourceHash": "82bf1aba9604f5fd39ca503d53efdc91294c819202285d1de336797170e85036",
+      "targetHash": "16c150d7a6f46641ee9e748de789d1587b16c6c4ddf25f2657ee009b7daa680c",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-accessibility",
+      "sourceHash": "b13fdda6e14897fd6af8ea6d0a2976b55a4668fb2577a9977c017999ddc35655",
+      "targetHash": "903b5a084fc4f07dc395e5f0144c01094d18dad1ae02eecd46d602c394e6877f",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-desktop-experience",
+      "sourceHash": "b8f1cb46c7145001a7e981454727e77dc08edfd1648dd76474e7c7b96661852c",
+      "targetHash": "4ce740c09b372ddf98e14d4a2bad013efb548c9604bf867dd9d17288fdf9cdb3",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-game-experience",
+      "sourceHash": "bdfef606dfb96f65f023312f352417efae4573b3b815c70712861fbace4067a9",
+      "targetHash": "5b45fa5c837956546e90a6a3f147c7cb643b990a0f1327e9a10b1302ead9ac4a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-information-architecture",
+      "sourceHash": "4224becde71a39b0037db85877724cf9d06408abfc30c74471359a128bd634fb",
+      "targetHash": "a0060f83385d5a5c6a9a98b45cbeabc13d8d28e35106bbdf51995fdb8a40d11e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-mobile-experience",
+      "sourceHash": "69d13a4df74ef6d372582065b47f5dd82faa9b9078f716342c72ceebcc16674f",
+      "targetHash": "b4a8b41357783ea9f8ed73ceb80f0c5a50b6d251b7fdb3450b83ea21932cda42",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-product-discovery",
+      "sourceHash": "6668695098727835a61a7f8903c7c7b9dfad15926a70c9a4e169d0fc2a253b2f",
+      "targetHash": "11574aef6002dc813554bf6e8456d68f39b7466e86506f67b11c46786ae4b1b4",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "ux-web-experience",
+      "sourceHash": "ee141bf4fe2e437720e65a7851d3cd3020837357b8d7b15e78c285e17ac69489",
+      "targetHash": "a96527e440cdee18bee4f207713d2bb9127431f322611a41fd1b98cf1d479254",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "vigilio-architecture-guide",
+      "sourceHash": "52a879209491edb3adcd20dfaa3e2fe78bf09a399e4c2247538297afdd45b891",
+      "targetHash": "3c3342f41008be7e1cb7d679d887613cfb556e41defcc25c5444aee0edb0d151",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "vigilio-auto-senior",
+      "sourceHash": "b4db2ad0d9f2065b4a5c827887adf1b84eb265ad48e086013f9ebef1280cfc78",
+      "targetHash": "d62ef185707db78181f6e8bf148c5f5b15a5ec30463bba2c85e08637b6ff2e97",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-build-feature",
+      "sourceHash": "413556a4f8c8d92075bd6fb6df8036aa125a991a46677fdb36c6493d2b9f77d3",
+      "targetHash": "8468455de62fc6f949c600c11b48d8d0f5cd3104e30fc2afd509ad547b4a914a",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-contracts",
+      "sourceHash": "22b0a7a25df0734f1060a2f521a2de6020ac18e36ea4de19a17094fc065cf70e",
+      "targetHash": "5234136b3f9f20fae9fef63c6bb57845eb849ab7d6f7cdfbe11546c7e78378a9",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-quality",
+      "sourceHash": "9719e13d7dc1de61314c2103baf5ac1c2405cbd9a2a79abdf8fbf5fff2f03b3d",
+      "targetHash": "b5d59e49c254ba1409498e71b6a6ef6b4f465cccf39b7fe9a11ab91ae85bf8f2",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-realtime",
+      "sourceHash": "c7aebf6f6166589cbb095af10fdd69dc1ffea4bf16d1e2956f407d57b65861c7",
+      "targetHash": "e7b31b0e148e8a806e84d93ef47c861502f0c24293f122102c1c1ae27f6880eb",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-security-delivery",
+      "sourceHash": "15cee1278eed9a76e213e8f661369b443cbeeabfa477e2840556befe38141f8a",
+      "targetHash": "f259d3c23dea1173894f759f5ab471d87ebc26e0f71bd18eaa5a8642b5e10316",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-technologies",
+      "sourceHash": "2156d1b547eca204e669b92f4ae6def65daf9d205667fcf297950181d465b01e",
+      "targetHash": "72b7abc234df9539ea0a072358d4d5eb8568373763e462dbf932fd88e0afde1b",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    },
+    {
+      "skill": "web-mfe-testing",
+      "sourceHash": "a10532d32f5317f36be46c3c54f5ae5074159a8702ff49423a15a8a0f89f1939",
+      "targetHash": "ceb99dcc5a6b63b85819ebc32307a5c6d0603aaf7eea805753dcea03661b216e",
+      "existsInCanonical": true,
+      "routingComplete": true,
+      "status": "CANONICAL_MIGRATED"
+    }
+  ]
+}
