@@ -5,7 +5,7 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "terraform, iac, hcl, modules, state, drift, checkov, tflint, use_lockfile"
+routing_keywords: "terraform, iac, hcl, modules, state-locking, drift, checkov, tflint, use_lockfile, terraform-delivery"
 routing_files: "*.tf, *.tfvars, *.hcl, .terraform.lock.hcl"
 routing_capabilities: "iac-delivery, terraform-architecture"
 requires: []

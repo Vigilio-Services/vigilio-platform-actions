@@ -133,7 +133,7 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -201,6 +201,10 @@ for (const file of signals.files) {
   }
   if (/(?:tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(file)) {
     signals.runtimeSecurity = true;
+  }
+  if (/(?:metallb.*|longhorn.*)\.ya?ml$/i.test(file)) {
+    signals.onprem = true;
+    signals.kubernetes = true;
   }
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.
@@ -293,6 +297,7 @@ const stack = new Set([
   ...(signals.godot ? ['godot', 'game'] : []),
   ...(signals.terraform ? ['terraform', 'aws'] : []),
   ...(signals.kubernetes ? ['kubernetes'] : []),
+  ...(signals.onprem ? ['onprem-edge'] : []),
   ...(signals.gitops ? ['gitops'] : []),
   ...(signals.promotion ? ['promotion'] : []),
   ...(signals.backup || signals.database ? ['database', 'data-reliability'] : []),

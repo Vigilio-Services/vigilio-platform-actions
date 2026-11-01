@@ -683,7 +683,315 @@ export function evaluateEnvironmentPromotionFixture(fixture: FixtureTestCase): F
   };
 }
 
+export function evaluateTerraformFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight check on reports/terraform-plan-evidence.json
+  const evidenceRaw = fixture.files['reports/terraform-plan-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push(
+      'Falta archivo obligatorio de evidencia Terraform: reports/terraform-plan-evidence.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        status?: string;
+        speculativePlanValid?: boolean;
+        backendLockVerified?: boolean;
+        driftDetected?: boolean;
+        hardcodedCredentialsDetected?: boolean;
+      };
+      if (
+        parsed.status !== 'VERIFIED' ||
+        !parsed.speculativePlanValid ||
+        !parsed.backendLockVerified
+      ) {
+        violations.push(
+          `Preflight de Terraform o bloqueo de backend inaccesible (status: ${parsed.status})`,
+        );
+      }
+      if (parsed.driftDetected || parsed.hardcodedCredentialsDetected) {
+        violations.push(
+          'Deriva declarativa o credenciales estáticas detectadas en el plan de Terraform',
+        );
+      }
+    } catch {
+      violations.push('reports/terraform-plan-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fail-closed por falta de backend o credenciales para plan especulativo.',
+    };
+  }
+
+  if (violations.length > 0 && fixture.expectedVerdict === 'NOT_RUN') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: true,
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: 'NOT_RUN',
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  // 2. Static HCL security inspection
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.tf') || filename.endsWith('.hcl')) {
+      if (/access_key\s*=\s*"AKIA/i.test(content) || /secret_key\s*=\s*"[^"]+"/i.test(content)) {
+        violations.push(
+          `Credenciales estáticas de AWS en código HCL en ${filename}; prohibido en favor de OIDC`,
+        );
+      }
+      if (/backend\s*"local"/i.test(content)) {
+        violations.push(
+          `Backend local en ${filename}; producción requiere backend remoto con bloqueo concurrente`,
+        );
+      }
+      if (/acl\s*=\s*"public-read"/i.test(content)) {
+        violations.push(
+          `Bucket S3 con ACL pública en ${filename}; prohibido por política de seguridad`,
+        );
+      }
+      if (/backend\s*"s3"/i.test(content) && !/use_lockfile\s*=\s*true/i.test(content)) {
+        violations.push(
+          `Backend S3 sin use_lockfile = true en ${filename}; bloqueo concurrente requerido`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
+export function evaluateAwsFoundationFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight check on reports/aws-foundation-evidence.json
+  const evidenceRaw = fixture.files['reports/aws-foundation-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push(
+      'Falta archivo obligatorio de evidencia AWS: reports/aws-foundation-evidence.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        status?: string;
+        vpcSubnetsMultiAz?: boolean;
+        azCount?: number;
+        publiclyAccessibleDatabaseDetected?: boolean;
+        iamStaticKeysDetected?: boolean;
+        securityGroupOpenIngress?: boolean;
+      };
+      if (
+        parsed.status !== 'VERIFIED' ||
+        !parsed.vpcSubnetsMultiAz ||
+        (parsed.azCount && parsed.azCount < 3)
+      ) {
+        violations.push(`Preflight AWS o topología multi-AZ incompleta (status: ${parsed.status})`);
+      }
+      if (
+        parsed.publiclyAccessibleDatabaseDetected ||
+        parsed.iamStaticKeysDetected ||
+        parsed.securityGroupOpenIngress
+      ) {
+        violations.push(
+          'Violaciones de seguridad detectadas: base de datos pública o claves IAM estáticas',
+        );
+      }
+    } catch {
+      violations.push('reports/aws-foundation-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fail-closed por falta de credenciales de AWS o sesión IAM expirada.',
+    };
+  }
+
+  if (violations.length > 0 && fixture.expectedVerdict === 'NOT_RUN') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: true,
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: 'NOT_RUN',
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  // 2. Static HCL checks for AWS foundation
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.tf') || filename.endsWith('.hcl')) {
+      if (/publicly_accessible\s*=\s*true/i.test(content)) {
+        violations.push(
+          `RDS con publicly_accessible = true en ${filename}; bases de datos deben residir en subredes aisladas`,
+        );
+      }
+      if (/aws_iam_access_key/i.test(content)) {
+        violations.push(
+          `Creación de access_key estática IAM en ${filename}; prohibido en favor de roles federados OIDC/IRSA`,
+        );
+      }
+      if (content.includes('5432') && content.includes('0.0.0.0/0')) {
+        violations.push(
+          `Security group con puerto de base de datos 5432 expuesto a 0.0.0.0/0 en ${filename}`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
+export function evaluateOnpremFoundationFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight check on reports/onprem-cluster-evidence.json
+  const evidenceRaw = fixture.files['reports/onprem-cluster-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push(
+      'Falta archivo obligatorio de evidencia On-Prem: reports/onprem-cluster-evidence.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        status?: string;
+        ciliumKubeProxyReplacementActive?: boolean;
+        metalLbPoolConfigured?: boolean;
+        csiReplicationFactor?: number;
+        hostPathDetected?: boolean;
+        singleNodeRisk?: boolean;
+      };
+      if (parsed.status !== 'VERIFIED' || !parsed.ciliumKubeProxyReplacementActive) {
+        violations.push(`Preflight On-Prem o Cilium eBPF incompleto (status: ${parsed.status})`);
+      }
+      if (
+        parsed.hostPathDetected ||
+        (parsed.csiReplicationFactor && parsed.csiReplicationFactor < 3) ||
+        parsed.singleNodeRisk
+      ) {
+        violations.push(
+          'Violaciones de alta disponibilidad on-premise: hostPath o réplicas CSI menores a 3',
+        );
+      }
+    } catch {
+      violations.push('reports/onprem-cluster-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fail-closed por falta de conectividad a nodos o API server bare-metal.',
+    };
+  }
+
+  if (violations.length > 0 && fixture.expectedVerdict === 'NOT_RUN') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: true,
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: 'NOT_RUN',
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  // 2. Static YAML checks for On-Prem foundation
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/hostPath:/i.test(content)) {
+        violations.push(
+          `Uso de hostPath en ${filename}; almacenamiento local no replicado prohibido en producción`,
+        );
+      }
+      if (/numberOfReplicas:\s*"1"/i.test(content)) {
+        violations.push(
+          `Factor de replicación CSI igual a 1 en ${filename}; on-premise requiere mínimo réplicas 3`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'onprem-kubernetes-foundation') {
+    return evaluateOnpremFoundationFixture(fixture);
+  }
+  if (fixture.skill === 'aws-platform-foundation') {
+    return evaluateAwsFoundationFixture(fixture);
+  }
+  if (fixture.skill === 'terraform-iac-delivery') {
+    return evaluateTerraformFixture(fixture);
+  }
   if (fixture.skill === 'platform-environment-promotion') {
     return evaluateEnvironmentPromotionFixture(fixture);
   }

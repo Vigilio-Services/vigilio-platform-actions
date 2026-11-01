@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T19:04:39.578Z",
+  "timestamp": "2026-11-01T19:19:16.737Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T19:04:39.573Z",
+    "timestamp": "2026-11-01T19:19:16.732Z",
     "overallMetrics": {
-      "total": 62,
-      "truePositives": 271,
+      "total": 98,
+      "truePositives": 408,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 48,
-      "truePositives": 203,
+      "total": 78,
+      "truePositives": 314,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 14,
-      "truePositives": 68,
+      "total": 20,
+      "truePositives": 94,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -66,59 +66,41 @@
         "failed": 0,
         "accuracy": 1
       },
-      "gitops": {
-        "total": 12,
-        "passed": 12,
-        "failed": 0,
-        "accuracy": 1
-      },
-      "finops": {
-        "total": 0,
-        "passed": 0,
-        "failed": 0,
-        "accuracy": 0
-      },
-      "prod-local": {
-        "total": 0,
-        "passed": 0,
-        "failed": 0,
-        "accuracy": 0
-      },
       "cross-stack": {
         "total": 2,
         "passed": 2,
         "failed": 0,
         "accuracy": 1
       },
-      "backend-nest": {
-        "total": 0,
-        "passed": 0,
+      "gitops": {
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
-      "frontend-web": {
-        "total": 0,
-        "passed": 0,
+      "promotion": {
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
-      "native-rust": {
-        "total": 0,
-        "passed": 0,
+      "iac": {
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
-      "native-cpp": {
-        "total": 0,
-        "passed": 0,
+      "cloud-foundation": {
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
-      "game-godot": {
-        "total": 0,
-        "passed": 0,
+      "onprem-foundation": {
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       }
     },
     "missingSkillsCount": {},
@@ -244,6 +226,22 @@
       "php-laravel-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
+      "ui-art-direction": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "onprem-kubernetes-foundation": [
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "ui-quality-review": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-accessibility": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-information-architecture": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
@@ -257,8 +255,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 18,
-    "passed": 18,
+    "total": 27,
+    "passed": 27,
     "failed": 0,
     "results": [
       {
@@ -493,6 +491,119 @@
           "Evidencia de smoke tests en staging o registro inaccesible (status: FAILED)"
         ],
         "reason": "Fail-closed por falta de verificación de digest o pruebas de staging."
+      },
+      {
+        "id": "FX-IAC-CORRECT-01",
+        "skill": "terraform-iac-delivery",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Backend S3 con bloqueo nativo use_lockfile = true, cifrado KMS en reposo, módulos desacoplados y plan especulativo validado."
+      },
+      {
+        "id": "FX-IAC-INSECURE-01",
+        "skill": "terraform-iac-delivery",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Preflight de Terraform o bloqueo de backend inaccesible (status: VERIFIED)",
+          "Deriva declarativa o credenciales estáticas detectadas en el plan de Terraform",
+          "Credenciales estáticas de AWS en código HCL en infra/provider.tf; prohibido en favor de OIDC",
+          "Backend local en infra/provider.tf; producción requiere backend remoto con bloqueo concurrente",
+          "Bucket S3 con ACL pública en infra/s3.tf; prohibido por política de seguridad"
+        ],
+        "reason": "Credenciales estáticas de AWS en código HCL, backend local sin bloqueo de estado concurrente y S3 con ACL pública."
+      },
+      {
+        "id": "FX-IAC-NOTRUN-01",
+        "skill": "terraform-iac-delivery",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight de Terraform o bloqueo de backend inaccesible (status: FAILED)"
+        ],
+        "reason": "Fail-closed por falta de backend o credenciales para plan especulativo."
+      },
+      {
+        "id": "FX-AWS-CORRECT-01",
+        "skill": "aws-platform-foundation",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Topología VPC multi-AZ (3 AZs), subredes aisladas para bases de datos, endpoints PrivateLink y roles federados por OIDC/IRSA sin credenciales estáticas."
+      },
+      {
+        "id": "FX-AWS-INSECURE-01",
+        "skill": "aws-platform-foundation",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Preflight AWS o topología multi-AZ incompleta (status: VERIFIED)",
+          "Violaciones de seguridad detectadas: base de datos pública o claves IAM estáticas",
+          "RDS con publicly_accessible = true en infra/rds.tf; bases de datos deben residir en subredes aisladas",
+          "Security group con puerto de base de datos 5432 expuesto a 0.0.0.0/0 en infra/rds.tf",
+          "Creación de access_key estática IAM en infra/iam.tf; prohibido en favor de roles federados OIDC/IRSA"
+        ],
+        "reason": "VPC mono-AZ sin alta disponibilidad, RDS PostgreSQL accesible públicamente en subred pública con 0.0.0.0/0 y usuario IAM con clave estática."
+      },
+      {
+        "id": "FX-AWS-NOTRUN-01",
+        "skill": "aws-platform-foundation",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight AWS o topología multi-AZ incompleta (status: FAILED)"
+        ],
+        "reason": "Fail-closed por falta de credenciales de AWS o sesión IAM expirada."
+      },
+      {
+        "id": "FX-ONP-CORRECT-01",
+        "skill": "onprem-kubernetes-foundation",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Kubernetes on-premise con Cilium en modo eBPF nativo (kubeProxyReplacement), MetalLB con IPAddressPool y almacenamiento distribuido Longhorn con réplicas 3."
+      },
+      {
+        "id": "FX-ONP-INSECURE-01",
+        "skill": "onprem-kubernetes-foundation",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Preflight On-Prem o Cilium eBPF incompleto (status: VERIFIED)",
+          "Violaciones de alta disponibilidad on-premise: hostPath o réplicas CSI menores a 3",
+          "Uso de hostPath en onprem/database-volume.yaml; almacenamiento local no replicado prohibido en producción",
+          "Factor de replicación CSI igual a 1 en onprem/longhorn-storageclass.yaml; on-premise requiere mínimo réplicas 3"
+        ],
+        "reason": "Almacenamiento hostPath local en nodo para base de datos en producción, factor de replicación CSI 1 (sin tolerancia a fallos) y API server expuesto en 0.0.0.0/0."
+      },
+      {
+        "id": "FX-ONP-NOTRUN-01",
+        "skill": "onprem-kubernetes-foundation",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight On-Prem o Cilium eBPF incompleto (status: FAILED)"
+        ],
+        "reason": "Fail-closed por falta de conectividad a nodos o API server bare-metal."
       }
     ]
   },

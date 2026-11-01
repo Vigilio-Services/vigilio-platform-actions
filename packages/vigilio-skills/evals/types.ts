@@ -4,7 +4,16 @@ export type EvalDomain =
   | 'supply-chain'
   | 'runtime-security'
   | 'gitops'
+  | 'promotion'
+  | 'iac'
+  | 'cloud-foundation'
+  | 'onprem-foundation'
+  | 'scalability'
   | 'finops'
+  | 'resilience'
+  | 'cicd-factory'
+  | 'repository-workspace'
+  | 'validation-evidence'
   | 'prod-local'
   | 'cross-stack'
   | 'backend-nest'
@@ -33,9 +42,9 @@ export type FixtureVerdict = 'PASS' | 'FAIL' | 'NOT_RUN';
 export interface FixtureTestCase {
   readonly id: string;
   readonly skill: string;
-  readonly domain: EvalDomain;
+  readonly domain?: EvalDomain | undefined;
   readonly type: 'correct' | 'insecure' | 'not_run';
-  readonly description: string;
+  readonly description?: string | undefined;
   readonly files: Record<string, string>;
   readonly expectedVerdict: FixtureVerdict;
   readonly reason: string;
@@ -85,9 +94,8 @@ export interface RoutingEvalSummary {
   readonly overallMetrics: StatisticalMetrics;
   readonly trainingMetrics: StatisticalMetrics;
   readonly holdoutMetrics: StatisticalMetrics;
-  readonly domainBreakdown: Record<
-    EvalDomain,
-    { total: number; passed: number; failed: number; accuracy: number }
+  readonly domainBreakdown: Partial<
+    Record<EvalDomain, { total: number; passed: number; failed: number; accuracy: number }>
   >;
   readonly missingSkillsCount: Record<string, number>;
   readonly unexpectedSkillsCount: Record<string, number>;

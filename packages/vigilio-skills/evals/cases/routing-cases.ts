@@ -1090,6 +1090,626 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-environment-promotion'],
     },
   },
+
+  // ============================================================
+
+  // DOMINIO 6: TERRAFORM IAC DELIVERY (TERRAFORM-IAC-DELIVERY)
+
+  // ============================================================
+
+  {
+    id: 'IAC-TRAIN-POS-01',
+
+    domain: 'iac',
+
+    description: 'Backend remoto S3 con use_lockfile para bloqueo de estado nativo',
+
+    task: 'Configurar backend remoto S3 con use_lockfile para bloqueo de estado nativo en módulos de Terraform',
+
+    files: ['infra/backend.tf', 'infra/main.tf'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['platform-observability-sre', 'platform-data-reliability'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-POS-02',
+
+    domain: 'iac',
+
+    description: 'Análisis estático con Checkov y TfLint para políticas de seguridad',
+
+    task: 'Ejecutar análisis estático con Checkov y TfLint para validar políticas de seguridad en código HCL',
+
+    files: ['infra/security.tf', '.tflint.hcl'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-POS-03',
+
+    domain: 'iac',
+
+    description: 'Modularización de infraestructura con módulos desacoplados',
+
+    task: 'Modularizar arquitectura de infraestructura con módulos de Terraform desacoplados y variables tipadas',
+
+    files: ['modules/vpc/main.tf', 'modules/vpc/variables.tf'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-POS-04',
+
+    domain: 'iac',
+
+    description: 'Plan especulativo y detección de drift en pipelines CI',
+
+    task: 'Configurar plan especulativo y detección de drift en pipelines CI para entrega de Terraform',
+
+    files: ['infra/main.tf', 'infra/terraform.tfvars'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-POS-05',
+
+    domain: 'iac',
+
+    description: 'Aprovisionamiento de buckets S3 e IAM sin credenciales estáticas',
+
+    task: 'Aprovisionar buckets S3 y roles IAM mediante Terraform sin credenciales estáticas',
+
+    files: ['infra/s3.tf', 'infra/iam.tf'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-NEG-01',
+
+    domain: 'iac',
+
+    description: 'Prettier para JSON no debe activar Terraform',
+
+    task: 'Formatear archivo de configuración JSON con Prettier',
+
+    files: ['package.json', '.prettierrc'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ devDependencies: { prettier: '3.3.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-NEG-02',
+
+    domain: 'iac',
+
+    description: 'Prisma ORM en NestJS no debe activar Terraform',
+
+    task: 'Configurar cliente de base de datos Prisma ORM en servicio NestJS',
+
+    files: ['src/database/prisma.service.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', '@prisma/client': '5.19.0' },
+      }),
+    },
+
+    expected: {
+      mustSelect: ['node-nest-build-feature', 'node-nest-persistence'],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-NEG-03',
+
+    domain: 'iac',
+
+    description: 'Liveness probe en Express no debe activar Terraform',
+
+    task: 'Implementar endpoint de estado de salud liveness probe en Express',
+
+    files: ['src/health.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { express: '4.21.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-NEG-04',
+
+    domain: 'iac',
+
+    description: 'Variables de entorno en React Vite no debe activar Terraform',
+
+    task: 'Añadir soporte para variables de entorno en archivo .env de React Vite',
+
+    files: ['src/vite-env.d.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'IAC-TRAIN-NEG-05',
+
+    domain: 'iac',
+
+    description: 'Script de bash SSH no debe activar Terraform',
+
+    task: 'Configurar script de despliegue en bash para copiar archivos estáticos por SSH',
+
+    files: ['scripts/deploy.sh'],
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  // ============================================================
+
+  // DOMINIO 6: AWS PLATFORM FOUNDATION (AWS-PLATFORM-FOUNDATION)
+
+  // ============================================================
+
+  {
+    id: 'AWS-TRAIN-POS-01',
+
+    domain: 'cloud-foundation',
+
+    description: 'Topología VPC multi-AZ con 3 zonas y subredes aisladas',
+
+    task: 'Diseñar topología de VPC en AWS con 3 zonas de disponibilidad y subredes aisladas para base de datos',
+
+    files: ['infra/vpc.tf', 'infra/provider.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-POS-02',
+
+    domain: 'cloud-foundation',
+
+    description: 'Endpoints de VPC con PrivateLink para S3 y Secrets Manager',
+
+    task: 'Configurar endpoints de VPC con PrivateLink para S3 y Secrets Manager en AWS',
+
+    files: ['infra/endpoints.tf', 'infra/provider.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-POS-03',
+
+    domain: 'cloud-foundation',
+
+    description: 'Federación OIDC y roles IRSA para cargas EKS',
+
+    task: 'Implementar federación OIDC y roles IRSA para cargas de trabajo en clúster EKS de AWS',
+
+    files: ['infra/iam.tf', 'infra/eks.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-POS-04',
+
+    domain: 'cloud-foundation',
+
+    description: 'Cifrado con claves KMS administradas en almacenamiento AWS',
+
+    task: 'Configurar cifrado con claves KMS administradas por el cliente en servicios de almacenamiento de AWS',
+
+    files: ['infra/kms.tf', 'infra/s3.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-POS-05',
+
+    domain: 'cloud-foundation',
+
+    description: 'Auditoría en AWS Organizations para prohibir claves estáticas IAM',
+
+    task: 'Configurar políticas de seguridad en AWS Organizations para prohibir creación de claves de acceso IAM estáticas',
+
+    files: ['infra/iam-policy.tf', 'infra/provider.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-NEG-01',
+
+    domain: 'cloud-foundation',
+
+    description: 'Mapbox en React no debe activar AWS Foundation',
+
+    task: 'Crear componente de mapa interactivo con Mapbox GL en frontend React',
+
+    files: ['src/components/Map.tsx', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0', 'mapbox-gl': '3.0.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-NEG-02',
+
+    domain: 'cloud-foundation',
+
+    description: 'BullMQ en NestJS no debe activar AWS Foundation',
+
+    task: 'Configurar cola Redis con BullMQ en servicio de background worker en NestJS',
+
+    files: ['src/queues/email.queue.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', bullmq: '5.8.0' },
+      }),
+    },
+
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-NEG-03',
+
+    domain: 'cloud-foundation',
+
+    description: 'Validación DTOs en NestJS no debe activar AWS Foundation',
+
+    task: 'Añadir validación de DTOs con class-validator para formulario de checkout',
+
+    files: ['src/checkout/checkout.dto.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', 'class-validator': '0.14.0' },
+      }),
+    },
+
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-NEG-04',
+
+    domain: 'cloud-foundation',
+
+    description: 'Sharp en node scripts no debe activar AWS Foundation',
+
+    task: 'Configurar compresión de imágenes con sharp en pipeline de assets web',
+
+    files: ['scripts/optimize-images.js', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ devDependencies: { sharp: '0.33.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'AWS-TRAIN-NEG-05',
+
+    domain: 'cloud-foundation',
+
+    description: 'Comando artisan en Laravel no debe activar AWS Foundation',
+
+    task: 'Crear comando artisan personalizado para purgar registros expirados en Laravel',
+
+    files: ['app/Console/Commands/PurgeLogs.php', 'composer.json'],
+
+    fileContents: {
+      'composer.json': JSON.stringify({ require: { php: '>=8.2' } }),
+    },
+
+    expected: {
+      mustSelect: ['php-laravel-build-feature'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  // ============================================================
+
+  // DOMINIO 6: ON-PREMISES KUBERNETES FOUNDATION (ONPREM-KUBERNETES-FOUNDATION)
+
+  // ============================================================
+
+  {
+    id: 'ONP-TRAIN-POS-01',
+
+    domain: 'onprem-foundation',
+
+    description: 'Aprovisionamiento RKE2 con MetalLB en baremetal onprem',
+
+    task: 'Aprovisionar clúster onprem baremetal con RKE2 y balanceo de carga L4 mediante MetalLB',
+
+    files: ['onprem/metallb.yaml', 'Chart.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-POS-02',
+
+    domain: 'onprem-foundation',
+
+    description: 'Almacenamiento distribuido Longhorn con factor de replicación 3',
+
+    task: 'Configurar almacenamiento distribuido Longhorn con factor de replicación 3 en nodos físicos onprem',
+
+    files: ['onprem/longhorn.yaml', 'values.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-POS-03',
+
+    domain: 'onprem-foundation',
+
+    description: 'Distribución K3s con Cilium eBPF reemplazando kube-proxy',
+
+    task: 'Desplegar distribución K3s en servidores edge con Cilium eBPF reemplazando kube-proxy',
+
+    files: ['onprem/cilium.yaml', 'kustomization.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-POS-04',
+
+    domain: 'onprem-foundation',
+
+    description: 'IPAddressPool y L2Advertisement en MetalLB',
+
+    task: 'Configurar IPAddressPool y L2Advertisement en MetalLB para publicar servicios en red local baremetal',
+
+    files: ['onprem/metallb-pool.yaml', 'kustomization.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-POS-05',
+
+    domain: 'onprem-foundation',
+
+    description: 'Quorum etcd multi-nodo en clúster onprem',
+
+    task: 'Ajustar parámetros de quorum y almacenamiento persistente en etcd multi-nodo para clúster onprem',
+
+    files: ['onprem/cluster-config.yaml', 'values.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-NEG-01',
+
+    domain: 'onprem-foundation',
+
+    description: 'Helmet en Express no debe activar On-Prem Foundation',
+
+    task: 'Configurar middleware de CORS y headers Helmet en servidor web Express',
+
+    files: ['src/security.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { express: '4.21.0', helmet: '7.1.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-NEG-02',
+
+    domain: 'onprem-foundation',
+
+    description: 'Playwright en frontend no debe activar On-Prem Foundation',
+
+    task: 'Crear suite de pruebas e2e con Playwright para flujo de inicio de sesión',
+
+    files: ['tests/login.spec.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ devDependencies: { '@playwright/test': '1.48.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-NEG-03',
+
+    domain: 'onprem-foundation',
+
+    description: 'Pino en NestJS no debe activar On-Prem Foundation',
+
+    task: 'Configurar logger pino con formato JSON en aplicación backend NestJS',
+
+    files: ['src/logger/logger.service.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0', pino: '9.4.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-NEG-04',
+
+    domain: 'onprem-foundation',
+
+    description: 'Drizzle ORM paginación no debe activar On-Prem Foundation',
+
+    task: 'Implementar paginación por cursor en repositorio de productos con Drizzle ORM',
+
+    files: ['src/products/products.repository.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { 'drizzle-orm': '0.33.0' } }),
+    },
+
+    expected: {
+      mustSelect: [],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-TRAIN-NEG-05',
+
+    domain: 'onprem-foundation',
+
+    description: 'Tailwind CSS botón no debe activar On-Prem Foundation',
+
+    task: 'Añadir animación de botón con Tailwind CSS en componente de navegación',
+
+    files: ['src/components/NavButton.tsx', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -1414,6 +2034,129 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
       mustSelect: ['web-mfe-build-feature'],
 
       mustNotSelect: ['platform-environment-promotion'],
+    },
+  },
+
+  {
+    id: 'IAC-HOLD-POS-01',
+
+    domain: 'iac',
+
+    description: 'Backend remoto S3 con use_lockfile y cifrado KMS para módulo de Terraform',
+
+    task: 'Aprovisionar backend remoto S3 con use_lockfile y cifrado KMS para módulo de Terraform',
+
+    files: ['infra/backend.tf', 'infra/main.tf'],
+
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+
+  {
+    id: 'IAC-HOLD-NEG-01',
+
+    domain: 'iac',
+
+    description: 'Alias de importación en tsconfig.json no debe activar Terraform',
+
+    task: 'Configurar alias de importación en archivo tsconfig.json para paths @components',
+
+    files: ['tsconfig.json', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+
+  {
+    id: 'AWS-HOLD-POS-01',
+
+    domain: 'cloud-foundation',
+
+    description: 'Subredes privadas en 3 AZs y endpoints PrivateLink en EKS',
+
+    task: 'Configurar subredes privadas en 3 AZs y endpoints PrivateLink en clúster EKS de AWS',
+
+    files: ['infra/vpc.tf', 'infra/provider.tf'],
+
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+
+  {
+    id: 'AWS-HOLD-NEG-01',
+
+    domain: 'cloud-foundation',
+
+    description: 'Hook useLocalStorage en React no debe activar AWS Foundation',
+
+    task: 'Crear hook personalizado useLocalStorage para persistir estado en navegador React',
+
+    files: ['src/hooks/useLocalStorage.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0' } }),
+    },
+
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+
+      mustNotSelect: ['aws-platform-foundation'],
+    },
+  },
+
+  {
+    id: 'ONP-HOLD-POS-01',
+
+    domain: 'onprem-foundation',
+
+    description:
+      'Balanceo MetalLB y almacenamiento Longhorn con 3 réplicas en clúster baremetal onprem',
+
+    task: 'Configurar balanceo MetalLB y almacenamiento Longhorn con 3 réplicas en clúster baremetal onprem',
+
+    files: ['onprem/metallb.yaml', 'values.yaml'],
+
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+
+  {
+    id: 'ONP-HOLD-NEG-01',
+
+    domain: 'onprem-foundation',
+
+    description: 'Axios interceptor en NestJS no debe activar On-Prem Foundation',
+
+    task: 'Configurar cliente Axios con interceptor de reintentos para llamadas HTTP en NestJS',
+
+    files: ['src/http/http.service.ts', 'package.json'],
+
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', axios: '1.7.0' },
+      }),
+    },
+
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+
+      mustNotSelect: ['onprem-kubernetes-foundation'],
     },
   },
 ];

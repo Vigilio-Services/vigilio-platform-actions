@@ -62,30 +62,30 @@ skills:
 
   - id: "terraform-iac-delivery"
     domain: "iac"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-IAC-CORRECT-01"
+      insecure: "FX-IAC-INSECURE-01"
+      not_run: "FX-IAC-NOTRUN-01"
+    cases_count: 12
 
   - id: "aws-platform-foundation"
     domain: "aws-foundation"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-AWS-CORRECT-01"
+      insecure: "FX-AWS-INSECURE-01"
+      not_run: "FX-AWS-NOTRUN-01"
+    cases_count: 12
 
   - id: "onprem-kubernetes-foundation"
     domain: "onprem-k8s"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-ONP-CORRECT-01"
+      insecure: "FX-ONP-INSECURE-01"
+      not_run: "FX-ONP-NOTRUN-01"
+    cases_count: 12
 
   - id: "platform-scalability-capacity"
     domain: "capacity"

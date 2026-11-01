@@ -203,37 +203,24 @@ export async function runRoutingEvals(
   const trainingMetrics = calculateMetrics(trainingResults);
   const holdoutMetrics = calculateMetrics(holdoutResults);
 
-  const domainBreakdown: Record<
-    EvalDomain,
-    { total: number; passed: number; failed: number; accuracy: number }
-  > = {
-    observability: { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'backup-pitr': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'supply-chain': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'runtime-security': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    gitops: { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    finops: { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'prod-local': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'cross-stack': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'backend-nest': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'frontend-web': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'native-rust': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'native-cpp': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-    'game-godot': { total: 0, passed: 0, failed: 0, accuracy: 0 },
-  };
+  const domainBreakdown: Partial<
+    Record<EvalDomain, { total: number; passed: number; failed: number; accuracy: number }>
+  > = {};
 
   const missingSkillsCount: Record<string, number> = {};
   const unexpectedSkillsCount: Record<string, number> = {};
   const activationReasons: Record<string, string[]> = {};
 
   for (const r of allResults) {
-    const dom = domainBreakdown[r.domain];
-    if (dom) {
-      dom.total++;
-      if (r.passed) dom.passed++;
-      else dom.failed++;
-      dom.accuracy = dom.total > 0 ? dom.passed / dom.total : 0;
+    let dom = domainBreakdown[r.domain];
+    if (!dom) {
+      dom = { total: 0, passed: 0, failed: 0, accuracy: 0 };
+      domainBreakdown[r.domain] = dom;
     }
+    dom.total++;
+    if (r.passed) dom.passed++;
+    else dom.failed++;
+    dom.accuracy = dom.total > 0 ? dom.passed / dom.total : 0;
 
     for (const m of r.missingExpected) {
       missingSkillsCount[m] = (missingSkillsCount[m] || 0) + 1;

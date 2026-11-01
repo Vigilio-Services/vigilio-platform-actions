@@ -5,7 +5,7 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "aws, vpc, iam, oidc, irsa, kms, eks, privatelink, cloud, s3-backend"
+routing_keywords: "aws, vpc, iam, oidc, irsa, kms, eks, privatelink, cloud-foundation, aws-foundation"
 routing_files: "*.tf, *.tfvars, provider.tf, backend.tf"
 routing_capabilities: "cloud-architecture, aws-foundation"
 requires: []
