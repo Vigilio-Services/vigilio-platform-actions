@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T20:56:38.250Z",
+  "timestamp": "2026-11-01T22:00:41.486Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T20:56:38.243Z",
+    "timestamp": "2026-11-01T22:00:41.472Z",
     "overallMetrics": {
-      "total": 154,
-      "truePositives": 626,
+      "total": 170,
+      "truePositives": 692,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -17,7 +17,7 @@
     },
     "trainingMetrics": {
       "total": 120,
-      "truePositives": 476,
+      "truePositives": 478,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 34,
-      "truePositives": 150,
+      "total": 50,
+      "truePositives": 214,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -43,8 +43,8 @@
     },
     "domainBreakdown": {
       "observability": {
-        "total": 12,
-        "passed": 12,
+        "total": 13,
+        "passed": 13,
         "failed": 0,
         "accuracy": 1
       },
@@ -55,26 +55,26 @@
         "accuracy": 1
       },
       "supply-chain": {
-        "total": 6,
-        "passed": 6,
+        "total": 7,
+        "passed": 7,
         "failed": 0,
         "accuracy": 1
       },
       "runtime-security": {
-        "total": 12,
-        "passed": 12,
+        "total": 13,
+        "passed": 13,
         "failed": 0,
         "accuracy": 1
       },
       "cross-stack": {
-        "total": 2,
-        "passed": 2,
+        "total": 3,
+        "passed": 3,
         "failed": 0,
         "accuracy": 1
       },
       "gitops": {
-        "total": 12,
-        "passed": 12,
+        "total": 14,
+        "passed": 14,
         "failed": 0,
         "accuracy": 1
       },
@@ -85,14 +85,14 @@
         "accuracy": 1
       },
       "iac": {
-        "total": 12,
-        "passed": 12,
+        "total": 14,
+        "passed": 14,
         "failed": 0,
         "accuracy": 1
       },
       "cloud-foundation": {
-        "total": 12,
-        "passed": 12,
+        "total": 13,
+        "passed": 13,
         "failed": 0,
         "accuracy": 1
       },
@@ -115,8 +115,8 @@
         "accuracy": 1
       },
       "resilience": {
-        "total": 8,
-        "passed": 8,
+        "total": 9,
+        "passed": 9,
         "failed": 0,
         "accuracy": 1
       },
@@ -127,20 +127,32 @@
         "accuracy": 1
       },
       "repository-workspace": {
-        "total": 8,
-        "passed": 8,
+        "total": 9,
+        "passed": 9,
         "failed": 0,
         "accuracy": 1
       },
       "validation-evidence": {
-        "total": 8,
-        "passed": 8,
+        "total": 9,
+        "passed": 9,
         "failed": 0,
         "accuracy": 1
       },
       "prod-local": {
-        "total": 8,
-        "passed": 8,
+        "total": 9,
+        "passed": 9,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "frontend-web": {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "backend-nest": {
+        "total": 1,
+        "passed": 1,
         "failed": 0,
         "accuracy": 1
       }
@@ -188,6 +200,9 @@
       "node-nest-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
+      "platform-validation-evidence": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
       "cpp-native-delivery": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
@@ -199,7 +214,8 @@
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "software-supply-chain-security": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "kubernetes-policy-runtime-security": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
@@ -240,6 +256,10 @@
       "ui-design-system": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
         "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "platform-cicd-factory": [
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "web-mfe-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
@@ -295,7 +315,8 @@
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-scalability-capacity": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-finops": [
         "metadata declarativa: proyecto/keyword/ecosistema",
@@ -305,14 +326,7 @@
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "platform-cicd-factory": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
       "platform-repository-workspace": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
-      "platform-validation-evidence": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-local-production-lab": [

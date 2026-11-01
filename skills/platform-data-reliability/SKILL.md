@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "backup, backups, restore, restoration, pitr, wal, cloudnativepg, cnpg, postgresql, postgres, valkey, redis, statefulset, rpo, rto, disaster-recovery, data-reliability"
-routing_files: "postgres*.yaml, valkey*.yaml, cnpg*.yaml, backup*.yaml, values*.yaml, kustomization.yaml"
+routing_keywords: "backup, backups, restore, restoration, pitr, wal, cloudnativepg, cnpg, postgresql, postgres, valkey, redis, statefulset, rpo, rto, disaster-recovery, data-reliability, barman"
+routing_files: "postgres*.yaml, valkey*.yaml, cnpg*.yaml, backup*.yaml, values*.yaml, kustomization.yaml, *barman*.yaml"
 routing_capabilities: "data-reliability, storage-reliability, backup-pitr"
 requires: []
 optional: []

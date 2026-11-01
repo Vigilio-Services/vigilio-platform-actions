@@ -5,7 +5,7 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "cicd, pipeline-factory, github-actions, gitlab-ci, reusable-workflows, reusable-pipelines, pipeline-reusable, githubactions"
+routing_keywords: "cicd, pipeline-factory, pipeline, pipelines, github-actions, gitlab-ci, reusable-workflows, reusable-pipelines, pipeline-reusable, githubactions, actions"
 routing_files: ".github/workflows/*.yml, .gitlab-ci.yml, Dockerfile, .github/workflows/reusable-*.yml"
 routing_capabilities: "pipeline-automation, devops-factory"
 requires: []

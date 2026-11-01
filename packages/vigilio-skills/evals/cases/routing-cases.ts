@@ -1,4 +1,5 @@
 import type { RoutingTestCase } from '../types.js';
+import { adversarialRoutingCases } from './adversarial-cases.js';
 
 export const trainingRoutingCases: readonly RoutingTestCase[] = [
   // ============================================================
@@ -2901,4 +2902,5 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-local-production-lab'],
     },
   },
+  ...adversarialRoutingCases,
 ];

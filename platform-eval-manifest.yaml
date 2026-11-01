@@ -3,7 +3,10 @@ catalog_scope: "platform"
 total_skills: 16
 fixtures_per_skill: 3
 total_expected_fixtures: 48
-routing_target_cases: 90
+routing_training_cases: 120
+routing_holdout_cases: 34
+routing_adversarial_cases: 16
+routing_total_cases: 170
 
 skills:
   - id: "platform-observability-sre"

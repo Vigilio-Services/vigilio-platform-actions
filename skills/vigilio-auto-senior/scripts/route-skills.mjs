@@ -40,7 +40,9 @@ const norm = (s) =>
     .replace(/[\u0300-\u036f]/g, '');
 const words = norm(task);
 const test = (re) => re.test(words);
-const intent = test(/\breview\b|\brevis|\baudita|pull request|\bpr\b/)
+const intent = test(
+  /\breview\b|\brevisar\b|\bauditar\s+(?:codigo|pr|cambios)\b|pull request|\bpr\b/,
+)
   ? 'review'
   : test(/\bbug\b|corrig|arregl|\bfix\b|falla/)
     ? 'bug'
@@ -126,6 +128,7 @@ function traverse(dir, depth) {
         'CMakeLists.txt',
         'CMakePresets.json',
         'package.json',
+        'pnpm-workspace.yaml',
         'composer.json',
         'vcpkg.json',
         'conanfile.py',
@@ -136,7 +139,7 @@ function traverse(dir, depth) {
         'COMPATIBILITY.md',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*|kind.*|docker-compose.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|barman.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*|kind.*|docker-compose.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -461,7 +464,12 @@ for (const entry of entries) {
   if (!ecoMatch || !capMatch) continue;
   let crossStackScore = 0;
   if (isCrossStack) {
-    crossStackScore += matchedKws.length * 3;
+    const isDocOnly =
+      test(/\b(?:notas?|apuntes|borrador|draft)\b/) &&
+      !test(/\b(?:politica|enforce|bloqueo|intercepcion|sigkill|seguridad|security)\b/);
+    if (!isDocOnly) {
+      crossStackScore += matchedKws.length * 3;
+    }
     if (fileMatch) crossStackScore += 4;
     if (caps.some((c) => keywordMatches(words, c))) crossStackScore += 2;
   }

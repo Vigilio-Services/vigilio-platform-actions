@@ -11,7 +11,9 @@ describe('Platform Skills - Full Eval Gate & Fixture Verification', () => {
     console.log(`\n============================================================`);
     console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (16 PLATFORM SKILLS)`);
     console.log(`============================================================`);
-    console.log(`MULTI-LABEL ROUTING EVALUATION (120 TRAINING + 34 HOLDOUT):`);
+    console.log(
+      `MULTI-LABEL ROUTING EVALUATION (120 TRAINING + ${routingSummary.holdoutMetrics.total} HOLDOUT / ADVERSARIAL):`,
+    );
     console.log(`  - Total Casos Evaluados:        ${routingSummary.overallMetrics.total}`);
     console.log(
       `  - Routing Exact-Match:          ${(routingSummary.overallMetrics.accuracy * 100).toFixed(1)}%`,
