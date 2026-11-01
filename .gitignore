@@ -3,6 +3,7 @@ node_modules/
 .turbo/
 coverage/
 reports/
+artifacts/
 dist/
 !actions/jira-devops/dist/
 !actions/jira-devops/dist/index.js

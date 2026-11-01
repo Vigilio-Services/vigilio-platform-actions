@@ -25,6 +25,7 @@ import type { FullEvalReport } from './types.js';
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(packageRoot, '..', '..');
 const reportsDir = path.join(repoRoot, 'reports');
+const artifactsDir = path.join(repoRoot, 'artifacts');
 
 export async function executeFullEvalSuite(): Promise<FullEvalReport> {
   const routingSummary = await runRoutingEvals(trainingRoutingCases, holdoutRoutingCases);
@@ -65,6 +66,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
   };
 
   try {
+    // Ephemeral outputs are written to ignored directories (reports/ and artifacts/)
     await mkdir(reportsDir, { recursive: true });
     await writeFile(
       path.join(reportsDir, 'routing-eval-summary.json'),
@@ -72,13 +74,23 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
       'utf8',
     );
 
-    const versionedResultsDir = path.join(packageRoot, 'evals', 'results');
-    await mkdir(versionedResultsDir, { recursive: true });
+    await mkdir(artifactsDir, { recursive: true });
     await writeFile(
-      path.join(versionedResultsDir, 'routing-eval-summary.json'),
+      path.join(artifactsDir, 'routing-eval-summary.json'),
       `${JSON.stringify(fullReport, null, 2)}\n`,
       'utf8',
     );
+
+    // Tracked golden file is only modified when explicitly requested
+    if (process.env['UPDATE_EVAL_GOLDEN'] === 'true') {
+      const versionedResultsDir = path.join(packageRoot, 'evals', 'results');
+      await mkdir(versionedResultsDir, { recursive: true });
+      await writeFile(
+        path.join(versionedResultsDir, 'routing-eval-summary.json'),
+        `${JSON.stringify(fullReport, null, 2)}\n`,
+        'utf8',
+      );
+    }
   } catch {
     // Non-fatal if reports folder cannot be created in restricted environments
   }

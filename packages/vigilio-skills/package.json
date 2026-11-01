@@ -30,6 +30,7 @@
     "test": "node scripts/build-assets.ts && vitest run --pool=threads",
     "test:coverage": "node scripts/build-assets.ts && vitest run --coverage --pool=threads",
     "typecheck": "tsc --noEmit",
+    "evals:update-golden": "node -e \"process.env.UPDATE_EVAL_GOLDEN='true'; const cp = require('node:child_process'); const res = cp.spawnSync('pnpm', ['vitest', 'run', 'tests/observability-evals.test.ts'], { stdio: 'inherit', shell: true }); process.exit(res.status ?? 0);\"",
     "check:docs": "node scripts/check-doc-references.mjs",
     "check:registry": "node scripts/build-skills-registry.mjs --check"
   },

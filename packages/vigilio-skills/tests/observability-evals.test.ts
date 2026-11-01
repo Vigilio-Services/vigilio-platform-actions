@@ -9,30 +9,34 @@ describe('Platform Skills - Full Eval Gate & Fixture Verification', () => {
     const { routingSummary, fixtureSummary, gateVerdict } = report;
 
     console.log(`\n============================================================`);
-    console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (DOMAINS 1-4)`);
+    console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (16 PLATFORM SKILLS)`);
     console.log(`============================================================`);
-    console.log(`ROUTING METRICS (TRAINING + HOLDOUT):`);
-    console.log(`  - Total Casos Evaluados: ${routingSummary.overallMetrics.total}`);
+    console.log(`MULTI-LABEL ROUTING EVALUATION (120 TRAINING + 34 HOLDOUT):`);
+    console.log(`  - Total Casos Evaluados:        ${routingSummary.overallMetrics.total}`);
     console.log(
-      `  - Accuracy:              ${(routingSummary.overallMetrics.accuracy * 100).toFixed(1)}%`,
+      `  - Routing Exact-Match:          ${(routingSummary.overallMetrics.accuracy * 100).toFixed(1)}%`,
     );
     console.log(
-      `  - Precision:             ${(routingSummary.overallMetrics.precision * 100).toFixed(1)}%`,
+      `  - Expected Skill-Set Precision: ${(routingSummary.overallMetrics.precision * 100).toFixed(1)}%`,
     );
     console.log(
-      `  - Recall:                ${(routingSummary.overallMetrics.recall * 100).toFixed(1)}%`,
+      `  - Expected Skill-Set Recall:    ${(routingSummary.overallMetrics.recall * 100).toFixed(1)}%`,
     );
     console.log(
-      `  - F1 Score:              ${(routingSummary.overallMetrics.f1 * 100).toFixed(1)}%`,
+      `  - Multi-label F1 Score:         ${(routingSummary.overallMetrics.f1 * 100).toFixed(1)}%`,
     );
-    console.log(`  - Falsos Positivos:      ${routingSummary.overallMetrics.falsePositives}`);
-    console.log(`  - Falsos Negativos:      ${routingSummary.overallMetrics.falseNegatives}`);
-    console.log(`HOLDOUT GENERALIZATION:`);
-    console.log(`  - Holdout Total:         ${routingSummary.holdoutMetrics.total}`);
     console.log(
-      `  - Holdout Accuracy:      ${(routingSummary.holdoutMetrics.accuracy * 100).toFixed(1)}%`,
+      `  - Unexpected Activations (FP):  ${routingSummary.overallMetrics.falsePositives}`,
     );
-    console.log(`FIXTURE CONTRACT CHECKS (platform-observability-sre):`);
+    console.log(
+      `  - Omitted Activations (FN):     ${routingSummary.overallMetrics.falseNegatives}`,
+    );
+    console.log(`HOLDOUT GENERALIZATION (CURATED SUITE):`);
+    console.log(`  - Holdout Total:                ${routingSummary.holdoutMetrics.total}`);
+    console.log(
+      `  - Holdout Exact-Match:          ${(routingSummary.holdoutMetrics.accuracy * 100).toFixed(1)}%`,
+    );
+    console.log(`FIXTURE SYNTHETIC CONTRACT CHECKS (16 SKILLS / 48 FIXTURES):`);
     console.log(`  - Fixtures Evaluados:    ${fixtureSummary.total}`);
     console.log(`  - Fixtures Aprobados:    ${fixtureSummary.passed}`);
     console.log(`  - Fixtures Fallidos:     ${fixtureSummary.failed}`);
