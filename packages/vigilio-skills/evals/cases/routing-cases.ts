@@ -128,6 +128,78 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
   },
 
   // ============================================================
+  // DOMINIO 2: BACKUP, RESTAURACIÓN Y PITR (PLATFORM-DATA-RELIABILITY)
+  // ============================================================
+  {
+    id: 'BKP-TRAIN-POS-01',
+    domain: 'backup-pitr',
+    description:
+      'Configurar backup continuo con PITR y archivado WAL hacia S3 para PostgreSQL usando CloudNativePG en Kubernetes',
+    task: 'Configurar backup continuo con PITR y archivado WAL hacia S3 para PostgreSQL usando CloudNativePG en Kubernetes',
+    files: ['k8s/postgres-cluster.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/postgres-cluster.yaml':
+        'apiVersion: postgresql.cnpg.io/v1\nkind: Cluster\nmetadata:\n  name: postgres-prod\n',
+    },
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-observability-sre', 'platform-finops'],
+    },
+  },
+  {
+    id: 'BKP-TRAIN-POS-02',
+    domain: 'backup-pitr',
+    description:
+      'Archivado continuo de transacciones WAL y política de retención para PITR en clúster PostgreSQL',
+    task: 'Configurar archivado continuo de transacciones WAL y política de retención para PITR en clúster PostgreSQL de producción',
+    files: ['k8s/postgres-backup.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/postgres-backup.yaml':
+        'apiVersion: postgresql.cnpg.io/v1\nkind: Backup\nmetadata:\n  name: postgres-wal-backup\n',
+    },
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+  {
+    id: 'BKP-TRAIN-POS-03',
+    domain: 'backup-pitr',
+    description:
+      'Configurar operador Valkey con persistencia AOF y réplicas con conmutación por error en Kubernetes',
+    task: 'Configurar operador Valkey con persistencia AOF y réplicas con conmutación por error en Kubernetes',
+    files: ['k8s/valkey-cluster.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/valkey-cluster.yaml':
+        'apiVersion: valkey.io/v1\nkind: ValkeyCluster\nmetadata:\n  name: valkey-prod\n',
+    },
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'BKP-TRAIN-NEG-01',
+    domain: 'backup-pitr',
+    description:
+      'Crear tabla de auditoría con trigger en PostgreSQL con Prisma ORM no debe activar platform-data-reliability',
+    task: 'Crear tabla de auditoría con timestamp y trigger en PostgreSQL con Prisma ORM',
+    files: ['prisma/schema.prisma', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', '@prisma/client': '5.0.0' },
+      }),
+    },
+    expected: {
+      mustSelect: ['node-nest-persistence'],
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+
+  // ============================================================
   // CASOS DE CONTROL DE OTROS DOMINIOS DE PLATAFORMA
   // ============================================================
   {
@@ -232,6 +304,40 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['web-mfe-build-feature'],
       mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'BKP-HOLD-POS-01',
+    domain: 'backup-pitr',
+    description:
+      'Restaurar clúster PostgreSQL desde archivado WAL en S3 a una fecha específica usando PITR en staging',
+    task: 'Restaurar clúster PostgreSQL desde archivado WAL en S3 a una fecha específica usando PITR en staging',
+    files: ['k8s/restore-cluster.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/restore-cluster.yaml':
+        'apiVersion: postgresql.cnpg.io/v1\nkind: Cluster\nmetadata:\n  name: postgres-restore\n',
+    },
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'BKP-HOLD-NEG-01',
+    domain: 'backup-pitr',
+    description:
+      'Configurar Redis como backend de caché en memoria para sesiones HTTP en NestJS no debe activar backup de plataforma',
+    task: 'Configurar Redis como backend de caché en memoria para sesiones HTTP en NestJS',
+    files: ['src/cache/cache.module.ts', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', ioredis: '5.4.0' },
+      }),
+    },
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+      mustNotSelect: ['platform-data-reliability'],
     },
   },
 ];

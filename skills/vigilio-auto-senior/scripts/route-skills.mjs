@@ -90,6 +90,8 @@ const signals = {
   terraform: false,
   kubernetes: false,
   observability: false,
+  database: false,
+  backup: false,
 };
 const MAX_FILES = 350,
   MAX_DEPTH = 4;
@@ -129,7 +131,7 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3)
@@ -180,6 +182,10 @@ for (const file of signals.files) {
   if (/(?:kustomization|Chart|values.*)\.ya?ml$/i.test(file)) signals.kubernetes = true;
   if (/(?:otel-collector.*|prometheus.*|slo.*|alert.*)\.ya?ml$/i.test(file))
     signals.observability = true;
+  if (/(?:postgres.*|valkey.*|cnpg.*|backup.*)\.ya?ml$/i.test(file)) {
+    signals.database = true;
+    signals.backup = true;
+  }
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.
 const cmakeWithoutComments = combinedCMake.replace(/#[^\n]*/g, '');
@@ -245,6 +251,11 @@ function hasSignal(pattern) {
   }
   return signals.files.some((f) => norm(f).includes(q));
 }
+function keywordMatches(text, kw) {
+  const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(?:^|[^a-z0-9_-])${escaped}(?:$|[^a-z0-9_-])`, 'i');
+  return regex.test(text);
+}
 // Prefer the user's explicitly named language when a monorepo contains multiple stacks.
 const wantsRust = /\brust\b|\bcargo\b|\bgpui\b|\baxum\b|\btokio\b/.test(words);
 const wantsCpp = /\bc\+\+\b|\bcpp\b|\bqt\b|\bwebengine\b|\bchromium\b/.test(words);
@@ -266,6 +277,7 @@ const stack = new Set([
   ...(signals.godot ? ['godot', 'game'] : []),
   ...(signals.terraform ? ['terraform', 'aws'] : []),
   ...(signals.kubernetes ? ['kubernetes'] : []),
+  ...(signals.backup || signals.database ? ['database', 'data-reliability'] : []),
 ]);
 const reviewOnly = intent === 'review';
 const noCodePlan = !projectFound && intent === 'architecture';
@@ -364,7 +376,9 @@ for (const entry of entries) {
     '2d',
     '3d',
   ]);
-  const matchedKws = keywords.filter((k) => k.length > 2 && words.includes(k) && !generic.has(k));
+  const matchedKws = keywords.filter(
+    (k) => k.length > 2 && keywordMatches(words, k) && !generic.has(k),
+  );
   const kwMatch = matchedKws.length > 0;
   const gameIdea =
     !projectFound && test(/\b(videojuego|videojuegos|juego|juegos|game|godot|bevy)\b/);
@@ -408,7 +422,7 @@ for (const entry of entries) {
   if (isCrossStack) {
     crossStackScore += matchedKws.length * 3;
     if (fileMatch) crossStackScore += 4;
-    if (caps.some((c) => words.includes(c))) crossStackScore += 2;
+    if (caps.some((c) => keywordMatches(words, c))) crossStackScore += 2;
   }
   const crossStackActivated = isCrossStack ? crossStackScore >= 5 : true;
   if (isCrossStack && !crossStackActivated) continue;

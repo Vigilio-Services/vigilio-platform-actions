@@ -114,13 +114,107 @@ export function evaluateObservabilityFixture(fixture: FixtureTestCase): FixtureR
   };
 }
 
+export function evaluateDataReliabilityFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight connectivity & drill evidence check (Fail-closed)
+  const preflightChecks = fixture.files['reports/preflight-checks.json'];
+  if (preflightChecks) {
+    try {
+      const parsed = JSON.parse(preflightChecks) as {
+        s3Connectivity?: string;
+        credentialsValid?: boolean;
+      };
+      if (parsed.s3Connectivity === 'UNREACHABLE' || parsed.credentialsValid === false) {
+        violations.push('Destino de backup S3 inaccesible o credenciales ausentes en preflight');
+        return {
+          id: fixture.id,
+          skill: fixture.skill,
+          type: fixture.type,
+          passed: fixture.expectedVerdict === 'NOT_RUN',
+          actualVerdict: 'NOT_RUN',
+          expectedVerdict: fixture.expectedVerdict,
+          violations,
+          reason: 'Fail-closed por falta de conectividad verificada con bucket de backups S3.',
+        };
+      }
+    } catch {
+      violations.push('reports/preflight-checks.json inválido');
+    }
+  }
+
+  // 2. Reclaim policy validation (Retain vs Delete)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/reclaimPolicy:\s*Delete/i.test(content)) {
+        violations.push(
+          `Violación crítica en ${filename}: reclaimPolicy: Delete está prohibido en volúmenes persistentes de producción; debe ser Retain`,
+        );
+      }
+    }
+  }
+
+  // 3. Plaintext AWS secrets or passwords
+  const forbiddenSecretPatterns = [
+    /AWS_SECRET_ACCESS_KEY/i,
+    /AWS_ACCESS_KEY_ID/i,
+    /password:\s*["'][^"']+["']/i,
+  ];
+
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      for (const pattern of forbiddenSecretPatterns) {
+        if (pattern.test(content)) {
+          violations.push(
+            `Fuga de secretos en ${filename}: se detectaron credenciales en texto plano (${pattern.source}); use IRSA o SealedSecrets`,
+          );
+        }
+      }
+    }
+  }
+
+  // 4. Continuous WAL archiving requirement for CloudNativePG
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*Cluster/i.test(content) && /postgresql\.cnpg\.io/i.test(content)) {
+        if (!/barmanObjectStore/i.test(content)) {
+          violations.push(
+            `Configuración incompleta en ${filename}: Clúster CloudNativePG sin barmanObjectStore para archivado continuo de WAL`,
+          );
+        }
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
+export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-data-reliability') {
+    return evaluateDataReliabilityFixture(fixture);
+  }
+  return evaluateObservabilityFixture(fixture);
+}
+
 export function runFixtureEvals(fixtures: readonly FixtureTestCase[]): {
   total: number;
   passed: number;
   failed: number;
   results: FixtureResult[];
 } {
-  const results = fixtures.map((f) => evaluateObservabilityFixture(f));
+  const results = fixtures.map((f) => evaluateFixture(f));
   const passed = results.filter((r) => r.passed).length;
   return {
     total: results.length,

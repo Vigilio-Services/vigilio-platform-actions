@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T09:15:30.741Z",
+  "timestamp": "2026-11-01T09:46:56.629Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T09:15:30.740Z",
+    "timestamp": "2026-11-01T09:46:56.628Z",
     "overallMetrics": {
-      "total": 15,
-      "truePositives": 70,
+      "total": 21,
+      "truePositives": 106,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 11,
-      "truePositives": 52,
+      "total": 15,
+      "truePositives": 75,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 4,
-      "truePositives": 18,
+      "total": 6,
+      "truePositives": 31,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -49,10 +49,10 @@
         "accuracy": 1
       },
       "backup-pitr": {
-        "total": 0,
-        "passed": 0,
+        "total": 6,
+        "passed": 6,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
       "supply-chain": {
         "total": 1,
@@ -124,19 +124,50 @@
     "missingSkillsCount": {},
     "unexpectedSkillsCount": {},
     "activationReasons": {
-      "vigilio-auto-senior": ["entrada única: inspección, decisión y evidencia"],
-      "node-nest-build-feature": ["NestJS detectado"],
-      "node-nest-testing": ["testing backend"],
-      "platform-observability-sre": ["metadata declarativa: proyecto/keyword/ecosistema"],
-      "review-code-change": ["revisión posterior obligatoria, sin editar", "revisión read-only"],
-      "web-mfe-build-feature": ["React detectado"],
-      "web-mfe-contracts": ["contratos frontend"],
-      "web-mfe-testing": ["testing web"],
-      "web-mfe-technologies": ["metadata declarativa: proyecto/keyword/ecosistema"],
-      "diagnosing-bugs": ["reproducir causa antes de parche"],
-      "node-nest-persistence": ["DB NestJS"],
-      "aws-platform-foundation": ["metadata declarativa: proyecto/keyword/ecosistema"],
-      "terraform-iac-delivery": ["metadata declarativa: proyecto/keyword/ecosistema"],
+      "vigilio-auto-senior": [
+        "entrada única: inspección, decisión y evidencia"
+      ],
+      "node-nest-build-feature": [
+        "NestJS detectado"
+      ],
+      "node-nest-testing": [
+        "testing backend"
+      ],
+      "platform-observability-sre": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "review-code-change": [
+        "revisión posterior obligatoria, sin editar",
+        "revisión read-only"
+      ],
+      "web-mfe-build-feature": [
+        "React detectado"
+      ],
+      "web-mfe-contracts": [
+        "contratos frontend"
+      ],
+      "web-mfe-testing": [
+        "testing web"
+      ],
+      "diagnosing-bugs": [
+        "reproducir causa antes de parche"
+      ],
+      "node-nest-persistence": [
+        "DB NestJS",
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "platform-data-reliability": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-technologies": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "aws-platform-foundation": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "terraform-iac-delivery": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
       "cpp-native-delivery": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
@@ -149,14 +180,24 @@
       "software-supply-chain-security": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
-      "precision-skill-reading": ["metadata declarativa: proyecto/keyword/ecosistema"],
-      "ux-web-experience": ["metadata declarativa: proyecto/keyword/ecosistema"]
+      "precision-skill-reading": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-web-experience": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "web-mfe-technologies": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-security": [
+        "auth NestJS"
+      ]
     },
     "failures": []
   },
   "fixtureSummary": {
-    "total": 3,
-    "passed": 3,
+    "total": 6,
+    "passed": 6,
     "failed": 0,
     "results": [
       {
@@ -198,6 +239,43 @@
           "Falta archivo obligatorio de evidencia preflight: reports/preflight-evidence.json"
         ],
         "reason": "Fail-closed por falta de evidencia verificable."
+      },
+      {
+        "id": "FX-BKP-CORRECT-01",
+        "skill": "platform-data-reliability",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Manifiesto y drill válidos con retención de volumen, cifrado KMS, archivado WAL continuo y credenciales IRSA."
+      },
+      {
+        "id": "FX-BKP-INSECURE-01",
+        "skill": "platform-data-reliability",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Violación crítica en k8s/postgres-insecure.yaml: reclaimPolicy: Delete está prohibido en volúmenes persistentes de producción; debe ser Retain",
+          "Fuga de secretos en k8s/postgres-insecure.yaml: se detectaron credenciales en texto plano (AWS_SECRET_ACCESS_KEY); use IRSA o SealedSecrets",
+          "Fuga de secretos en k8s/postgres-insecure.yaml: se detectaron credenciales en texto plano (AWS_ACCESS_KEY_ID); use IRSA o SealedSecrets",
+          "Configuración incompleta en k8s/postgres-insecure.yaml: Clúster CloudNativePG sin barmanObjectStore para archivado continuo de WAL"
+        ],
+        "reason": "Violaciones críticas de seguridad detectadas: reclaimPolicy: Delete, AWS secrets en texto plano y ausencia de barmanObjectStore."
+      },
+      {
+        "id": "FX-BKP-NOTRUN-01",
+        "skill": "platform-data-reliability",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Destino de backup S3 inaccesible o credenciales ausentes en preflight"
+        ],
+        "reason": "Fail-closed por falta de conectividad verificada con bucket de backups S3."
       }
     ]
   },

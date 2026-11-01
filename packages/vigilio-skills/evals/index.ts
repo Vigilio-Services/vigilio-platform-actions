@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { holdoutRoutingCases, trainingRoutingCases } from './cases/routing-cases.js';
 import { runFixtureEvals } from './fixture-eval-runner.js';
+import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
 import { runRoutingEvals } from './routing-eval-runner.js';
 import type { FullEvalReport } from './types.js';
@@ -13,7 +14,8 @@ const reportsDir = path.join(repoRoot, 'reports');
 
 export async function executeFullEvalSuite(): Promise<FullEvalReport> {
   const routingSummary = await runRoutingEvals(trainingRoutingCases, holdoutRoutingCases);
-  const fixtureSummary = runFixtureEvals(observabilityFixtureCases);
+  const allFixtures = [...observabilityFixtureCases, ...dataReliabilityFixtureCases];
+  const fixtureSummary = runFixtureEvals(allFixtures);
 
   const routingGatePassed =
     routingSummary.overallMetrics.falsePositives === 0 &&
