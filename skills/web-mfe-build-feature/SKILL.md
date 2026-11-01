@@ -1,6 +1,17 @@
 ---
 name: web-mfe-build-feature
 description: Implementa y revisa features frontend productivas en web-mfe con Preact/React compatibility, TypeScript estricto, Vite, Tailwind CSS, TanStack Query, React Hook Form y componentes reutilizables. Usar al crear o modificar pantallas, features, componentes, hooks, rutas, servicios HTTP, formularios, estado cliente o integraciones con el BFF.
+owner: frontend-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "web, frontend, react, preact, typescript"
+routing_keywords: "feature, components, hooks, ui"
+routing_files: "package.json, vite.config.ts"
+routing_capabilities: "feature-development, ui"
+requires: [web-mfe-technologies]
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -64,4 +75,45 @@ Priorizar codigo, tests y configuracion ejecutable sobre ejemplos documentales. 
 
 Leer [references/feature-architecture.md](references/feature-architecture.md) para decisiones de estructura y estado.
 
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Componentes enfocados, contratos compartidos, estados explícitos, accesibilidad y `map()` puro para renderizar listas con keys estables.
+- ❌ **Incorrecto:** `map()` para efectos ignorando el retorno, `forEach(async...)` sin esperar, duplicar schemas y renderizar HTML no confiable.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
+
 </skill-content>
+
+> **Convención Vigilio vigente (2026-10-25):** los tipos inferidos de Zod se nombran `ProductSchema`/`CategorySchema`/`UserSchema` (`productSchema` es el validador); `*.schema.ts` posee schemas y `*.dto.ts` contiene Zod y tipo derivado; API/hooks frontend usan `listProducts`/`registerProduct` en lugar de `index/store`, variables locales `snake_case`, y dependencias inyectadas TS/NestJS `camelCase`. Aplicar cambios a exports publicados solo con migración de compatibilidad.
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [typescript](../.vigilio-docs/technology/catalog/typescript.md)
+- [preact](../.vigilio-docs/technology/libraries/preact.md)
+- [react](../.vigilio-docs/technology/libraries/react.md)
+- [vite](../.vigilio-docs/technology/libraries/vite.md)
+- [tailwind-css](../.vigilio-docs/technology/libraries/tailwind-css.md)
+- [tanstack-query](../.vigilio-docs/technology/libraries/tanstack-query.md)
+- [tanstack-table](../.vigilio-docs/technology/libraries/tanstack-table.md)
+- [shadcn-ui](../.vigilio-docs/technology/libraries/shadcn-ui.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+
+## APIs complementarias por versión
+
+- [lightweight-charts](../.vigilio-docs/technology/libraries/lightweight-charts.md)
+- [ogl](../.vigilio-docs/technology/libraries/ogl.md)
+- [wouter](../.vigilio-docs/technology/libraries/wouter.md)
+- [testing-library](../.vigilio-docs/technology/libraries/testing-library.md)
+
+✅ Correcto: abrir guías cuando la funcionalidad las use. ❌ Incorrecto: importar código legacy de otro major sin confirmar manifest.
+
+
+## Librerías propietarias adicionales — lectura por tarea
+
+Estas referencias no duplican normativa: consultar la API, migración y versión instalada **solo cuando la tarea utilice la librería**.
+
+- [tanstack-router](../.vigilio-docs/technology/libraries/tanstack-router.md)
+- [radix-ui](../.vigilio-docs/technology/libraries/radix-ui.md)
+

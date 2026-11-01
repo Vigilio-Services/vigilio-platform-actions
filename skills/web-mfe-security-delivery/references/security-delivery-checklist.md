@@ -4,13 +4,13 @@
 
 | Necesidad | Fuente canónica |
 |---|---|
-| Seguridad, sesión y privacidad | [vigilio-docs/9-seguridad-hardening-privacidad](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/9-seguridad-hardening-privacidad.md) |
-| Tooling y supply chain | [vigilio-docs/11-tooling-pnpm-biome-supply-chain](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/11-tooling-pnpm-biome-supply-chain.md) |
-| CI/CD y gobierno GitHub | [vigilio-docs/12-devsecops-cicd-github](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/12-devsecops-cicd-github.md) |
-| Delivery AWS/CDN y FinOps | [vigilio-docs/13-aws-cloudfront-cdk-finops](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/13-aws-cloudfront-cdk-finops.md) |
-| APIs y delivery por perfil | [vigilio-docs/18-frontend-technologies-skill-2026](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/18-frontend-technologies-skill-2026.md) |
-| Gobierno, OpenSpec y releases | [vigilio-docs/14-gobierno-skills-openspec-release](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/14-gobierno-skills-openspec-release.md) |
-| Criterios operativos | [vigilio-docs/15-evaluacion-roadmap-operacion](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/15-evaluacion-roadmap-operacion.md) |
+| Seguridad, sesión y privacidad | [vigilio-docs/9-seguridad-hardening-privacidad](../../.vigilio-docs/stacks/frontend/web-mfe/security/9-seguridad-hardening-privacidad.md) |
+| Tooling y supply chain | [vigilio-docs/11-tooling-pnpm-biome-supply-chain](../../.vigilio-docs/stacks/frontend/web-mfe/quality/11-tooling-pnpm-biome-supply-chain.md) |
+| CI/CD y gobierno GitHub | [vigilio-docs/12-devsecops-cicd-github](../../.vigilio-docs/stacks/frontend/web-mfe/delivery/12-devsecops-cicd-github.md) |
+| Delivery AWS/CDN y FinOps | [vigilio-docs/13-aws-cloudfront-cdk-finops](../../.vigilio-docs/stacks/frontend/web-mfe/delivery/13-aws-cloudfront-cdk-finops.md) |
+| APIs y delivery por perfil | [vigilio-docs/18-frontend-technologies-skill-2026](../../.vigilio-docs/stacks/frontend/web-mfe/technology/18-frontend-technologies-skill-2026.md) |
+| Gobierno, OpenSpec y releases | [vigilio-docs/14-gobierno-skills-openspec-release](../../.vigilio-docs/stacks/frontend/web-mfe/governance/14-gobierno-skills-openspec-release.md) |
+| Criterios operativos | [vigilio-docs/15-evaluacion-roadmap-operacion](../../.vigilio-docs/stacks/frontend/web-mfe/governance/15-evaluacion-roadmap-operacion.md) |
 | Evidencia ejecutable | workflows, imagen/manifests/IaC, policies y ambientes del consumidor |
 
 Usar la documentación como baseline. Verificar siempre la configuración real de GitHub/AWS antes de afirmar que un control externo está activo.
@@ -81,3 +81,6 @@ No crear infraestructura paralela del otro perfil.
 - Rollback a artefacto anterior documentado y probado.
 - Invalidacion de cache acotada cuando exista CDN; en Kubernetes, rollback al digest/revision anterior sin recompilar.
 - Evidencia de deploy y cambio retenida sin secretos.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

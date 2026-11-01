@@ -27,3 +27,6 @@
 ## Observability
 
 Capture release, platform, OS, app state, route name, correlation id, and sanitized error category. Never capture auth headers, tokens, presigned URLs, document content, or unrestricted user input.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

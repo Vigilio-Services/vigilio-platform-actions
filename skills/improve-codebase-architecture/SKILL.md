@@ -1,6 +1,17 @@
 ---
 name: improve-codebase-architecture
 description: Escanea deuda arquitectónica con foco en módulos shallow, locality, acoplamiento y seams de prueba. Usar al revisar estructura, modularidad, boundaries, duplicacion o complejidad accidental en proyectos Vigilio.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, improve-codebase-architecture"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 # Improve Codebase Architecture — Vigilio senior mode
@@ -94,3 +105,12 @@ Side effects durante la conversación:
 - `references/HTML-REPORT.md` — scaffold y patrones de diagramas
 - Skill `grill-me` — para la fase de grilling
 - `openspec/config.yaml` — bounded contexts y reglas de dominio
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `improve-codebase-architecture`
+
+✅ **Correcto:** en esta tarea, aplicar criterios verificables específicos de esta guía y consultar su owner canónico; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, copiar reglas de otro stack o declarar evidencia sin haberla ejecutado; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+

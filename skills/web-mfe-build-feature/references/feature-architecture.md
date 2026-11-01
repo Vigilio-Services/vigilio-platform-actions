@@ -4,10 +4,10 @@
 
 | Necesidad | Fuente canónica |
 |---|---|
-| Arquitectura, capas y estado | [vigilio-docs/3-arquitectura-estructura-estado](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/3-arquitectura-estructura-estado.md) |
-| BFF, HTTP y autenticación | [vigilio-docs/5-bff-http-runtime-auth](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/5-bff-http-runtime-auth.md) |
-| Golden path de feature | [vigilio-docs/6-golden-path-feature](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/6-golden-path-feature-componentes-hooks.md) |
-| Calidad, SEO y accesibilidad | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/8-calidad-seo-accesibilidad-rendimiento.md) |
+| Arquitectura, capas y estado | [vigilio-docs/3-arquitectura-estructura-estado](../../.vigilio-docs/stacks/frontend/web-mfe/architecture/3-arquitectura-estructura-estado.md) |
+| BFF, HTTP y autenticación | [vigilio-docs/5-bff-http-runtime-auth](../../.vigilio-docs/stacks/frontend/web-mfe/http/5-bff-http-runtime-auth.md) |
+| Golden path de feature | [vigilio-docs/6-golden-path-feature](../../.vigilio-docs/stacks/frontend/web-mfe/features/6-golden-path-feature-componentes-hooks.md) |
+| Calidad, SEO y accesibilidad | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](../../.vigilio-docs/stacks/frontend/web-mfe/quality/8-calidad-seo-accesibilidad-rendimiento.md) |
 | Convención ejecutable | feature vecina equivalente dentro del consumidor |
 
 Tratar los documentos centrales como baseline y el código/tests del consumidor como evidencia vigente. Si difieren, verificar el comportamiento antes de editar.
@@ -62,9 +62,7 @@ No promover containers, paneles completos ni tablas atadas a un response concret
 
 ## Tipos Y Constantes
 
-Bien:
-
-```ts
+✅ Correcto:```ts
 // features/chat/types/chat-state.type.ts
 export type ChatState = 'connecting' | 'connected' | 'degraded';
 
@@ -72,9 +70,7 @@ export type ChatState = 'connecting' | 'connected' | 'degraded';
 export const CHAT_MESSAGE_EVENT = 'chat.message.created.v1';
 ```
 
-Mal:
-
-```tsx
+❌ Incorrecto:```tsx
 type ChatState = string;
 const EVENT = 'message';
 export function ChatPanel() {}
@@ -89,10 +85,10 @@ Evita carpetas `types/` globales y barrels masivos.
 Usar factories pequenas cuando una feature tiene multiples operaciones:
 
 ```ts
-export const productKeys = {
+export const product_keys = {
   all: ['products'] as const,
-  list: (filters: ProductFilters) => [...productKeys.all, 'list', filters] as const,
-  detail: (id: number) => [...productKeys.all, 'detail', id] as const,
+  list: (filters: ProductFilters) => [...product_keys.all, 'list', filters] as const,
+  detail: (id: number) => [...product_keys.all, 'detail', id] as const,
 };
 ```
 
@@ -107,3 +103,9 @@ La key debe incluir todo valor que cambie el resultado. Evitar objetos mutables 
 - Un hook por cada linea de logica.
 - Index barrels que generan ciclos.
 - Ocultar errores con fallback silencioso.
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Componentes enfocados, contratos compartidos, estados explícitos, accesibilidad y `map()` puro para renderizar listas con keys estables.
+- ❌ **Incorrecto:** `map()` para efectos ignorando el retorno, `forEach(async...)` sin esperar, duplicar schemas y renderizar HTML no confiable.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

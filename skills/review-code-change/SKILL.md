@@ -1,6 +1,17 @@
 ---
 name: review-code-change
 description: Revisa diffs, pull requests o implementaciones terminadas con evidencia y severidad, alineando codigo, contratos y gates con docs/rules y OpenSpec. Usar solo cuando se solicite code review, revision de PR, readiness para merge o la fase REVIEW; no usar para implementar o corregir cambios.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, review-code-change"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 # Review Code Change
@@ -117,3 +128,53 @@ Cuando exista un contrato de orquestación, mapear sin alterar sus marcadores:
 Antes de responder, leer y usar [references/review-format.md](references/review-format.md). Ordenar los
 hallazgos por severidad y luego por archivo/línea. Si no hay hallazgos, decirlo explícitamente y
 mantener una sección breve de riesgos residuales o evidencia no disponible.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+
+
+
+## Alineación vigente Vigilio — 2026
+
+- Fuente de verdad: [Naming/DDD y conservación](../.vigilio-docs/standards/engineering/naming-and-boundaries.md). Leerla **antes** de crear/refactorizar contratos y justificar cualquier excepción por interfaz externa.
+- ✅ Métodos de negocio `listProducts`, `getProduct`, `registerProduct`, `approvePolicy`, `cancelOrder`; Domain `approve/cancel/activate`; Repository `findById/save/findByCriteria`. Datos/vars/parámetros/columnas `snake_case`, tipos/clases `PascalCase`, métodos `camelCase`.
+- ✅ Zod: `ProductSchema['id']`, `OrderSchema['status']`, tipos internos `Pick`/intersecciones y DTOs derivados de schema; Laravel: enums nativos, Spatie Data para contratos, Eloquent SQL.
+- ❌ No imponer `index/show/store/update/destroy` para casos de uso ni `tenantId` para variables propias; no reescribir APIs externas ni borrar ejemplos históricos. Validar SQL, authz, cache y tests por impacto; clasificar `PASS/FAIL/NOT_RUN/BLOCKED`.
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [typescript](../.vigilio-docs/technology/catalog/typescript.md)
+- [php](../.vigilio-docs/technology/catalog/php.md)
+- [biome](../.vigilio-docs/technology/libraries/biome.md)
+- [phpstan-larastan](../.vigilio-docs/technology/libraries/phpstan-larastan.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+
+## Gates de endpoints y comentarios — 2026-10-25
+
+- Antes de crear/revisar rutas HTTP, leer [estándar REST multistack](../.vigilio-docs/standards/api/rest-endpoint-design.md): métodos, filtros, tenant/autorización, seguridad, idempotencia, concurrency, jobs, headers, error contract y pruebas; activar lo condicional solo si aplica.
+- Antes de comentar código o aprobar docstrings, leer [estándar canónico de comentarios](../.vigilio-docs/standards/engineering/code-comments-and-docstrings.md): JSDoc/PHPDoc útiles, TODO/FIXME accionables, excepciones IC, no duplicar OpenAPI ni añadir comentarios triviales.
+- Aplicar estas referencias al diff, preservar APIs/ejemplos existentes, ejecutar los quality gates disponibles y reportar `PASS`, `FAIL`, `NOT_RUN` o `BLOCKED` según evidencia real.
+
+## Revisión automática de cualquier origen — Vigilio Auto-Senior
+
+- Ejecutar revisión independiente incluso si el autor no utilizó skills. Inspeccionar diff, consumidores y contratos, sin editar en REVIEW.
+- Fuente canónica: [análisis de impacto/gates](../.vigilio-docs/standards/engineering/change-impact-and-review-gates.md). Distinguir `PASS`, `FAIL`, `BLOCKED`, `NOT_RUN`; no afirmar que required checks están activos sin configuración de consumidor.
+
+## Gate de relaciones polimórficas y trazabilidad
+
+Si el diff afecta múltiples tipos de owner, `morphTo`, `target_type/target_id`, FK, tablas pivote o migraciones, leer la [norma canónica polimórfica](../.vigilio-docs/standards/data/polymorphic-relations.md) y verificar constraints reales, cross-tenant, borrado y consumidores. Para reglas de negocio o endpoints revisar [trazabilidad de caso de uso](../.vigilio-docs/standards/engineering/use-case-traceability.md). El resultado sigue siendo de **solo lectura** y distingue pruebas ejecutadas de `NOT_RUN`.
+
+
+## Capacidades Rust/C++ y descubrimiento futuro — lectura condicionada
+
+- [Descubrimiento agnóstico de tecnologías futuras](../.vigilio-docs/standards/ai/dynamic-capability-discovery.md): leer en tareas de arquitectura nueva, elección de stack, monorepos y selección automática de skills.
+- [Rust Core](../.vigilio-docs/stacks/rust/README.md): cuando existe Cargo o se evalúa Rust; cargar GPUI/CLI/backend solo si el caso aplica.
+- [C++ Core](../.vigilio-docs/stacks/cpp/README.md): cuando existen CMake/C++ o se evalúa C++; Qt y WebEngine son condicionales, no defaults.
+- Inspeccionar archivos de los subproyectos `apps/`, `crates/`, `packages/`; reconocer `Cargo.toml`, `CMakeLists.txt`, targets y dependencias. En una idea sin código comparar alternativas y preguntar decisiones relevantes, no fingir que una tecnología está instalada.
+- El catálogo de metadatos se construye desde las propias skills (`routing_*`); una futura skill de videojuegos puede descubrirse sin modificar reglas particulares del router. **No fingir** que propuestas son lecturas, implementaciones o pruebas.
+- ✅ Correcto: evaluar tecnologías en paralelo solo en fase de decisión, seleccionar una tras evidencia y cargar la skill completa. ❌ Incorrecto: aplicar GPUI a C++ o Qt a Rust solo por mencionar desktop.
+
+**Ownership por feature:** si esta tarea mueve constantes, tipos, Resources, componentes o utilidades, abrir [file-and-symbol-ownership](../.vigilio-docs/standards/engineering/file-and-symbol-ownership.md) y la guía específica del stack. No forzar carpetas globales por defecto.
+

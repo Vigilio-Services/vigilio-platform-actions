@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Contracts & Scalar"
+  short_description: "Implementa respuestas y queries PHP conformes con Zod→OpenAPI/Scalar compartido."
+  default_prompt: "Usa $php-laravel-contracts para implementa respuestas y queries php conformes con zod→openapi/scalar compartido."

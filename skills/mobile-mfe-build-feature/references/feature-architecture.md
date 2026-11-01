@@ -16,9 +16,9 @@ Keep `app/` declarative. A route may select a screen and navigation metadata; bu
 ```text
 app/(app)/products.tsx
   -> src/screens/products-screen.tsx
-    -> src/features/products/components/products-index.tsx
-      -> src/features/products/hooks/use-products-index-query.ts
-        -> src/features/products/services/products-index.api.ts
+    -> src/features/products/components/list-products.tsx
+      -> src/features/products/hooks/use-list-products-query.ts
+        -> src/features/products/services/list-products.api.ts
           -> src/services/http/api.ts + published contract
 ```
 
@@ -55,3 +55,6 @@ Never mirror one owner into another. Derive display values at render time or wit
 ## Reuse threshold
 
 Keep feature-specific code in the feature. Promote a primitive only after two real consumers with the same semantics exist. A shared directory is not a dumping ground.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

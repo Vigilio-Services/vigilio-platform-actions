@@ -1,11 +1,25 @@
 ---
 name: node-nest-security-aws
-description: "Implementa y revisa seguridad runtime y AWS en backends Node/Nest Vigilio: private-by-default, JWT/AuthZ, Zod env, Secrets Manager/SSM, RDS, S3, Bedrock, Pino, IAM, CDK, Lambda Web Adapter, stages y deploy seguro. Usar al tocar auth, permisos, secretos, configuracion, AWS SDK, uploads, IA, observabilidad, CDK o GitHub Actions."
+description: Implementa y revisa seguridad runtime y AWS en backends Node/Nest Vigilio: private-by-default, JWT/AuthZ, Zod env, Secrets Manager/SSM, RDS, S3, Bedrock, Pino, IAM, CDK, Lambda Web Adapter, stages y deploy seguro. Usar al tocar auth, permisos, secretos, configuracion, AWS SDK, uploads, IA, observabilidad, CDK o GitHub Actions.
+owner: backend-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "node, nestjs, typescript"
+routing_keywords: "jwt, oauth, guard, security, hardening, aws"
+routing_files: "package.json, tsconfig.json"
+routing_capabilities: "security, auth"
+requires: [node-nest-technologies]
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
 
 # Seguridad Y AWS En Node/Nest
+
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../.vigilio-docs/stacks/backend/nestjs/README.md).
+
 
 ## Lectura obligatoria de referencias
 
@@ -66,4 +80,20 @@ Priorizar guards, config runtime, CDK sintetizado, workflows y tests sobre afirm
 
 Leer [references/security-cloud-checklist.md](references/security-cloud-checklist.md) para fuentes y checklist de merge/deploy.
 
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** AuthN + AuthZ de recurso/tenant; allowlist de salida, secretos fuera de logs y pruebas de acceso cruzado.
+- ❌ **Incorrecto:** Permitir rutas públicas por comodidad, confiar sólo en `auth` o construir salida con `$request->all()`.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
+
 </skill-content>
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [aws-cdk](../.vigilio-docs/technology/libraries/aws-cdk.md)
+- [github-actions](../.vigilio-docs/technology/libraries/github-actions.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+

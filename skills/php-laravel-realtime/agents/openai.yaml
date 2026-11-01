@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Realtime (opcional)"
+  short_description: "Reverb/broadcasting y WebSocket auth cuando la feature lo necesita."
+  default_prompt: "Usa $php-laravel-realtime para reverb/broadcasting y websocket auth cuando la feature lo necesita."

@@ -1,19 +1,25 @@
 ---
 name: web-mfe-realtime
 description: Implementa y revisa WebSocket, Socket.IO client y SSE en web MFE. Usar para conexiones, listeners, reconexión, cache, estados de conexión, accesibilidad y modo degradado.
+owner: frontend-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "web, frontend, react, preact, typescript"
+routing_keywords: "sse, websocket, tanstack-query"
+routing_files: "package.json, vite.config.ts"
+routing_capabilities: "realtime, streaming"
+requires: [web-mfe-technologies]
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
 
 # Tiempo Real Web MFE
 
-## Lectura obligatoria de referencias
+> Fuente única para **Lectura obligatoria de referencias**: [abrir documento canónico](../.vigilio-docs/governance/documentation-dry-and-ownership.md).
 
-Lee completamente [references/realtime-patterns.md](references/realtime-patterns.md).
-
-Abre cada fuente canónica aplicable.
-
-No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
@@ -52,4 +58,19 @@ Usa frases cortas.
 
 Incluye estados, riesgos, pruebas y ejemplos aplicables.
 
-</skill-content>
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `web-mfe-realtime`
+
+✅ **Correcto:** en esta tarea, aplicar criterios verificables específicos de esta guía y consultar su owner canónico; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, copiar reglas de otro stack o declarar evidencia sin haberla ejecutado; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [socket-io](../.vigilio-docs/technology/libraries/socket-io.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+

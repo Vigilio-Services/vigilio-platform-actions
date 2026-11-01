@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vigilio AI / RAG / LLMOps / FinOps"
+  short_description: "RAG seguro, recuperación, evaluación, tracing y control de costos"
+  default_prompt: "Usa la skill ai-rag-llmops-finops y las guías canónicas Vigilio para revisar el diseño y los gates antes de implementar."

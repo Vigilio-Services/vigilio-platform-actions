@@ -1,6 +1,17 @@
 ---
 name: token-context-compression
 description: Comprime logs repetitivos y texto exploratorio para reducir ruido. Usar con CI, CloudWatch o Lambda; nunca usar contenido comprimido como única evidencia de contratos, seguridad o revisiones sensibles.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, token-context-compression"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -46,4 +57,12 @@ No comprimas schemas, migraciones, policies, contratos o errores únicos.
 - Request IDs de Lambda
 - Lineas START/END/REPORT de Lambda
 
-</skill-content>
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `token-context-compression`
+
+✅ **Correcto:** en esta tarea, aplicar criterios verificables específicos de esta guía y consultar su owner canónico; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, copiar reglas de otro stack o declarar evidencia sin haberla ejecutado; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+

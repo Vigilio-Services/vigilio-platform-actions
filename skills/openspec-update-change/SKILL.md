@@ -1,12 +1,17 @@
 ---
 name: openspec-update-change
 description: Update an OpenSpec change by revising its existing planning artifacts and keeping them coherent with one another. Use when the user wants to revise a change's plan, fold new decisions into it, or reconcile its artifacts after an edit. Never edits code.
-allowed-tools: Bash(openspec:*)
-license: MIT
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.6.0"
+owner: factory-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "openspec, specification"
+routing_keywords: "openspec, spec-driven, update-change"
+routing_files: "openspec/"
+routing_capabilities: "specification, spec-management"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 Revise a change's existing planning artifacts and keep them coherent. Never edit code.
@@ -83,3 +88,4 @@ After each invocation, show:
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is `/opsx-continue`'s job.
 - Confirm every edit with the user before writing.
 - If the request changes the change's *intent* rather than refining it, recommend starting fresh with `/opsx-new` (the "Update vs. Start Fresh" heuristic).
+

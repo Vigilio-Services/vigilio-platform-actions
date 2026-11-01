@@ -29,3 +29,6 @@
 - Stage rollout and monitor crashes/startup/critical journeys.
 - Keep a kill switch or rollback path and practice it before relying on OTA for recovery.
 - Do not use OTA to bypass store review for native-capability changes.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

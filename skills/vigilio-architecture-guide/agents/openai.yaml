@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vigilio Architecture Guide"
+  short_description: "Orienta Docs, Skills, npm, DDD y stacks NestJS/Laravel sin duplicar reglas"
+  default_prompt: "Usa $vigilio-architecture-guide para analizar el estado real de Vigilio, localizar la documentación canónica, elegir las skills correctas y proponer/aplicar cambios seguros con validación y preservación de archivos."

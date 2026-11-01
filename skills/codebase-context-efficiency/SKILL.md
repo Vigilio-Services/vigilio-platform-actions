@@ -1,6 +1,17 @@
 ---
 name: codebase-context-efficiency
 description: Reduce tokens while preserving evidence and answer quality. Use for code discovery, reviews, debugging, large repositories, logs, CI outputs and cross-repository analysis with Codebase Memory MCP or focused fallbacks.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, codebase-context-efficiency"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -50,4 +61,12 @@ No instales herramientas sin autorización.
 - Conserva ejemplos que permitan ejecutar o verificar.
 - Añade detalles cuando cambien una decisión.
 
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Leer contexto real, seguir normas canónicas y documentar precondiciones, ejemplos, contraejemplos y verificación.
+- ❌ **Incorrecto:** Copiar snippets sin imports, asumir versiones instaladas o declarar pruebas `PASS` sin ejecutarlas.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
+
 </skill-content>
+

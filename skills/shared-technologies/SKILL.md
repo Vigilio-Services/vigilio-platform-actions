@@ -1,6 +1,17 @@
 ---
 name: shared-technologies
 description: Verifica compatibilidad real de TypeScript, Node.js, pnpm, Zod, OpenAPI, contratos browser-safe, Vitest, Playwright, Biome, tsx, Husky y paquetes privados compartidos. Usar antes de generar o revisar codigo frontend/backend, cambiar versiones, consumir contratos, configurar tooling o resolver un STACK_* mismatch.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, shared-technologies"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -46,4 +57,25 @@ No cambiar dependencias, contratos ni runtime como efecto lateral de una feature
 
 Lee [references/technology-baseline.md](references/technology-baseline.md). Abre la fuente canónica aplicable enlazada allí antes de resolver compatibilidad.
 
-</skill-content>
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+
+## Fuente única de versiones
+
+- [Versiones verificadas, políticas de compatibilidad y gates](../.vigilio-docs/technology/versions.md). No duplicar números de versión de ejemplos de documentación ni saltarse locks.
+
+✅ Correcto: consultar esta fuente central antes de un upgrade.
+
+❌ Incorrecto: inferir la versión instalada solamente por el nombre de la skill.
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [typescript](../.vigilio-docs/technology/catalog/typescript.md)
+- [php](../.vigilio-docs/technology/catalog/php.md)
+- [pnpm](../.vigilio-docs/technology/libraries/pnpm.md)
+- [zod](../.vigilio-docs/technology/libraries/zod.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+

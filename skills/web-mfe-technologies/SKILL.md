@@ -1,6 +1,17 @@
 ---
 name: web-mfe-technologies
 description: Verifica APIs y arquitectura frontend 2026 para Preact, Vite, Tailwind CSS 4, TanStack Query/Table, React Hook Form, Zod, Wouter, Signals/Zustand, lightweight-charts 5.2, OGL 1.0.11, Vitest, Playwright y delivery por perfil. Usar al diseñar o revisar web-mfe/web-mfe-v2 sin cruzar contratos ni runtimes.
+owner: frontend-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "web, frontend, react, preact, typescript"
+routing_keywords: "preact, react, tanstack, tailwind, vite"
+routing_files: "package.json, vite.config.ts"
+routing_capabilities: "baseline, frontend-stack"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -41,4 +52,20 @@ Usar junto con `$shared-technologies`. La capability conserva el nombre estable 
 
 Lee [references/technology-baseline.md](references/technology-baseline.md). Abre la fuente canónica aplicable enlazada allí antes de decidir una tecnología.
 
-</skill-content>
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `web-mfe-technologies`
+
+✅ **Correcto:** en esta tarea, aplicar criterios verificables específicos de esta guía y consultar su owner canónico; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, copiar reglas de otro stack o declarar evidencia sin haberla ejecutado; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+
+
+## Librerías propietarias adicionales — lectura por tarea
+
+Estas referencias no duplican normativa: consultar la API, migración y versión instalada **solo cuando la tarea utilice la librería**.
+
+- [preact-signals](../.vigilio-docs/technology/libraries/preact-signals.md)
+- [zustand](../.vigilio-docs/technology/libraries/zustand.md)
+

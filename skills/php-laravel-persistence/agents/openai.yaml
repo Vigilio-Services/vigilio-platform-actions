@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Persistence & Cache"
+  short_description: "Eloquent PostgreSQL, transacciones, repository ports, cache-aside, TTL, invalida"
+  default_prompt: "Usa $php-laravel-persistence para eloquent postgresql, transacciones, repository ports, cache-aside, ttl, invalidación y migraciones."

@@ -1,12 +1,17 @@
 ---
 name: openspec-archive-change
 description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
-allowed-tools: Bash(openspec:*)
-license: MIT
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.6.0"
+owner: factory-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "openspec, specification"
+routing_keywords: "openspec, spec-driven, archive-change"
+routing_files: "openspec/"
+routing_capabilities: "specification, spec-management"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 Archive a completed change in the experimental workflow.
@@ -115,3 +120,4 @@ All artifacts complete. All tasks complete.
 - Show clear summary of what happened
 - If sync is requested, use openspec-sync-specs approach (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
+

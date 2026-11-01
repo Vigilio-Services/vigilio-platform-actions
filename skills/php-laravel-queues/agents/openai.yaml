@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Queues & Outbox"
+  short_description: "Jobs, eventos, Redis/SQS, transactional outbox, DLQ e idempotencia."
+  default_prompt: "Usa $php-laravel-queues para jobs, eventos, redis/sqs, transactional outbox, dlq e idempotencia."

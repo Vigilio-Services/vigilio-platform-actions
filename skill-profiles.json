@@ -1,7 +1,23 @@
 {
-  "schema_version": 1,
+  "schemaVersion": 2,
   "profiles": {
+    "governance": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget"
+    ],
     "core": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "skill-create-docs",
       "shared-technologies",
       "commit-ai-change",
@@ -11,20 +27,89 @@
       "grill-me",
       "improve-codebase-architecture",
       "architecture-traceability",
-      "review-code-change",
       "token-context-compression"
     ],
+    "core-cross-stack": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "skill-create-docs",
+      "commit-ai-change",
+      "codebase-context-efficiency",
+      "diagnosing-bugs",
+      "grill-me",
+      "improve-codebase-architecture",
+      "architecture-traceability",
+      "token-context-compression",
+      "refactor-existing-code"
+    ],
     "node-nest": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "node-nest-technologies",
       "node-nest-build-feature",
       "node-nest-realtime",
       "node-nest-async-workers",
       "node-nest-persistence",
+      "node-nest-security",
+      "node-nest-security-aws",
+      "platform-observability-sre",
+      "node-nest-testing"
+    ],
+    "node-nest-eks": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "node-nest-technologies",
+      "node-nest-build-feature",
+      "node-nest-realtime",
+      "node-nest-async-workers",
+      "node-nest-persistence",
+      "node-nest-security",
+      "node-nest-security-aws",
+      "platform-observability-sre",
+      "node-nest-testing",
+      "kubernetes-eks-delivery"
+    ],
+    "node-nest-lambda": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "node-nest-technologies",
+      "node-nest-build-feature",
+      "node-nest-realtime",
+      "node-nest-async-workers",
+      "node-nest-persistence",
+      "node-nest-security",
       "node-nest-security-aws",
       "platform-observability-sre",
       "node-nest-testing"
     ],
     "mobile-mfe": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "mobile-mfe-build-feature",
       "mobile-mfe-contracts",
       "mobile-mfe-quality",
@@ -32,6 +117,13 @@
       "mobile-mfe-testing"
     ],
     "web-mfe": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "web-mfe-technologies",
       "web-mfe-build-feature",
       "web-mfe-realtime",
@@ -42,17 +134,31 @@
       "web-mfe-testing"
     ],
     "web-mfe-v2": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "web-mfe-technologies",
       "web-mfe-build-feature",
       "web-mfe-realtime",
       "web-mfe-contracts",
       "web-mfe-quality",
       "platform-observability-sre",
-      "kubernetes-eks-delivery",
       "web-mfe-security-delivery",
-      "web-mfe-testing"
+      "web-mfe-testing",
+      "kubernetes-eks-delivery"
     ],
     "platform": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
       "architecture-traceability",
       "platform-observability-sre",
       "kubernetes-eks-delivery"
@@ -64,6 +170,578 @@
       "openspec-propose",
       "openspec-sync-specs",
       "openspec-update-change"
+    ],
+    "php-laravel": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "php-laravel-technologies",
+      "php-laravel-build-feature",
+      "php-laravel-contracts",
+      "php-laravel-persistence",
+      "php-laravel-security",
+      "php-laravel-testing",
+      "php-laravel-queues",
+      "php-laravel-quality",
+      "php-laravel-runtime"
+    ],
+    "php-laravel-realtime": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "php-laravel-technologies",
+      "php-laravel-build-feature",
+      "php-laravel-contracts",
+      "php-laravel-persistence",
+      "php-laravel-security",
+      "php-laravel-testing",
+      "php-laravel-queues",
+      "php-laravel-quality",
+      "php-laravel-runtime",
+      "php-laravel-realtime"
+    ],
+    "ai-rag": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ai-rag-llmops-finops"
+    ],
+    "rust-core": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "rust-workspace-architecture",
+      "rust-native-build-feature",
+      "rust-native-testing"
+    ],
+    "rust-desktop": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "rust-workspace-architecture",
+      "rust-native-build-feature",
+      "rust-native-testing",
+      "rust-native-delivery"
+    ],
+    "rust-backend": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "rust-workspace-architecture",
+      "rust-native-build-feature",
+      "rust-native-testing",
+      "rust-agent-runtime-security"
+    ],
+    "rust-cli": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "rust-workspace-architecture",
+      "rust-native-build-feature",
+      "rust-native-testing",
+      "rust-native-delivery"
+    ],
+    "cpp-core": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "cpp-workspace-architecture",
+      "cpp-native-build-feature",
+      "cpp-native-testing"
+    ],
+    "cpp-qt-desktop": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "cpp-workspace-architecture",
+      "cpp-native-build-feature",
+      "cpp-native-testing",
+      "cpp-native-delivery",
+      "cpp-native-security"
+    ],
+    "cpp-qt-webengine": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "cpp-workspace-architecture",
+      "cpp-native-build-feature",
+      "cpp-native-testing",
+      "cpp-native-delivery",
+      "cpp-native-security",
+      "cpp-qt-webengine"
+    ],
+    "godot-core": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "godot-project-architecture",
+      "godot-build-gameplay",
+      "godot-testing-quality"
+    ],
+    "godot-2d": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "godot-project-architecture",
+      "godot-build-gameplay",
+      "godot-testing-quality",
+      "godot-animation-audio"
+    ],
+    "godot-3d": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "godot-project-architecture",
+      "godot-build-gameplay",
+      "godot-testing-quality",
+      "godot-animation-audio",
+      "godot-delivery"
+    ],
+    "godot-online": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "godot-project-architecture",
+      "godot-build-gameplay",
+      "godot-testing-quality",
+      "godot-backend-multiplayer"
+    ],
+    "ux-core": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review"
+    ],
+    "ux-web": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review",
+      "ux-web-experience",
+      "ui-design-system",
+      "ui-interaction-motion"
+    ],
+    "ux-mobile": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review",
+      "ux-mobile-experience",
+      "ui-design-system",
+      "ui-interaction-motion"
+    ],
+    "ux-desktop": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review",
+      "ux-desktop-experience",
+      "ui-art-direction"
+    ],
+    "ux-game-2d": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review",
+      "ux-game-experience",
+      "ui-art-direction"
+    ],
+    "ux-game-3d": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "ux-product-discovery",
+      "ux-information-architecture",
+      "ux-accessibility",
+      "ui-quality-review",
+      "ux-game-experience",
+      "ui-art-direction",
+      "ui-prototyping-handoff"
+    ],
+    "architecture-governance": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "architecture-traceability",
+      "improve-codebase-architecture",
+      "refactor-existing-code"
     ]
+  },
+  "definitions": {
+    "governance": {
+      "description": "Estándares transversales, Auto-Senior, review y auditoría de cambios",
+      "lifecycle": "stable",
+      "extends": [],
+      "skills": [
+        "vigilio-auto-senior",
+        "complete-work-no-shortcuts",
+        "review-code-change",
+        "vigilio-architecture-guide",
+        "symbol-ownership-architecture",
+        "precision-skill-reading",
+        "adaptive-context-budget"
+      ]
+    },
+    "core": {
+      "description": "Habilidades centrales para proyectos de software factory",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "skill-create-docs",
+        "shared-technologies",
+        "commit-ai-change",
+        "coderabbit-compliance",
+        "codebase-context-efficiency",
+        "diagnosing-bugs",
+        "grill-me",
+        "improve-codebase-architecture",
+        "architecture-traceability",
+        "token-context-compression"
+      ]
+    },
+    "core-cross-stack": {
+      "description": "Núcleo transversal agnóstico de stack para proyectos no-Node",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "skill-create-docs",
+        "commit-ai-change",
+        "codebase-context-efficiency",
+        "diagnosing-bugs",
+        "grill-me",
+        "improve-codebase-architecture",
+        "architecture-traceability",
+        "token-context-compression",
+        "refactor-existing-code"
+      ]
+    },
+    "node-nest": {
+      "description": "Backend NestJS, Drizzle, PostgreSQL, Valkey y clean architecture",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "node-nest-technologies",
+        "node-nest-build-feature",
+        "node-nest-realtime",
+        "node-nest-async-workers",
+        "node-nest-persistence",
+        "node-nest-security",
+        "node-nest-security-aws",
+        "platform-observability-sre",
+        "node-nest-testing"
+      ]
+    },
+    "node-nest-eks": {
+      "description": "Backend NestJS desplegado sobre Kubernetes EKS",
+      "lifecycle": "stable",
+      "extends": ["node-nest"],
+      "skills": ["kubernetes-eks-delivery"]
+    },
+    "node-nest-lambda": {
+      "description": "Backend NestJS serverless desplegado sobre AWS Lambda",
+      "lifecycle": "stable",
+      "extends": ["node-nest"],
+      "skills": ["node-nest-security-aws"]
+    },
+    "mobile-mfe": {
+      "description": "Frontend Mobile React Native, Expo y NativeWind",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "mobile-mfe-build-feature",
+        "mobile-mfe-contracts",
+        "mobile-mfe-quality",
+        "mobile-mfe-security-delivery",
+        "mobile-mfe-testing"
+      ]
+    },
+    "web-mfe": {
+      "description": "Frontend Web MFE Preact/React, Vite, TanStack y Tailwind",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "web-mfe-technologies",
+        "web-mfe-build-feature",
+        "web-mfe-realtime",
+        "web-mfe-contracts",
+        "web-mfe-quality",
+        "platform-observability-sre",
+        "web-mfe-security-delivery",
+        "web-mfe-testing"
+      ]
+    },
+    "web-mfe-v2": {
+      "description": "Frontend Web MFE v2 con entrega contenerizada en Kubernetes EKS",
+      "lifecycle": "stable",
+      "extends": ["web-mfe"],
+      "skills": ["kubernetes-eks-delivery"]
+    },
+    "platform": {
+      "description": "Plataforma SRE, observabilidad y entrega en Kubernetes",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "architecture-traceability",
+        "platform-observability-sre",
+        "kubernetes-eks-delivery"
+      ]
+    },
+    "openspec": {
+      "description": "Flujo formal de especificación OpenSpec",
+      "lifecycle": "stable",
+      "extends": [],
+      "skills": [
+        "openspec-apply-change",
+        "openspec-archive-change",
+        "openspec-explore",
+        "openspec-propose",
+        "openspec-sync-specs",
+        "openspec-update-change"
+      ]
+    },
+    "php-laravel": {
+      "description": "Backend PHP Laravel 11/12, Eloquent, PostgreSQL y arquitectura limpia",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "php-laravel-technologies",
+        "php-laravel-build-feature",
+        "php-laravel-contracts",
+        "php-laravel-persistence",
+        "php-laravel-security",
+        "php-laravel-testing",
+        "php-laravel-queues",
+        "php-laravel-quality",
+        "php-laravel-runtime"
+      ]
+    },
+    "php-laravel-realtime": {
+      "description": "Laravel con soporte en tiempo real vía WebSockets / Reverb / SSE",
+      "lifecycle": "stable",
+      "extends": ["php-laravel"],
+      "skills": ["php-laravel-realtime"]
+    },
+    "ai-rag": {
+      "description": "Inteligencia artificial generativa, RAG, embeddings y FinOps",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": ["ai-rag-llmops-finops"]
+    },
+    "rust-core": {
+      "description": "Sistemas nativos en Rust, Cargo y arquitectura modular",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": ["rust-workspace-architecture", "rust-native-build-feature", "rust-native-testing"]
+    },
+    "rust-desktop": {
+      "description": "Aplicaciones de escritorio nativas en Rust",
+      "lifecycle": "stable",
+      "extends": ["rust-core"],
+      "skills": ["rust-native-delivery"]
+    },
+    "rust-backend": {
+      "description": "Microservicios backend y agentes en Rust con seguridad runtime",
+      "lifecycle": "stable",
+      "extends": ["rust-core"],
+      "skills": ["rust-agent-runtime-security"]
+    },
+    "rust-cli": {
+      "description": "Herramientas de línea de comandos en Rust",
+      "lifecycle": "stable",
+      "extends": ["rust-core"],
+      "skills": ["rust-native-delivery"]
+    },
+    "cpp-core": {
+      "description": "Sistemas nativos en C++, CMake y arquitectura modular",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": ["cpp-workspace-architecture", "cpp-native-build-feature", "cpp-native-testing"]
+    },
+    "cpp-qt-desktop": {
+      "description": "Aplicaciones de escritorio C++ con Qt 6",
+      "lifecycle": "stable",
+      "extends": ["cpp-core"],
+      "skills": ["cpp-native-delivery", "cpp-native-security"]
+    },
+    "cpp-qt-webengine": {
+      "description": "Aplicaciones híbridas C++ con Qt 6 y WebEngine",
+      "lifecycle": "stable",
+      "extends": ["cpp-qt-desktop"],
+      "skills": ["cpp-qt-webengine"]
+    },
+    "godot-core": {
+      "description": "Videojuegos y simulaciones en Godot 4",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": ["godot-project-architecture", "godot-build-gameplay", "godot-testing-quality"]
+    },
+    "godot-2d": {
+      "description": "Desarrollo de juegos 2D en Godot 4",
+      "lifecycle": "stable",
+      "extends": ["godot-core"],
+      "skills": ["godot-animation-audio"]
+    },
+    "godot-3d": {
+      "description": "Desarrollo de juegos 3D en Godot 4 con exportación y delivery",
+      "lifecycle": "stable",
+      "extends": ["godot-core"],
+      "skills": ["godot-animation-audio", "godot-delivery"]
+    },
+    "godot-online": {
+      "description": "Juegos multijugador en línea en Godot 4",
+      "lifecycle": "stable",
+      "extends": ["godot-core"],
+      "skills": ["godot-backend-multiplayer"]
+    },
+    "ux-core": {
+      "description": "Fundamentos de diseño UX, arquitectura de información y accesibilidad",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "ux-product-discovery",
+        "ux-information-architecture",
+        "ux-accessibility",
+        "ui-quality-review"
+      ]
+    },
+    "ux-web": {
+      "description": "Experiencia de usuario para productos Web",
+      "lifecycle": "stable",
+      "extends": ["ux-core"],
+      "skills": ["ux-web-experience", "ui-design-system", "ui-interaction-motion"]
+    },
+    "ux-mobile": {
+      "description": "Experiencia de usuario para productos Mobile",
+      "lifecycle": "stable",
+      "extends": ["ux-core"],
+      "skills": ["ux-mobile-experience", "ui-design-system", "ui-interaction-motion"]
+    },
+    "ux-desktop": {
+      "description": "Experiencia de usuario para aplicaciones Desktop",
+      "lifecycle": "stable",
+      "extends": ["ux-core"],
+      "skills": ["ux-desktop-experience", "ui-art-direction"]
+    },
+    "ux-game-2d": {
+      "description": "Experiencia de usuario para videojuegos 2D",
+      "lifecycle": "stable",
+      "extends": ["ux-core"],
+      "skills": ["ux-game-experience", "ui-art-direction"]
+    },
+    "ux-game-3d": {
+      "description": "Experiencia de usuario para videojuegos 3D y prototipado",
+      "lifecycle": "stable",
+      "extends": ["ux-core"],
+      "skills": ["ux-game-experience", "ui-art-direction", "ui-prototyping-handoff"]
+    },
+    "architecture-governance": {
+      "description": "Gobernanza de arquitectura, refactoring y trazabilidad",
+      "lifecycle": "stable",
+      "extends": ["governance"],
+      "skills": [
+        "architecture-traceability",
+        "improve-codebase-architecture",
+        "refactor-existing-code"
+      ]
+    }
   }
 }

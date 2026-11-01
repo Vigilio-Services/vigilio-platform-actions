@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Testing"
+  short_description: "Pest5/PHPUnit13 con domain/feature/integration/contract y evidencia real."
+  default_prompt: "Usa $php-laravel-testing para pest5/phpunit13 con domain/feature/integration/contract y evidencia real."

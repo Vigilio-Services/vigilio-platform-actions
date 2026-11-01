@@ -4,10 +4,10 @@
 
 | Necesidad | Fuente canónica |
 |---|---|
-| Estrategia Vitest, MSW y Playwright | [vigilio-docs/7-testing-vitest-msw-playwright](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/7-testing-vitest-msw-playwright.md) |
-| Accesibilidad y visual regression | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/8-calidad-seo-accesibilidad-rendimiento.md) |
-| Seguridad y pruebas negativas | [vigilio-docs/9-seguridad-hardening-privacidad](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/9-seguridad-hardening-privacidad.md) |
-| Contratos compartidos | [vigilio-docs/1-contratos-dtos-zod-tanstack](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/1-contratos-dtos-zod-tanstack.md) |
+| Estrategia Vitest, MSW y Playwright | [vigilio-docs/7-testing-vitest-msw-playwright](../../.vigilio-docs/stacks/frontend/web-mfe/testing/7-testing-vitest-msw-playwright.md) |
+| Accesibilidad y visual regression | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](../../.vigilio-docs/stacks/frontend/web-mfe/quality/8-calidad-seo-accesibilidad-rendimiento.md) |
+| Seguridad y pruebas negativas | [vigilio-docs/9-seguridad-hardening-privacidad](../../.vigilio-docs/stacks/frontend/web-mfe/security/9-seguridad-hardening-privacidad.md) |
+| Contratos compartidos | [vigilio-docs/1-contratos-dtos-zod-tanstack](../../.vigilio-docs/stacks/frontend/web-mfe/contracts/1-contratos-dtos-zod-tanstack.md) |
 | Evidencia ejecutable | tests y configuración del repositorio consumidor |
 
 La matriz siguiente selecciona mínimos por riesgo; no obliga a duplicar el mismo escenario en todas las capas.
@@ -51,3 +51,6 @@ Preferir en este orden:
 - No usar timeout fijo.
 - No compartir usuario o registros mutables entre workers.
 - Capturar trace/screenshot solo como evidencia; no reemplazan assertions.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

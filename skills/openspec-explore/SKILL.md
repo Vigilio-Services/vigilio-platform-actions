@@ -1,12 +1,17 @@
 ---
 name: openspec-explore
 description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
-allowed-tools: Bash(openspec:*)
-license: MIT
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.6.0"
+owner: factory-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "openspec, specification"
+routing_keywords: "openspec, spec-driven, explore"
+routing_files: "openspec/"
+routing_capabilities: "specification, spec-management"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
@@ -287,3 +292,4 @@ But this summary is optional. Sometimes the thinking IS the value.
 - **Do visualize** - A good diagram is worth many paragraphs
 - **Do explore the codebase** - Ground discussions in reality
 - **Do question assumptions** - Including the user's and your own
+

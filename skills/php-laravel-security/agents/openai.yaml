@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Security"
+  short_description: "Sanctum opcional, policies, tenant isolation, configuración y pruebas de autoriz"
+  default_prompt: "Usa $php-laravel-security para sanctum opcional, policies, tenant isolation, configuración y pruebas de autorización."

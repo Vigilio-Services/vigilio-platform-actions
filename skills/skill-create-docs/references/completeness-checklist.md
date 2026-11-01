@@ -34,3 +34,10 @@ not-found, conflict, degraded/stale state, retry, responsiveness, accessibility,
 
 Treat each target as if reviewed alone. Expand any section that would require implementation guesses;
 remove boilerplate that does not change a decision, boundary, contract, invariant, or gate.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../../.vigilio-docs/stacks/backend/nestjs/README.md).
+
+

@@ -25,3 +25,6 @@ Use coverage as a floor, not proof of correctness. Branch coverage must include 
 - Secrets injected by the CI environment, never committed.
 
 If any prerequisite is absent, preserve the test and mark execution pending.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

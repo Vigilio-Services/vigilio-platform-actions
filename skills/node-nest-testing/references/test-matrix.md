@@ -2,9 +2,9 @@
 
 ## Fuentes Del Repositorio
 
-- [Testing Vitest/Playwright](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/7-pruebas-vitest-playwright.md): estrategia amplia.
-- [Cucumber BDD](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/22-cucumber-bdd.md): limites de BDD.
-- [Estrategia 2026](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/38-estrategia-testing-2026.md): baseline y gates.
+- [Testing Vitest/Playwright](../../.vigilio-docs/stacks/backend/nestjs/testing/references/7-pruebas-vitest-playwright.md): estrategia amplia.
+- [Cucumber BDD](../../.vigilio-docs/standards/testing/references/22-cucumber-bdd.md): limites de BDD.
+- [Estrategia 2026](../../.vigilio-docs/stacks/backend/nestjs/testing/references/38-estrategia-testing-2026.md): baseline y gates.
 - `vitest.config.ts`: scope y thresholds reales.
 - `playwright.config.ts`: proyectos API/browser y webServer.
 - `tests/unit/`, `tests/integration/`, `tests/bdd/`, `tests/e2e/`: ejemplos ejecutables.
@@ -37,3 +37,13 @@
 - Los datos son deterministas y paralelizables.
 - Se ejecutaron las capas afectadas y se reportan bloqueos reales.
 - OpenAPI no introduce breaking change no aprobado.
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Probar invariantes, guards/Policies, query Zod/FormRequest, contrato OpenAPI y DB/Redis real donde aplique.
+- ❌ **Incorrecto:** Confundir mocks con integración, afirmar cobertura por porcentaje o ignorar comportamiento existente y casos negativos.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
+
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../../.vigilio-docs/stacks/backend/nestjs/README.md).
+
+

@@ -59,3 +59,8 @@ VEREDICTO FINAL
 - En `Siguiente paso seguro`, usar `fix + review` para `REQUEST_CHANGES` y decisión/replan para `BLOCK`.
 - Si el orquestador exige su propio bloque `AUTOMATION_STATUS`, conservar este informe como cuerpo y
   emitir exactamente los marcadores proporcionados por el prompt generado al final.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+- [Polimorfismo y relaciones](../../.vigilio-docs/standards/data/polymorphic-relations.md) para cambios DB/tenancy.
+- [Trazabilidad de casos de uso](../../.vigilio-docs/standards/engineering/use-case-traceability.md) para contratos de negocio.

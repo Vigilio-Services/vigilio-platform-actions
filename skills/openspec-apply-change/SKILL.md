@@ -1,12 +1,17 @@
 ---
 name: openspec-apply-change
 description: Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.
-allowed-tools: Bash(openspec:*)
-license: MIT
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.6.0"
+owner: factory-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "openspec, specification"
+routing_keywords: "openspec, spec-driven, apply-change"
+routing_files: "openspec/"
+routing_capabilities: "specification, spec-management"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 Implement tasks from an OpenSpec change.
@@ -157,3 +162,4 @@ This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
 - **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+

@@ -4,10 +4,10 @@
 
 | Necesidad | Fuente canónica |
 |---|---|
-| SEO, accesibilidad y rendimiento | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/8-calidad-seo-accesibilidad-rendimiento.md) |
-| Observabilidad, RUM y Grafana | [vigilio-docs/10-observabilidad-rum-grafana-slo](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/10-observabilidad-rum-grafana-slo.md) |
-| AWS, CloudFront y FinOps | [vigilio-docs/13-aws-cloudfront-cdk-finops](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/13-aws-cloudfront-cdk-finops.md) |
-| Estado y roadmap verificable | [vigilio-docs/15-evaluacion-roadmap-operacion](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/15-evaluacion-roadmap-operacion.md) |
+| SEO, accesibilidad y rendimiento | [vigilio-docs/8-calidad-seo-accesibilidad-rendimiento](../../.vigilio-docs/stacks/frontend/web-mfe/quality/8-calidad-seo-accesibilidad-rendimiento.md) |
+| Observabilidad, RUM y Grafana | [vigilio-docs/10-observabilidad-rum-grafana-slo](../../.vigilio-docs/stacks/frontend/web-mfe/observability/10-observabilidad-rum-grafana-slo.md) |
+| AWS, CloudFront y FinOps | [vigilio-docs/13-aws-cloudfront-cdk-finops](../../.vigilio-docs/stacks/frontend/web-mfe/delivery/13-aws-cloudfront-cdk-finops.md) |
+| Estado y roadmap verificable | [vigilio-docs/15-evaluacion-roadmap-operacion](../../.vigilio-docs/stacks/frontend/web-mfe/governance/15-evaluacion-roadmap-operacion.md) |
 | Evidencia ejecutable | build, tests, budgets y telemetría del consumidor |
 
 Medir contra el repositorio y ambiente objetivo. No convertir una recomendación central en evidencia de implementación.
@@ -63,3 +63,6 @@ pnpm test:e2e
 ```
 
 Ejecutar E2E/visual segun superficie y disponibilidad del entorno; reportar con precision lo que no se ejecuto.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

@@ -1,6 +1,17 @@
 ---
 name: web-mfe-quality
 description: Revisa y mejora accesibilidad, SEO, Core Web Vitals, rendimiento de render, bundle, imagenes, cache y observabilidad frontend en web-mfe. Usar al modificar UI visible, rutas publicas, metadata, estilos, assets, carga diferida, tablas grandes, canvas, lightweight-charts, OGL/WebGL, telemetria, logging, dashboards o budgets de performance.
+owner: frontend-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "web, frontend, react, preact, typescript"
+routing_keywords: "biome, eslint, a11y, lighthouse, seo"
+routing_files: "package.json, vite.config.ts"
+routing_capabilities: "quality, a11y, performance"
+requires: [web-mfe-technologies]
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 <skill-content>
@@ -51,4 +62,30 @@ Medir antes y despues. No declarar mejoras de rendimiento, SEO o accesibilidad s
 
 Leer [references/quality-checklist.md](references/quality-checklist.md) antes de cerrar una ruta o cambio visual importante.
 
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Componentes enfocados, contratos compartidos, estados explícitos, accesibilidad y `map()` puro para renderizar listas con keys estables.
+- ❌ **Incorrecto:** `map()` para efectos ignorando el retorno, `forEach(async...)` sin esperar, duplicar schemas y renderizar HTML no confiable.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
+
 </skill-content>
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [typescript](../.vigilio-docs/technology/catalog/typescript.md)
+- [biome](../.vigilio-docs/technology/libraries/biome.md)
+- [vite](../.vigilio-docs/technology/libraries/vite.md)
+- [vitest](../.vigilio-docs/technology/libraries/vitest.md)
+- [playwright](../.vigilio-docs/technology/libraries/playwright.md)
+- [tailwind-css](../.vigilio-docs/technology/libraries/tailwind-css.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+
+## APIs complementarias por versión
+
+- [testing-library](../.vigilio-docs/technology/libraries/testing-library.md)
+
+✅ Correcto: abrir guías cuando la funcionalidad las use. ❌ Incorrecto: importar código legacy de otro major sin confirmar manifest.
+

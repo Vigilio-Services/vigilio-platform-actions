@@ -4,10 +4,10 @@
 
 | Necesidad | Fuente |
 |---|---|
-| Compatibilidad compartida | [vigilio-docs/shared-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/shared-technologies-skill-2026.md) |
-| Contratos frontend | [vigilio-docs/1-contracts](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/1-contratos-dtos-zod-tanstack.md) |
-| Tecnologías backend | [vigilio-docs/43-backend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/backend-node-nest/43-backend-technologies-skill-2026.md) |
-| Tecnologías frontend | [vigilio-docs/18-frontend-technologies](https://github.com/VigilioYonatan/vigilio-docs/blob/main/frontend-web-mfe/18-frontend-technologies-skill-2026.md) |
+| Compatibilidad compartida | [vigilio-docs/shared-technologies](../../.vigilio-docs/technology/catalog/references/shared-technologies-skill-2026.md) |
+| Contratos frontend | [vigilio-docs/1-contracts](../../.vigilio-docs/stacks/frontend/web-mfe/contracts/1-contratos-dtos-zod-tanstack.md) |
+| Tecnologías backend | [vigilio-docs/43-backend-technologies](../../.vigilio-docs/technology/catalog/references/43-backend-technologies-skill-2026.md) |
+| Tecnologías frontend | [vigilio-docs/18-frontend-technologies](../../.vigilio-docs/stacks/frontend/web-mfe/technology/18-frontend-technologies-skill-2026.md) |
 
 Lee completamente cada fuente aplicable antes de resolver una compatibilidad.
 
@@ -53,3 +53,6 @@ En local se permite `link:` solo al owner de la misma fila. CI/release usa versi
 - No declarar compatible un consumidor inexistente.
 - Registrar repositorio y commit por separado en topologias federadas.
 - Un cambio cross-repo necesita identidad comun de cambio, PR/evidence y rollback por repositorio.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

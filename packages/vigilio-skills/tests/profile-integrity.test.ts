@@ -4,13 +4,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
-const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('profiles reference existing skills and cover every distributed skill', async () => {
   const profiles = JSON.parse(
-    await readFile(path.join(repositoryRoot, 'skill-profiles.json'), 'utf8'),
+    await readFile(path.join(packageRoot, 'assets', 'profiles.json'), 'utf8'),
   ) as { profiles: Record<string, string[]> };
-  const skillEntries = await readdir(path.join(repositoryRoot, 'skills'), { withFileTypes: true });
+  const skillEntries = await readdir(path.join(packageRoot, 'assets', 'skills'), {
+    withFileTypes: true,
+  });
   const existingSkills = new Set(
     skillEntries.filter((entry) => entry.isDirectory()).map((entry) => entry.name),
   );

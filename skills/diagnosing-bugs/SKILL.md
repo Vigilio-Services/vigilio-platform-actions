@@ -1,6 +1,17 @@
 ---
 name: diagnosing-bugs
 description: Diagnostica bugs complejos y regresiones de rendimiento con un loop senior reproducible. Usar en proyectos Vigilio cuando un fallo sea intermitente, cruce capas, carezca de causa clara o requiera instrumentacion antes de corregir.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, diagnosing-bugs"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 # Diagnosing Bugs — Vigilio senior mode
@@ -116,3 +127,12 @@ Si la respuesta implica cambio arquitectónico (no hay buen seam de test, caller
 | Bug asincrónico/race | `node --inspect`, breakpoints, `Promise.all` vs `Promise.allSettled` |
 | Performance lenta | `node --prof`, `0x` flamegraph, Drizzle `log: true`, `EXPLAIN ANALYZE` |
 | Bug intermitente | Loop 100x, paralelizar, inyectar sleeps, `vitest --repeat 100` |
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `diagnosing-bugs`
+
+✅ **Correcto:** en esta tarea, aplicar criterios verificables específicos de esta guía y consultar su owner canónico; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, copiar reglas de otro stack o declarar evidencia sin haberla ejecutado; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+

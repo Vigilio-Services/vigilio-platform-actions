@@ -41,3 +41,7 @@ credentials. Record only readiness, owner, permissions, environment, and the log
 
 Before APPLY/REVIEW/FIX publication, every relevant material question must be ANSWERED and synchronized
 into its canonical owner. Preserve answered questions as provenance.
+
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../../.vigilio-docs/stacks/backend/nestjs/README.md).
+
+

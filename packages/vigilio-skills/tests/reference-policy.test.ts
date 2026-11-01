@@ -4,8 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'vitest';
 
-const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const skillsRoot = path.join(repositoryRoot, 'skills');
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const skillsRoot = path.join(repositoryRoot, 'assets', 'skills');
 const requiredHeading = '## Lectura obligatoria de referencias';
 
 test('skills that link local references enforce complete reference reading', async () => {

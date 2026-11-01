@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Quality"
+  short_description: "PHP strict types, SOLID, PHPStan/Larastan/Pint/Composer gates y CI."
+  default_prompt: "Usa $php-laravel-quality para php strict types, solid, phpstan/larastan/pint/composer gates y ci."

@@ -1,12 +1,17 @@
 ---
 name: openspec-sync-specs
 description: Sync delta specs from a change to main specs. Use when the user wants to update main specs with changes from a delta spec, without archiving the change.
-allowed-tools: Bash(openspec:*)
-license: MIT
-metadata:
-  author: openspec
-  version: "1.0"
-  generatedBy: "1.6.0"
+owner: factory-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "openspec, specification"
+routing_keywords: "openspec, spec-driven, sync-specs"
+routing_files: "openspec/"
+routing_capabilities: "specification, spec-management"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 Sync delta specs from a change to main specs.
@@ -145,3 +150,4 @@ Main specs are now updated. The change remains active - archive when implementat
 - If something is unclear, ask for clarification
 - Show what you're changing as you go
 - The operation should be idempotent - running twice should give same result
+

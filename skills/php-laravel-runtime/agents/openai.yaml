@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Runtime & Observability"
+  short_description: "PHP-FPM, Docker, EKS, OpenTelemetry, logs, métricas, probes y canary."
+  default_prompt: "Usa $php-laravel-runtime para php-fpm, docker, eks, opentelemetry, logs, métricas, probes y canary."

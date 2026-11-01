@@ -124,3 +124,6 @@ commit; si toca varios roots, se crean SHAs separados enlazados por `ticket_id` 
 [ ] SHA, prompt_id, prompt_slug y cambios restantes reportados
 [ ] no push
 ```
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

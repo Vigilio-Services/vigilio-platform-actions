@@ -99,3 +99,6 @@ Ejemplos que encajan:
 - "Leverage: one interface, N call sites."
 
 No hedging, no throat-clearing, no "it's worth noting that…".
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+

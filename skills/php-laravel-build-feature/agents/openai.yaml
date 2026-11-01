@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel DDD Build Feature"
+  short_description: "Implementa controllers, FormRequests, DTOs, casos de uso semánticos, repositorio"
+  default_prompt: "Usa $php-laravel-build-feature para implementa controllers, formrequests, dtos, casos de uso semánticos, repositorios y di."

@@ -1,13 +1,23 @@
 ---
 name: skill-create-docs
 description: Create, migrate, synchronize, or audit implementation-ready docs/rules packages for Prompt Builder projects. Use for project discovery, documentation generation, pack/plan authoring, or any PROPOSE/APPLY/REVIEW change that must keep canonical documentation and generated prompts aligned. Do not use it as a replacement for stack-specific implementation skills.
+owner: governance-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "cross-stack"
+routing_keywords: "engineering, standards, governance, skill-create-docs"
+routing_files: "package.json"
+routing_capabilities: "engineering-standards, governance"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 # Skill Create Docs
 
-Build compact-complete documentation that an engineer or coding agent can implement without guessing.
-Treat `docs/rules/**` as authored authority, OpenSpec as the change lifecycle, and `generated/**` as
-reproducible output.
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../.vigilio-docs/stacks/backend/nestjs/README.md).
+
 
 ## Lectura obligatoria de referencias
 
@@ -63,3 +73,11 @@ Read each linked reference completely before the work that depends on it:
   canonical owners, or reproducible command evidence.
 - Keep terminal BLOCKED for missing material authority/access, unavailable required external resources,
   unauthorized irreversible actions, or required writes outside allowed scope.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+
+## Revisión universal antes de cerrar
+
+Aplicar la skill **`complete-work-no-shortcuts`** en la lectura y redacción de todo Markdown de proyecto: matriz de categorías pertinentes, recorrido del ciclo completo, ejemplos y contraejemplos, riesgos, gates y casos límite. Una guía puede ser corta si es un índice; **no** debe ser corta por omitir pasos necesarios para implementar o comprobar. ✅ Presentar cobertura con evidencia. ❌ Declarar que todas las guías son completas solo porque el enlazador pasó.
+

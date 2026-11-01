@@ -2,7 +2,7 @@
 
 ## Fuente Canónica
 
-[Lee la guía completa de eficiencia](https://github.com/VigilioYonatan/vigilio-docs/blob/main/platform-runtime/4-ai-context-efficiency.md).
+[Lee la guía completa de eficiencia](../../.vigilio-docs/platform-runtime/4-ai-context-efficiency.md).
 
 ## Herramientas
 
@@ -51,3 +51,9 @@ Falta validar el replay productivo.
 ```text
 Después de una revisión bastante exhaustiva, considero que probablemente todo funciona correctamente.
 ```
+
+## ✅ Correcto / ❌ Incorrecto: manejo de existente
+
+- ✅ **Correcto:** Leer contexto real, seguir normas canónicas y documentar precondiciones, ejemplos, contraejemplos y verificación.
+- ❌ **Incorrecto:** Copiar snippets sin imports, asumir versiones instaladas o declarar pruebas `PASS` sin ejecutarlas.
+- **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).

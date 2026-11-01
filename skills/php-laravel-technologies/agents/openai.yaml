@@ -1,0 +1,4 @@
+interface:
+  display_name: "Baseline PHP/Laravel"
+  short_description: "Selecciona PHP 8.5.12 o fallback aprobado y Laravel 13 con Composer reproducible"
+  default_prompt: "Usa $php-laravel-technologies para selecciona php 8.5.12 o fallback aprobado y laravel 13 con composer reproducible."

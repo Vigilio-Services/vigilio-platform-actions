@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactorización segura de código existente"
+  short_description: "Refactoriza código existente PHP/Laravel y TypeScript/NestJS con tests, contratos y rollback."
+  default_prompt: "Usa $refactor-existing-code para revisar legacy y refactorizarlo sin romper DDD ni contratos."

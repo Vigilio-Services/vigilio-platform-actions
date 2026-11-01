@@ -1,6 +1,17 @@
 ---
 name: mobile-mfe-security-delivery
 description: Review Expo and React Native security, secrets, permissions, deep links, native storage, dependency supply chain, EAS builds, OTA updates, signing, SBOMs, and environment promotion. Use for authentication, SecureStore, uploads, app configuration, native permissions, CI workflows, EAS profiles, release channels, certificates, or production delivery changes.
+owner: mobile-platform
+lifecycle: stable
+introduced_in: 0.7.0
+routing_ecosystems: "mobile, react-native, expo, typescript"
+routing_keywords: "react-native, expo, mobile, security-delivery"
+routing_files: "app.json, package.json, eas.json"
+routing_capabilities: "mobile-development, security-delivery"
+requires: []
+optional: []
+conflicts: []
+supersedes: []
 ---
 
 # Mobile MFE Security And Delivery
@@ -36,3 +47,21 @@ Treat the shipped client as public and make every promotion attributable and rev
 ## Validation
 
 Run repository policy, secrets/SAST/dependency checks, Expo Doctor, export, SBOM generation, and workflow validation. Require real credentials and explicit authorization for signing, EAS builds, submissions, or production promotion.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+## ✅ Correcto / ❌ Incorrecto — tarea `mobile-mfe-security-delivery`
+
+✅ **Correcto:** en esta tarea, verificar autorización por recurso y aislar secretos de los logs; remitir la norma compartida al documento propietario.
+
+❌ **Incorrecto:** en esta tarea, confiar en la UI o en el tenant_id enviado por el cliente; inventar pruebas o pegar el mismo procedimiento transversal en varias skills.
+
+## Guías de librerías por versión — lectura antes de usar sus APIs
+
+Las versiones de esta skill no se copian aquí: comprobar lockfile y [versión canónica](../.vigilio-docs/technology/versions.md). Cuando la tarea utilice una de estas dependencias, **abrir el `.md` completo** y consultar su migración ✅/❌ antes de escribir código; el resto no es obligatorio para una tarea que no la utiliza.
+- [expo](../.vigilio-docs/technology/libraries/expo.md)
+- [expo-updates](../.vigilio-docs/technology/libraries/expo-updates.md)
+- [expo-secure-store](../.vigilio-docs/technology/libraries/expo-secure-store.md)
+
+✅ Correcto: versionar el consumidor y seguir los ejemplos de la API instalada; enlazar documento propietario.  ❌ Incorrecto: copiar APIs legacy, duplicar normas en la skill o instalar nuevas dependencias sin gate.
+

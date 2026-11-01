@@ -36,3 +36,10 @@ Report the highest level actually proven:
 Run the conceptual sequence using exact supported command names: migrate when required, validate
 references, validate decisions, validate packs/eligibility, plan, build/build-all, then verify locks.
 Capture command, exit code, and artifact. Do not replace a failing real gate with an easier custom one.
+
+> Fuente única para **Correcto / Incorrecto: manejo de existente**: [abrir documento canónico](../../.vigilio-docs/standards/engineering/refactoring-existing-code.md).
+
+
+> Fuente única para **Navegación canónica multistack 2026**: [abrir documento canónico](../../.vigilio-docs/stacks/backend/nestjs/README.md).
+
+
