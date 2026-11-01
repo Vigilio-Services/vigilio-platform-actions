@@ -1926,6 +1926,75 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-resilience-disaster-recovery'],
     },
   },
+  {
+    id: 'CICD-TRAIN-POS-01',
+    domain: 'cicd-factory',
+    description:
+      'Centralización de pipelines en plantillas reutilizables y pipeline-factory con reusable-workflows',
+    task: 'Centralizar flujos de integración continua en plantillas y pipeline-factory con reusable-workflows versionados',
+    files: ['.github/workflows/ci.yml', '.github/workflows/reusable-build.yml'],
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['platform-repository-workspace', 'kubernetes-gitops-delivery'],
+    },
+  },
+  {
+    id: 'CICD-TRAIN-POS-02',
+    domain: 'cicd-factory',
+    description:
+      'Fábrica de pipelines corporativa con github-actions para construcción y firma de imágenes',
+    task: 'Configurar pipeline-factory corporativo de github-actions para construir imágenes OCI multi-arquitectura',
+    files: ['.github/workflows/pipeline-factory.yml'],
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['platform-environment-promotion'],
+    },
+  },
+  {
+    id: 'CICD-TRAIN-POS-03',
+    domain: 'cicd-factory',
+    description: 'Estandarización de pruebas y linters en github-actions con reusable-workflows',
+    task: 'Estandarizar github-actions para ejecución automatizada de linters y escaneos SAST mediante reusable-workflows',
+    files: ['.github/workflows/ci.yml'],
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+  {
+    id: 'CICD-TRAIN-POS-04',
+    domain: 'cicd-factory',
+    description:
+      'Migración de pipelines duplicados en aplicaciones hacia la fábrica cicd declarativa',
+    task: 'Migrar pipelines duplicados en repositorios de frontend hacia invocaciones declarativas de pipeline-factory y cicd',
+    files: ['apps/web/.github/workflows/ci.yml'],
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['web-mfe-build-feature'],
+    },
+  },
+  {
+    id: 'CICD-TRAIN-NEG-01',
+    domain: 'cicd-factory',
+    description: 'Sincronización GitOps con ArgoCD no debe activar la fábrica de pipelines CI/CD',
+    task: 'Configurar sincronización automática y reconciliación GitOps con ArgoCD en clúster EKS',
+    files: ['gitops/application.yaml'],
+    expected: {
+      mustSelect: ['kubernetes-gitops-delivery'],
+      mustNotSelect: ['platform-cicd-factory'],
+    },
+  },
+  {
+    id: 'CICD-TRAIN-NEG-02',
+    domain: 'cicd-factory',
+    description: 'Aprovisionamiento de infraestructura con Terraform no debe activar CI/CD factory',
+    task: 'Aprovisionar modulos de infraestructura terraform y hcl para colas SQS',
+    files: ['infra/terraform/messaging.tf'],
+    expected: {
+      mustSelect: ['terraform-iac-delivery'],
+      mustNotSelect: ['platform-cicd-factory'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2456,6 +2525,29 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['kubernetes-gitops-delivery'],
       mustNotSelect: ['platform-resilience-disaster-recovery'],
+    },
+  },
+  {
+    id: 'CICD-HOLD-POS-01',
+    domain: 'cicd-factory',
+    description:
+      'Runner OIDC efímero y plantillas reutilizables en pipeline-factory sin claves estáticas',
+    task: 'Implementar pipeline-factory para runner OIDC efímero y reusable-workflows sin claves estáticas',
+    files: ['.github/workflows/ci.yml'],
+    expected: {
+      mustSelect: ['platform-cicd-factory'],
+      mustNotSelect: ['platform-resilience-disaster-recovery', 'platform-data-reliability'],
+    },
+  },
+  {
+    id: 'CICD-HOLD-NEG-01',
+    domain: 'cicd-factory',
+    description: 'Escalabilidad horizontal con KEDA no debe activar la fábrica de pipelines CI/CD',
+    task: 'Configurar escalabilidad elastica basada en eventos con KEDA ScaledObject segun profundidad de colas SQS',
+    files: ['k8s/payment-keda.yaml', 'k8s/deployment.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['platform-cicd-factory'],
     },
   },
 ];

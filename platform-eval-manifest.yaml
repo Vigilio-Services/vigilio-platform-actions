@@ -116,12 +116,12 @@ skills:
 
   - id: "platform-cicd-factory"
     domain: "cicd"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-CICD-CORRECT-01"
+      insecure: "FX-CICD-INSECURE-01"
+      not_run: "FX-CICD-NOTRUN-01"
+    cases_count: 8
 
   - id: "platform-repository-workspace"
     domain: "workspace"

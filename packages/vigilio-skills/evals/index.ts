@@ -5,6 +5,7 @@ import { holdoutRoutingCases, trainingRoutingCases } from './cases/routing-cases
 import { runFixtureEvals } from './fixture-eval-runner.js';
 import { AWS_FOUNDATION_FIXTURES } from './fixtures/aws-foundation/fixture-cases.js';
 import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-cases.js';
+import { CICD_FACTORY_FIXTURES } from './fixtures/cicd-factory/fixture-cases.js';
 import { FINOPS_FIXTURES } from './fixtures/finops/fixture-cases.js';
 import { GITOPS_FIXTURES } from './fixtures/gitops/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
@@ -37,6 +38,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...SCALABILITY_FIXTURES,
     ...FINOPS_FIXTURES,
     ...RESILIENCE_FIXTURES,
+    ...CICD_FACTORY_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

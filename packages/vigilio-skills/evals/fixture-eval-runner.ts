@@ -1276,7 +1276,112 @@ export function evaluateResilienceFixture(fixture: FixtureTestCase): FixtureResu
   };
 }
 
+export function evaluateCicdFactoryFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/cicd-pipeline-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta evidencia de pipeline CI/CD: reports/cicd-pipeline-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        verification_status?: string;
+        runner_ephemeral?: boolean;
+        oidc_authenticated?: boolean;
+        reusable_workflow_version?: string;
+        security_gates_passed?: boolean;
+        sbom_cosign_signed?: boolean;
+      };
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight de CI/CD falló o runner/repositorio de plataforma inaccesible');
+      }
+      if (parsed.verification_status !== 'VERIFIED') {
+        violations.push(`Pipeline no verificado operacionalmente (${parsed.verification_status})`);
+      }
+      if (parsed.oidc_authenticated === false) {
+        violations.push(
+          'Autenticación sin OIDC: uso de credenciales estáticas permanentes en runner',
+        );
+      }
+      if (parsed.reusable_workflow_version === 'main') {
+        violations.push(
+          'Referencia a plantilla reutilizable mutable sin versionado inmutable (@main)',
+        );
+      }
+      if (parsed.security_gates_passed === false) {
+        violations.push('Gates de seguridad obligatorios (SAST/Trivy/Tests) omitidos o fallidos');
+      }
+      if (parsed.sbom_cosign_signed === false) {
+        violations.push('Firma criptográfica Cosign o generación de SBOM ausente');
+      }
+    } catch {
+      violations.push('reports/cicd-pipeline-evidence.json no es un JSON válido');
+    }
+  }
+
+  // 2. Static check on workflow file
+  const workflowRaw = fixture.files['.github/workflows/ci.yml'];
+  if (!workflowRaw) {
+    violations.push('Falta manifiesto de pipeline: .github/workflows/ci.yml');
+  } else {
+    if (/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY/i.test(workflowRaw)) {
+      violations.push('Presencia de secretos estáticos de AWS en texto plano dentro del workflow');
+    }
+    if (/--skip-tests/i.test(workflowRaw)) {
+      violations.push('Bypass indebido de pruebas unitarias con --skip-tests');
+    }
+    if (/@main\b/i.test(workflowRaw)) {
+      violations.push('Invocación de acción o plantilla reusable con tag flotante @main');
+    }
+    if (/continue-on-error:\s*true/i.test(workflowRaw)) {
+      violations.push('continue-on-error activado en etapas críticas de seguridad o testing');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de políticas de fábrica de pipelines CI/CD y plantillas reutilizables',
+    };
+  }
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed: fixture.expectedVerdict === 'PASS',
+    actualVerdict: 'PASS',
+    expectedVerdict: fixture.expectedVerdict,
+    violations: [],
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-cicd-factory') {
+    return evaluateCicdFactoryFixture(fixture);
+  }
   if (fixture.skill === 'platform-resilience-disaster-recovery') {
     return evaluateResilienceFixture(fixture);
   }

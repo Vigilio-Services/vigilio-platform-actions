@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T19:46:17.322Z",
+  "timestamp": "2026-11-01T20:02:56.283Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T19:46:17.317Z",
+    "timestamp": "2026-11-01T20:02:56.278Z",
     "overallMetrics": {
-      "total": 122,
-      "truePositives": 473,
+      "total": 130,
+      "truePositives": 492,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 96,
-      "truePositives": 361,
+      "total": 102,
+      "truePositives": 374,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 26,
-      "truePositives": 112,
+      "total": 28,
+      "truePositives": 118,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -115,6 +115,12 @@
         "accuracy": 1
       },
       "resilience": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "cicd-factory": {
         "total": 8,
         "passed": 8,
         "failed": 0,
@@ -278,6 +284,9 @@
       "platform-resilience-disaster-recovery": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
+      "platform-cicd-factory": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
@@ -291,8 +300,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 36,
-    "passed": 36,
+    "total": 39,
+    "passed": 39,
     "failed": 0,
     "results": [
       {
@@ -752,6 +761,49 @@
           "Procedimiento de restauración de clúster no verificado (UNKNOWN)"
         ],
         "reason": "No se puede certificar la resiliencia ante desastres: el operador Velero o el almacenamiento de contingencia son inaccesibles y la evidencia de preflight reporta fallo."
+      },
+      {
+        "id": "FX-CICD-CORRECT-01",
+        "skill": "platform-cicd-factory",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de la fábrica CI/CD: invoca plantilla reutilizable centralizada versionada con tag inmutable, sin credenciales estáticas de larga duración y con preflight aprobado."
+      },
+      {
+        "id": "FX-CICD-INSECURE-01",
+        "skill": "platform-cicd-factory",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Pipeline no verificado operacionalmente (UNTESTED)",
+          "Autenticación sin OIDC: uso de credenciales estáticas permanentes en runner",
+          "Referencia a plantilla reutilizable mutable sin versionado inmutable (@main)",
+          "Gates de seguridad obligatorios (SAST/Trivy/Tests) omitidos o fallidos",
+          "Firma criptográfica Cosign o generación de SBOM ausente",
+          "Presencia de secretos estáticos de AWS en texto plano dentro del workflow",
+          "Bypass indebido de pruebas unitarias con --skip-tests",
+          "Invocación de acción o plantilla reusable con tag flotante @main",
+          "continue-on-error activado en etapas críticas de seguridad o testing"
+        ],
+        "reason": "Fallo de políticas de fábrica de pipelines CI/CD y plantillas reutilizables"
+      },
+      {
+        "id": "FX-CICD-NOTRUN-01",
+        "skill": "platform-cicd-factory",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight de CI/CD falló o runner/repositorio de plataforma inaccesible",
+          "Pipeline no verificado operacionalmente (UNKNOWN)"
+        ],
+        "reason": "No se puede validar la fábrica de pipelines: el runner de GitHub Actions no responde o el repositorio central platform-actions es inaccesible, preflight reporta fallo."
       }
     ]
   },
