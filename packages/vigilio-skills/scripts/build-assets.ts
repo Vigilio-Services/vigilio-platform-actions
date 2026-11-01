@@ -118,16 +118,17 @@ const profilesYamlContent = await readFile(profilesYamlSource, 'utf8');
 const { definitions: profileDefs, resolved: resolvedProfiles } =
   parseProfilesYaml(profilesYamlContent);
 
-// 2. Backup templates if they already exist in assets
+// 2. Backup templates if tracked source is absent but assets exist
+const templatesSource = path.join(packageRoot, 'templates');
 const templatesBackup = path.join(packageRoot, '.tmp-templates-backup');
 const assetsTemplates = path.join(assetsRoot, 'templates');
-if (existsSync(assetsTemplates)) {
-  await rm(templatesBackup, { recursive: true, force: true });
+if (!existsSync(templatesSource) && existsSync(assetsTemplates)) {
+  await rm(templatesBackup, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   await cp(assetsTemplates, templatesBackup, { recursive: true });
 }
 
-// 3. Completely delete and recreate assets
-await rm(assetsRoot, { recursive: true, force: true });
+// 3. Completely delete and recreate assets with retry resilience on Windows
+await rm(assetsRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 await mkdir(assetsRoot, { recursive: true });
 
 // 4. Copy all skills from canonical source
@@ -221,13 +222,12 @@ if (existsSync(docsSource)) {
 }
 
 // 8. Bundle consumer templates
-const templatesSource = path.join(packageRoot, 'templates');
 if (existsSync(templatesSource)) {
   await cp(templatesSource, assetsTemplates, { recursive: true });
   console.log('[build-assets] Copied consumer templates from templates/ to assets/templates.');
 } else if (existsSync(templatesBackup)) {
   await cp(templatesBackup, assetsTemplates, { recursive: true });
-  await rm(templatesBackup, { recursive: true, force: true });
+  await rm(templatesBackup, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   console.log('[build-assets] Restored consumer templates.');
 }
 
