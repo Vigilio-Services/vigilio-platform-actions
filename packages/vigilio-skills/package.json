@@ -23,8 +23,8 @@
     "build": "node scripts/build-assets.ts && tsc -p tsconfig.build.json",
     "lint": "biome ci .",
     "prepack": "pnpm build",
-    "test": "vitest run --pool=threads",
-    "test:coverage": "vitest run --coverage --pool=threads",
+    "test": "node scripts/build-assets.ts && vitest run --pool=threads",
+    "test:coverage": "node scripts/build-assets.ts && vitest run --coverage --pool=threads",
     "typecheck": "tsc --noEmit",
     "check:docs": "node scripts/check-doc-references.mjs",
     "check:registry": "node scripts/build-skills-registry.mjs --check"
