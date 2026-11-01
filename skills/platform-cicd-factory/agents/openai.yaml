@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fábrica De Pipelines CI/CD"
+  short_description: "Centraliza flujos CI/CD mediante plantillas y acciones reutilizables sin duplicar lógica en repositorios consumidores."
+  default_prompt: "Use $platform-cicd-factory to build centralized reusable workflows, standardizing build, test, and release stages."

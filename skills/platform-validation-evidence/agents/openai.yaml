@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validación Y Evidencia Operativa"
+  short_description: "Genera y audita evidencia operativa, pruebas de preflight, validación de contratos y matrices de compatibilidad."
+  default_prompt: "Use $platform-validation-evidence to generate audit trails, verify compatibility matrices, and validate operational preflight."

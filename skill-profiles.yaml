@@ -330,3 +330,76 @@ profiles:
       - architecture-traceability
       - improve-codebase-architecture
       - refactor-existing-code
+
+  platform-core:
+    description: "Núcleo de plataforma, gobernanza de workspaces, promoción y evidencia"
+    lifecycle: stable
+    extends:
+      - governance
+    skills:
+      - platform-repository-workspace
+      - platform-environment-promotion
+      - platform-validation-evidence
+      - platform-cicd-factory
+
+  platform-gitops:
+    description: "Entrega continua declarativa con GitOps, ArgoCD y progressive delivery"
+    lifecycle: stable
+    extends:
+      - platform-core
+    skills:
+      - kubernetes-gitops-delivery
+      - platform-scalability-capacity
+
+  platform-devsecops:
+    description: "Seguridad de la cadena de suministro, SBOM, Cosign y runtime eBPF con Tetragon"
+    lifecycle: stable
+    extends:
+      - platform-core
+    skills:
+      - software-supply-chain-security
+      - kubernetes-policy-runtime-security
+
+  platform-sre:
+    description: "SRE, observabilidad, resiliencia ante desastres, confiabilidad de datos y FinOps"
+    lifecycle: stable
+    extends:
+      - platform-core
+    skills:
+      - platform-observability-sre
+      - platform-resilience-disaster-recovery
+      - platform-data-reliability
+      - platform-finops
+
+  platform-aws-production:
+    description: "Plataforma completa de producción en AWS con EKS, Terraform, GitOps y FinOps"
+    lifecycle: stable
+    extends:
+      - platform-gitops
+      - platform-devsecops
+      - platform-sre
+    skills:
+      - aws-platform-foundation
+      - terraform-iac-delivery
+      - kubernetes-eks-delivery
+
+  platform-onprem-production:
+    description: "Plataforma completa de producción On-Premise y Edge con Cilium, MetalLB y CSI"
+    lifecycle: stable
+    extends:
+      - platform-gitops
+      - platform-devsecops
+      - platform-sre
+    skills:
+      - onprem-kubernetes-foundation
+
+  platform-prod-local:
+    description: "Laboratorio de simulación local de producción con Kind, Docker y perfiles eBPF"
+    lifecycle: stable
+    extends:
+      - platform-core
+    skills:
+      - platform-local-production-lab
+      - platform-data-reliability
+      - kubernetes-policy-runtime-security
+

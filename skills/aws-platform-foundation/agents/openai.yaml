@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fundación De Plataforma Cloud En AWS"
+  short_description: "Diseña la fundación cloud en AWS con topología multicuenta, VPCs de 3 AZs, endpoints privados y federación OIDC/IRSA."
+  default_prompt: "Use $aws-platform-foundation to configure AWS Organizations, VPC topology, IAM OIDC/IRSA, and private endpoints."

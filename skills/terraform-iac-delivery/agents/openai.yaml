@@ -1,0 +1,4 @@
+interface:
+  display_name: "Entrega De IaC Con Terraform"
+  short_description: "Aprovisiona y entrega infraestructura como código con Terraform estratificado, bloqueo de estado y pruebas de políticas."
+  default_prompt: "Use $terraform-iac-delivery to design modular Terraform, state locking, drift detection, and automated policy testing."

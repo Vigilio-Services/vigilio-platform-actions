@@ -1,0 +1,4 @@
+interface:
+  display_name: "Confiabilidad De Datos En Kubernetes"
+  short_description: "Administra cargas con estado y operadores de bases de datos CloudNativePG y Valkey con replicación y PITR en Kubernetes."
+  default_prompt: "Use $platform-data-reliability to operate CloudNativePG, Valkey clusters, WAL archiving, and persistent volumes in Kubernetes."

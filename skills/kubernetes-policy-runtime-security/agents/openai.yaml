@@ -1,0 +1,4 @@
+interface:
+  display_name: "Seguridad En Runtime Con eBPF Y Tetragon"
+  short_description: "Aplica monitorización e intercepción en tiempo de ejecución a nivel de kernel con Cilium Tetragon eBPF y Kyverno."
+  default_prompt: "Use $kubernetes-policy-runtime-security to deploy Tetragon TracingPolicies, detect anomalies, and enforce runtime SIGKILL."

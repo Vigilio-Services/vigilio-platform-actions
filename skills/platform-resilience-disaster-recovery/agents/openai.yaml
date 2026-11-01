@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resiliencia Y Recuperación Ante Desastres (DR)"
+  short_description: "Diseña continuidad de negocio, backups de estado con Velero, conmutación multi-región e ingeniería del caos."
+  default_prompt: "Use $platform-resilience-disaster-recovery to design disaster recovery plans, automated Velero backups, and chaos tests."

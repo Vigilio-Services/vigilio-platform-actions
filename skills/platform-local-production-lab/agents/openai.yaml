@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simulación Local De Producción Y Labs"
+  short_description: "Orquesta simulaciones locales reproducibles de producción en Kind y Docker con perfiles estándar y privilegiados."
+  default_prompt: "Use $platform-local-production-lab to run reproducible Kind/Docker production environments with standard and privileged modes."

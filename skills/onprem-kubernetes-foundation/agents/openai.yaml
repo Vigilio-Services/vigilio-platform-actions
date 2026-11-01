@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fundación Kubernetes On-Premise Y Edge"
+  short_description: "Diseña y opera clústeres Kubernetes on-premise y edge con Cilium eBPF, MetalLB, CSI Longhorn y cert-manager."
+  default_prompt: "Use $onprem-kubernetes-foundation to build resilient on-premise Kubernetes clusters with Cilium, MetalLB, and CSI storage."

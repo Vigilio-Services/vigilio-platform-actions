@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gobernanza De Repositorios Y Workspaces"
+  short_description: "Delimita repositorios, organiza submódulos e impone higiene estricta de artefactos en workspaces."
+  default_prompt: "Use $platform-repository-workspace to define boundaries, submodule structures, and artifact hygiene across repositories."

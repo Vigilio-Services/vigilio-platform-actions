@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inteligencia De Costos Cloud Y FinOps"
+  short_description: "Implementa inteligencia de costos cloud, etiquetado obligatorio, optimización ARM64/Graviton y visibilidad con OpenCost."
+  default_prompt: "Use $platform-finops to enforce tagging policies, optimize workloads for ARM64 Graviton, and monitor costs with OpenCost."

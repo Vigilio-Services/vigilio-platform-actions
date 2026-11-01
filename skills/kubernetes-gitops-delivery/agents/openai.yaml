@@ -1,0 +1,4 @@
+interface:
+  display_name: "Entrega Continua Con GitOps Y ArgoCD"
+  short_description: "Gestiona la entrega continua declarativa en Kubernetes con ArgoCD, Kustomize, Helm, Sync Waves y Canary Rollouts."
+  default_prompt: "Use $kubernetes-gitops-delivery to structure GitOps repositories, configure ArgoCD sync waves, and manage progressive delivery."

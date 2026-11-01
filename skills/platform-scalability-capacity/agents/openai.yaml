@@ -1,0 +1,4 @@
+interface:
+  display_name: "Escalabilidad Y Capacidad En Kubernetes"
+  short_description: "Configura escalabilidad elástica en Kubernetes con KEDA, HPA, aprovisionamiento con Karpenter y límites PDB."
+  default_prompt: "Use $platform-scalability-capacity to manage HPA/KEDA autoscaling, Karpenter node provisioning, and disruption budgets."

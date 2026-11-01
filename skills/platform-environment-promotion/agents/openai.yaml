@@ -1,0 +1,4 @@
+interface:
+  display_name: "Promoción De Entornos E Inmutabilidad"
+  short_description: "Gobierna la jerarquía de entornos y la promoción inmutable de artefactos entre local, review, staging y producción."
+  default_prompt: "Use $platform-environment-promotion to govern environment progression, artifact immutability, and deployment gates."
