@@ -1575,7 +1575,94 @@ export function evaluateValidationEvidenceFixture(fixture: FixtureTestCase): Fix
   };
 }
 
+export function evaluateLocalProductionLabFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Check local preflight report
+  const preflightRaw = fixture.files['reports/local-lab-preflight.json'];
+  if (!preflightRaw) {
+    violations.push('Falta reporte de preflight local: reports/local-lab-preflight.json');
+  } else {
+    try {
+      const parsed = JSON.parse(preflightRaw) as {
+        preflight_passed?: boolean;
+        container_daemon_healthy?: boolean;
+        kind_available?: boolean;
+        prod_credentials_detected?: boolean;
+        verification_status?: string;
+      };
+      if (parsed.container_daemon_healthy !== true) {
+        violations.push('Container runtime o daemon de Docker no está disponible');
+      }
+      if (parsed.kind_available !== true) {
+        violations.push('Binario de Kind/k3d ausente en el entorno de desarrollo');
+      }
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight check del laboratorio de producción local falló');
+      }
+      if (parsed.prod_credentials_detected === true) {
+        violations.push('Detección de credenciales productivas reales en laboratorio local');
+      }
+      if (parsed.verification_status !== 'READY') {
+        violations.push(
+          `Estado del laboratorio local no verificado (${parsed.verification_status})`,
+        );
+      }
+    } catch {
+      violations.push('reports/local-lab-preflight.json no es un JSON válido');
+    }
+  }
+
+  // 2. Check docker compose / credentials leakage
+  const composeRaw = fixture.files['docker-compose.local.yaml'];
+  if (composeRaw) {
+    if (/AKIA[0-9A-Z]{16}/.test(composeRaw) || /live-production-secret/i.test(composeRaw)) {
+      violations.push('Credenciales productivas de AWS expuestas en docker compose local');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de políticas de laboratorio de producción local y aislamiento de credenciales',
+    };
+  }
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed: fixture.expectedVerdict === 'PASS',
+    actualVerdict: 'PASS',
+    expectedVerdict: fixture.expectedVerdict,
+    violations: [],
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-local-production-lab') {
+    return evaluateLocalProductionLabFixture(fixture);
+  }
   if (fixture.skill === 'platform-validation-evidence') {
     return evaluateValidationEvidenceFixture(fixture);
   }

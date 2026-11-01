@@ -143,9 +143,9 @@ skills:
 
   - id: "platform-local-production-lab"
     domain: "prod-local"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-LAB-CORRECT-01"
+      insecure: "FX-LAB-INSECURE-01"
+      not_run: "FX-LAB-NOTRUN-01"
+    cases_count: 8

@@ -8,6 +8,7 @@ import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-case
 import { CICD_FACTORY_FIXTURES } from './fixtures/cicd-factory/fixture-cases.js';
 import { FINOPS_FIXTURES } from './fixtures/finops/fixture-cases.js';
 import { GITOPS_FIXTURES } from './fixtures/gitops/fixture-cases.js';
+import { LOCAL_PRODUCTION_LAB_FIXTURES } from './fixtures/local-production-lab/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
 import { ONPREM_FOUNDATION_FIXTURES } from './fixtures/onprem-foundation/fixture-cases.js';
 import { PROMOTION_FIXTURES } from './fixtures/promotion/fixture-cases.js';
@@ -43,6 +44,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...CICD_FACTORY_FIXTURES,
     ...REPOSITORY_WORKSPACE_FIXTURES,
     ...VALIDATION_EVIDENCE_FIXTURES,
+    ...LOCAL_PRODUCTION_LAB_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

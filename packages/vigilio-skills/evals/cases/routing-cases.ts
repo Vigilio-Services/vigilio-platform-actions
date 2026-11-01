@@ -2172,6 +2172,94 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-validation-evidence'],
     },
   },
+  {
+    id: 'LAB-TRAIN-POS-01',
+    domain: 'prod-local',
+    description:
+      'Levantar laboratorio local con Kind y Tiltfile simulando servicios de nube con LocalStack',
+    task: 'Configurar cluster local con kind-cluster y Tiltfile orquestando local-mock de servicios de nube',
+    files: ['kind-config.yaml', 'Tiltfile', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-local-production-lab'],
+      mustNotSelect: ['onprem-kubernetes-foundation', 'aws-platform-foundation'],
+    },
+  },
+  {
+    id: 'LAB-TRAIN-POS-02',
+    domain: 'prod-local',
+    description:
+      'Configurar simulacion local reproducible de produccion en kind-cluster con perfiles estandar',
+    task: 'Orquestar prod-local reproducible con kind-cluster y perfiles estandar para pruebas de desarrollo',
+    files: ['kind-config.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-local-production-lab'],
+      mustNotSelect: ['platform-cicd-factory'],
+    },
+  },
+  {
+    id: 'LAB-TRAIN-POS-03',
+    domain: 'prod-local',
+    description: 'Verificar readiness y mocks locales en reports/local-lab-preflight.json',
+    task: 'Comprobar readiness de entorno local-production-lab verificando estado de contenedores y mocks',
+    files: ['reports/local-lab-preflight.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-local-production-lab'],
+      mustNotSelect: ['platform-validation-evidence'],
+    },
+  },
+  {
+    id: 'LAB-TRAIN-POS-04',
+    domain: 'prod-local',
+    description: 'Orquestar entorno de desarrollo local-lab con k3d y emuladores de telemetria',
+    task: 'Configurar local-lab con k3d y Tiltfile para simular entorno productivo con telemetria local',
+    files: ['Tiltfile', 'docker-compose.local.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-local-production-lab'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'LAB-TRAIN-NEG-01',
+    domain: 'prod-local',
+    description:
+      'Despliegue de cluster EKS de produccion con Terraform AWS no debe activar laboratorio local',
+    task: 'Aprovisionar cluster de produccion EKS con VPC multizona administrada por Terraform en AWS',
+    files: ['terraform/eks.tf', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['aws-platform-foundation'],
+      mustNotSelect: ['platform-local-production-lab'],
+    },
+  },
+  {
+    id: 'LAB-TRAIN-NEG-02',
+    domain: 'prod-local',
+    description:
+      'Sincronizacion continua de ArgoCD ApplicationSet no debe activar laboratorio local',
+    task: 'Configurar sync automatizado con ArgoCD ApplicationSet y Progressive Syncs en Kubernetes',
+    files: ['gitops/applicationset.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['kubernetes-gitops-delivery'],
+      mustNotSelect: ['platform-local-production-lab'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2782,6 +2870,35 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['platform-data-reliability'],
       mustNotSelect: ['platform-validation-evidence'],
+    },
+  },
+  {
+    id: 'LAB-HOLD-POS-01',
+    domain: 'prod-local',
+    description:
+      'Configuracion de kind-cluster y Tiltfile con mocks para environment-simulation antes de PR',
+    task: 'Configurar environment-simulation con kind-cluster y Tiltfile usando mocks de servicios antes del merge',
+    files: ['kind-config.yaml', 'Tiltfile', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-local-production-lab'],
+      mustNotSelect: ['platform-environment-promotion'],
+    },
+  },
+  {
+    id: 'LAB-HOLD-NEG-01',
+    domain: 'prod-local',
+    description: 'Analisis de costes y presupuestos con Kubecost no debe activar laboratorio local',
+    task: 'Generar reportes de asignacion y recomendacion de ahorro de costos en Kubernetes con OpenCost',
+    files: ['finops/opencost.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-local-production-lab'],
     },
   },
 ];

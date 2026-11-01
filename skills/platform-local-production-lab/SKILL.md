@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "prod-local, kind, docker, privileged, lab, simulation, local-dev"
-routing_files: "kind-config.yaml, docker-compose*.yaml, setup.ps1, setup.sh"
+routing_keywords: "prod-local, local-lab, kind-cluster, tiltfile, k3d, simulation, local-production-lab, environment-simulation, local-mock, tilt"
+routing_files: "kind-config.yaml, Tiltfile, docker-compose.local.yaml, reports/local-lab-preflight.json, package.json"
 routing_capabilities: "local-lab, environment-simulation"
 requires: []
 optional: []

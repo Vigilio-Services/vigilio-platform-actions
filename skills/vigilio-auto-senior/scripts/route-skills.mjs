@@ -131,15 +131,16 @@ function traverse(dir, depth) {
         'conanfile.py',
         'project.godot',
         'Dockerfile',
+        'Tiltfile',
         'compatibility.json',
         'COMPATIBILITY.md',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*|kind.*|docker-compose.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
-      (/(?:openvex|operational-evidence)\.json$/i.test(e.name) && depth <= 3)
+      (/(?:openvex|operational-evidence|local-lab-preflight)\.json$/i.test(e.name) && depth <= 3)
     )
       signals.files.push(relative);
   }

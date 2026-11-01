@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T20:33:21.824Z",
+  "timestamp": "2026-11-01T20:48:20.691Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T20:33:21.818Z",
+    "timestamp": "2026-11-01T20:48:20.684Z",
     "overallMetrics": {
-      "total": 146,
-      "truePositives": 576,
+      "total": 154,
+      "truePositives": 626,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 114,
-      "truePositives": 436,
+      "total": 120,
+      "truePositives": 476,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 32,
-      "truePositives": 140,
+      "total": 34,
+      "truePositives": 150,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -137,6 +137,12 @@
         "passed": 8,
         "failed": 0,
         "accuracy": 1
+      },
+      "local-production-lab": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
       }
     },
     "missingSkillsCount": {},
@@ -200,7 +206,8 @@
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "node-nest-security": [
-        "auth NestJS"
+        "auth NestJS",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "godot-backend-multiplayer": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
@@ -284,7 +291,8 @@
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "node-nest-async-workers": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-scalability-capacity": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
@@ -307,21 +315,27 @@
       "platform-validation-evidence": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
+      "platform-local-production-lab": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-realtime": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-security-aws": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "adaptive-context-budget": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
-      "node-nest-security-aws": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ]
     },
     "failures": []
   },
   "fixtureSummary": {
-    "total": 45,
-    "passed": 45,
+    "total": 48,
+    "passed": 48,
     "failed": 0,
     "results": [
       {
@@ -909,6 +923,46 @@
           "Evidencia no verificada operacionalmente (UNKNOWN)"
         ],
         "reason": "No se puede validar la evidencia ni la compatibilidad: el colector de evidencia no responde o faltan herramientas de preflight, reportando fallo."
+      },
+      {
+        "id": "FX-LAB-CORRECT-01",
+        "skill": "platform-local-production-lab",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de laboratorio de producción local: cluster Kind configurado con apiVersion v1alpha4, Tiltfile con mocks de servicios locales, preflight aprobado y ausencia total de credenciales productivas."
+      },
+      {
+        "id": "FX-LAB-INSECURE-01",
+        "skill": "platform-local-production-lab",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Preflight check del laboratorio de producción local falló",
+          "Detección de credenciales productivas reales en laboratorio local",
+          "Estado del laboratorio local no verificado (UNVERIFIED)",
+          "Credenciales productivas de AWS expuestas en docker compose local"
+        ],
+        "reason": "Fallo de políticas de laboratorio de producción local y aislamiento de credenciales"
+      },
+      {
+        "id": "FX-LAB-NOTRUN-01",
+        "skill": "platform-local-production-lab",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Container runtime o daemon de Docker no está disponible",
+          "Binario de Kind/k3d ausente en el entorno de desarrollo",
+          "Preflight check del laboratorio de producción local falló",
+          "Estado del laboratorio local no verificado (UNAVAILABLE)"
+        ],
+        "reason": "No se puede aprovisionar ni validar el laboratorio de desarrollo local: Docker/container runtime no responde o Kind no está instalado en el sistema."
       }
     ]
   },
