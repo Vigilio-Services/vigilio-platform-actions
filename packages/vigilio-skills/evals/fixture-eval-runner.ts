@@ -291,7 +291,161 @@ export function evaluateSupplyChainFixture(fixture: FixtureTestCase): FixtureRes
   };
 }
 
+export function evaluateRuntimeSecurityFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight check: kernel BTF, eBPF support, Kyverno webhook, demonstrated enforcement (Fail-closed)
+  const evidenceRaw = fixture.files['reports/break-glass-evidence.json'];
+  if (evidenceRaw) {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        breakGlassActive?: boolean;
+        procedure?: {
+          ticketId?: string;
+          owner?: string;
+          reason?: string;
+          ttlMinutes?: number | null;
+          expiryTimestamp?: string | null;
+        };
+        preflightChecks?: {
+          btfEnabled?: boolean;
+          ebpfSupported?: boolean;
+          kyvernoAdmissionWebhookHealthy?: boolean;
+          enforcementDemonstrated?: boolean;
+          falsePositiveRate?: number;
+        };
+      };
+
+      if (parsed.preflightChecks) {
+        const {
+          btfEnabled,
+          ebpfSupported,
+          kyvernoAdmissionWebhookHealthy,
+          enforcementDemonstrated,
+        } = parsed.preflightChecks;
+        if (
+          btfEnabled === false ||
+          ebpfSupported === false ||
+          kyvernoAdmissionWebhookHealthy === false ||
+          enforcementDemonstrated === false
+        ) {
+          violations.push(
+            'Kernel sin soporte BTF/eBPF, webhook de Kyverno inaccesible o falta de demostración de enforcement en runtime',
+          );
+          return {
+            id: fixture.id,
+            skill: fixture.skill,
+            type: fixture.type,
+            passed: fixture.expectedVerdict === 'NOT_RUN',
+            actualVerdict: 'NOT_RUN',
+            expectedVerdict: fixture.expectedVerdict,
+            violations,
+            reason:
+              'Fail-closed por falta de soporte eBPF/BTF en kernel o webhook de Kyverno inaccesible.',
+          };
+        }
+      }
+
+      // Check break-glass procedure hygiene
+      if (parsed.procedure) {
+        const p = parsed.procedure;
+        if (!p.owner || p.ttlMinutes === null || p.ttlMinutes === undefined || p.ttlMinutes > 120) {
+          violations.push(
+            'Break-glass inseguro: procedimiento permanente sin TTL o sin propietario auditable (TTL máximo permitido: 120 min)',
+          );
+        }
+      }
+    } catch {
+      violations.push('reports/break-glass-evidence.json inválido');
+    }
+  }
+
+  // 2. Tetragon TracingPolicy global SIGKILL detection
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*TracingPolicy/i.test(content) && /action:\s*Sigkill/i.test(content)) {
+        const hasNamespace = /namespace:\s*[a-z0-9_-]+/i.test(content);
+        const hasPodSelector = /podSelector:/i.test(content);
+        if (!hasNamespace || !hasPodSelector) {
+          violations.push(
+            `Violación crítica en ${filename}: Tetragon TracingPolicy con acción Sigkill global sin selector de namespace/workload ni auditoría previa`,
+          );
+        }
+      }
+    }
+  }
+
+  // 3. Pod Security: Privileged containers, hostNetwork, allowPrivilegeEscalation, CAP_SYS_ADMIN
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/privileged:\s*true/i.test(content)) {
+        violations.push(
+          `Violación Pod Security en ${filename}: Pod con privileged: true detectado; prohibido en producción`,
+        );
+      }
+      if (/hostNetwork:\s*true/i.test(content)) {
+        violations.push(
+          `Violación Pod Security en ${filename}: Pod con hostNetwork: true detectado; prohibido en producción`,
+        );
+      }
+      if (/allowPrivilegeEscalation:\s*true/i.test(content)) {
+        violations.push(
+          `Violación Pod Security en ${filename}: Pod con allowPrivilegeEscalation: true detectado; debe ser false`,
+        );
+      }
+      if (/CAP_SYS_ADMIN/i.test(content)) {
+        violations.push(
+          `Fuga de permisos de kernel en ${filename}: CAP_SYS_ADMIN indiscriminado en securityContext`,
+        );
+      }
+    }
+  }
+
+  // 4. Kyverno failurePolicy: Ignore check
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*ClusterPolicy/i.test(content) && /failurePolicy:\s*Ignore/i.test(content)) {
+        violations.push(
+          `Política de fallo insegura en ${filename}: Kyverno con failurePolicy: Ignore en reglas críticas de seguridad; debe ser Fail`,
+        );
+      }
+    }
+  }
+
+  // 5. Cilium / NetworkPolicy wide open egress (0.0.0.0/0 without restricted ports/protocols)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (
+        /toCIDR:\s*-\s*0\.0\.0\.0\/0/i.test(content) &&
+        !/toPorts:/i.test(content) &&
+        !/toFQDNs:/i.test(content)
+      ) {
+        violations.push(
+          `Egress no restringido en ${filename}: NetworkPolicy con comodín 0.0.0.0/0 sin delimitación de puertos o FQDNs`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'kubernetes-policy-runtime-security') {
+    return evaluateRuntimeSecurityFixture(fixture);
+  }
   if (fixture.skill === 'software-supply-chain-security') {
     return evaluateSupplyChainFixture(fixture);
   }

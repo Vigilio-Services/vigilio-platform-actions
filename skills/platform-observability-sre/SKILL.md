@@ -5,7 +5,7 @@ owner: governance-platform
 lifecycle: stable
 introduced_in: 0.7.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "observability, opentelemetry, otel, prometheus, grafana, trace, traces, traceparent, metrics, logs, slo, sli, error-budget, burn-rate, w3c"
+routing_keywords: "observability, opentelemetry, otel, prometheus, grafana, dashboard, trace, traces, traceparent, metrics, metricas, logs, slo, sli, error-budget, burn-rate, w3c"
 routing_files: "otel-collector*.yaml, prometheus*.yaml, slo*.yaml, alert*.yaml"
 routing_capabilities: "observability, sre"
 requires: []

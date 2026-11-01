@@ -1,0 +1,151 @@
+schema_version: 1
+catalog_scope: "platform"
+total_skills: 16
+fixtures_per_skill: 3
+total_expected_fixtures: 48
+routing_target_cases: 90
+
+skills:
+  - id: "platform-observability-sre"
+    domain: "observability"
+    status: "completed"
+    fixtures:
+      correct: "FX-OBS-CORRECT-01"
+      insecure: "FX-OBS-INSECURE-01"
+      not_run: "FX-OBS-NOTRUN-01"
+    cases_count: 15
+
+  - id: "platform-data-reliability"
+    domain: "backup-pitr"
+    status: "completed"
+    fixtures:
+      correct: "FX-BKP-CORRECT-01"
+      insecure: "FX-BKP-INSECURE-01"
+      not_run: "FX-BKP-NOTRUN-01"
+    cases_count: 6
+
+  - id: "software-supply-chain-security"
+    domain: "supply-chain"
+    status: "completed"
+    fixtures:
+      correct: "FX-SC-CORRECT-01"
+      insecure: "FX-SC-INSECURE-01"
+      not_run: "FX-SC-NOTRUN-01"
+    cases_count: 5
+
+  - id: "kubernetes-policy-runtime-security"
+    domain: "runtime-security"
+    status: "completed"
+    fixtures:
+      correct: "FX-SEC-CORRECT-01"
+      insecure: "FX-SEC-INSECURE-01"
+      not_run: "FX-SEC-NOTRUN-01"
+    cases_count: 12
+
+  - id: "kubernetes-gitops-delivery"
+    domain: "gitops"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-environment-promotion"
+    domain: "promotion"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "terraform-iac-delivery"
+    domain: "iac"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "aws-platform-foundation"
+    domain: "aws-foundation"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "onprem-kubernetes-foundation"
+    domain: "onprem-k8s"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-scalability-capacity"
+    domain: "capacity"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-finops"
+    domain: "finops"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-resilience-disaster-recovery"
+    domain: "disaster-recovery"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-cicd-factory"
+    domain: "cicd"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-repository-workspace"
+    domain: "workspace"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-validation-evidence"
+    domain: "evidence"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0
+
+  - id: "platform-local-production-lab"
+    domain: "prod-local"
+    status: "pending"
+    fixtures:
+      correct: null
+      insecure: null
+      not_run: null
+    cases_count: 0

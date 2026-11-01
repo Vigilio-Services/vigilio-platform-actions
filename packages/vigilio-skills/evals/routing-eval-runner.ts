@@ -86,8 +86,11 @@ export async function executeSingleRoutingCase(
 
     const selectedMap = new Map(parsed.selected.map((s) => [s.name, s.reason]));
     const selectedNames = new Set(selectedMap.keys());
-    const missingExpected = testCase.expected.mustSelect.filter((s) => !selectedNames.has(s));
-    const falsePositives = testCase.expected.mustNotSelect.filter((s) => selectedNames.has(s));
+    const mustSelect = testCase.expected.mustSelect ?? [];
+    const mustNotSelect = testCase.expected.mustNotSelect ?? [];
+
+    const missingExpected = mustSelect.filter((s) => !selectedNames.has(s));
+    const falsePositives = mustNotSelect.filter((s) => selectedNames.has(s));
 
     let intentMismatch = false;
     if (testCase.expected.intent && parsed.intent !== testCase.expected.intent) {
@@ -120,7 +123,7 @@ export async function executeSingleRoutingCase(
       isHoldout,
       passed: false,
       actualSelected: [],
-      missingExpected: [...testCase.expected.mustSelect],
+      missingExpected: [...(testCase.expected.mustSelect ?? [])],
       falsePositives: [],
       activationReasons: {},
       error: `Unexpected runner error: ${String(err)}`,

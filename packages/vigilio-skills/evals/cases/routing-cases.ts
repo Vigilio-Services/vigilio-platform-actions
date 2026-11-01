@@ -254,6 +254,161 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
   },
 
   // ============================================================
+  // DOMINIO 4: RUNTIME SECURITY (KUBERNETES-POLICY-RUNTIME-SECURITY)
+  // ============================================================
+  {
+    id: 'SEC-TRAIN-POS-01',
+    domain: 'runtime-security',
+    description:
+      'Crear política Tetragon TracingPolicy para detectar shells y binarios sospechosos',
+    task: 'Crear política Tetragon TracingPolicy para detectar shells y ejecución de binarios sospechosos',
+    files: ['k8s/tracing-policy.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/tracing-policy.yaml':
+        'apiVersion: cilium.io/v1alpha1\nkind: TracingPolicy\nmetadata:\n  name: execve-probe\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-POS-02',
+    domain: 'runtime-security',
+    description:
+      'Bloquear egress no autorizado hacia internet con CiliumNetworkPolicy en Kubernetes',
+    task: 'Bloquear egress hacia internet no autorizado con CiliumNetworkPolicy en Kubernetes',
+    files: ['k8s/cilium-egress.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/cilium-egress.yaml':
+        'apiVersion: cilium.io/v2\nkind: CiliumNetworkPolicy\nmetadata:\n  name: egress-deny\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: ['terraform-iac-delivery'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-POS-03',
+    domain: 'runtime-security',
+    description:
+      'Validar firmas de imágenes en admisión de pods mediante políticas Kyverno en Kubernetes',
+    task: 'Validar firmas de imágenes en admisión de pods mediante políticas Kyverno en Kubernetes',
+    files: ['k8s/kyverno-verify.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/kyverno-verify.yaml':
+        'apiVersion: kyverno.io/v1\nkind: ClusterPolicy\nmetadata:\n  name: verify-images\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-POS-04',
+    domain: 'runtime-security',
+    description:
+      'Aplicar TracingPolicy con selector de pods para interceptar llamadas de kernel en producción',
+    task: 'Aplicar TracingPolicy con selector de pods para interceptar llamadas de kernel en producción',
+    files: ['k8s/tracing-execve.yaml'],
+    fileContents: {
+      'k8s/tracing-execve.yaml':
+        'apiVersion: cilium.io/v1alpha1\nkind: TracingPolicy\nmetadata:\n  name: trace-kernel\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: [],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-POS-05',
+    domain: 'runtime-security',
+    description:
+      'Definir CiliumNetworkPolicy con reglas de aislamiento estricto entre pods de pagos',
+    task: 'Definir CiliumNetworkPolicy con reglas de aislamiento estricto entre pods de pagos',
+    files: ['k8s/cilium-strict.yaml'],
+    fileContents: {
+      'k8s/cilium-strict.yaml':
+        'apiVersion: cilium.io/v2\nkind: CiliumNetworkPolicy\nmetadata:\n  name: payment-strict\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: [],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-NEG-01',
+    domain: 'runtime-security',
+    description: 'Política de autorización de roles en NestJS no debe activar seguridad de runtime',
+    task: 'Crear política de autorización de roles para endpoints de pagos en NestJS',
+    files: ['src/auth/roles.guard.ts', 'src/auth/policy.ts', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['node-nest-security'],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-NEG-02',
+    domain: 'runtime-security',
+    description: 'Regla CSS llamada policy no debe activar seguridad de runtime',
+    task: 'Ajustar espaciado y estilos en el layout de policy y términos de servicio',
+    files: ['src/styles/policy.css', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { react: '19.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['web-mfe-build-feature'],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-NEG-03',
+    domain: 'runtime-security',
+    description: 'Documentación general sobre Linux no debe activar seguridad de runtime',
+    task: 'Documentar comandos básicos de Linux para nuevos desarrolladores',
+    files: ['docs/linux-commands.md'],
+    expected: {
+      mustSelect: [],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-NEG-04',
+    domain: 'runtime-security',
+    description: 'Consulta de Grafana sobre eventos Tetragon no debe activar seguridad de runtime',
+    task: 'Crear dashboard en Grafana con métricas de conteo de eventos de Tetragon',
+    files: ['dashboards/tetragon-events.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['platform-observability-sre'],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+  {
+    id: 'SEC-TRAIN-NEG-05',
+    domain: 'runtime-security',
+    description:
+      'Actualizar configuración de memoria en values.yaml no debe activar seguridad de runtime',
+    task: 'Actualizar configuración de recursos de memoria en values.yaml para microservicio',
+    files: ['helm/values.yaml'],
+    fileContents: {
+      'helm/values.yaml': 'resources:\n  requests:\n    memory: 256Mi\n',
+    },
+    expected: {
+      mustSelect: [],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
+    },
+  },
+
+  // ============================================================
   // CASOS DE CONTROL DE OTROS DOMINIOS DE PLATAFORMA
   // ============================================================
   {
@@ -408,6 +563,39 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['node-nest-build-feature'],
       mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'SEC-HOLD-POS-01',
+    domain: 'runtime-security',
+    description:
+      'Auditar y bloquear llamadas de sistema sospechosas con eBPF Tetragon en namespace de pagos',
+    task: 'Monitorear y bloquear llamadas de sistema sospechosas con eBPF Tetragon en namespace de pagos',
+    files: ['k8s/runtime-tracing.yaml', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+      'k8s/runtime-tracing.yaml':
+        'apiVersion: cilium.io/v1alpha1\nkind: TracingPolicy\nmetadata:\n  name: audit-sys-enter\n',
+    },
+    expected: {
+      mustSelect: ['kubernetes-policy-runtime-security'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'SEC-HOLD-NEG-01',
+    domain: 'runtime-security',
+    description: 'Configurar política de contraseñas y expiración de tokens JWT en NestJS',
+    task: 'Configurar política de contraseñas y expiración de tokens JWT en NestJS',
+    files: ['src/auth/jwt.strategy.ts', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', '@nestjs/jwt': '10.0.0' },
+      }),
+    },
+    expected: {
+      mustSelect: ['node-nest-security'],
+      mustNotSelect: ['kubernetes-policy-runtime-security'],
     },
   },
 ];

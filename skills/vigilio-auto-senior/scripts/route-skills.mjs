@@ -93,6 +93,7 @@ const signals = {
   database: false,
   backup: false,
   supplyChain: false,
+  runtimeSecurity: false,
 };
 const MAX_FILES = 350,
   MAX_DEPTH = 4;
@@ -132,7 +133,7 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|policy.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -188,8 +189,11 @@ for (const file of signals.files) {
     signals.database = true;
     signals.backup = true;
   }
-  if (/(?:cosign.*|syft.*|policy.*)\.ya?ml$/i.test(file) || file.endsWith('openvex.json')) {
+  if (/(?:cosign.*|syft.*)\.ya?ml$/i.test(file) || file.endsWith('openvex.json')) {
     signals.supplyChain = true;
+  }
+  if (/(?:tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(file)) {
+    signals.runtimeSecurity = true;
   }
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.
@@ -284,6 +288,7 @@ const stack = new Set([
   ...(signals.kubernetes ? ['kubernetes'] : []),
   ...(signals.backup || signals.database ? ['database', 'data-reliability'] : []),
   ...(signals.supplyChain ? ['supply-chain'] : []),
+  ...(signals.runtimeSecurity ? ['runtime-security'] : []),
 ]);
 const reviewOnly = intent === 'review';
 const noCodePlan = !projectFound && intent === 'architecture';
@@ -307,7 +312,9 @@ if (!reviewOnly && !decisionRequired) {
     add('php-laravel-build-feature', 'Composer/PHP detectado');
     add('php-laravel-testing', 'testing PHP');
   }
-  const security = test(/login|auth|sesion|permiso|token|segurid|credencial|contrasena/);
+  const security = test(
+    /login|auth|autoriz|roles|rbac|sesion|permiso|token|segurid|credencial|contrasena/,
+  );
   const persistence = test(
     /sql|database|base de datos|migraci|repositorio|persist|crud|producto|endoso|polimorf|polymorph|morphto|morphmany|relacion|tabla|constraint|foreign key|tenant|indice/,
   );

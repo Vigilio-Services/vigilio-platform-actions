@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T10:02:57.640Z",
+  "timestamp": "2026-11-01T18:32:49.614Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T10:02:57.639Z",
+    "timestamp": "2026-11-01T18:32:49.611Z",
     "overallMetrics": {
-      "total": 26,
-      "truePositives": 123,
+      "total": 38,
+      "truePositives": 178,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 18,
-      "truePositives": 85,
+      "total": 28,
+      "truePositives": 127,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 8,
-      "truePositives": 38,
+      "total": 10,
+      "truePositives": 51,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -61,10 +61,10 @@
         "accuracy": 1
       },
       "runtime-security": {
-        "total": 0,
-        "passed": 0,
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
       "gitops": {
         "total": 0,
@@ -175,6 +175,23 @@
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "kubernetes-policy-runtime-security": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-security": [
+        "auth NestJS"
+      ],
+      "godot-backend-multiplayer": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "precision-skill-reading": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "symbol-ownership-architecture": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-desktop-experience": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "aws-platform-foundation": [
@@ -183,24 +200,27 @@
       "terraform-iac-delivery": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "precision-skill-reading": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "web-mfe-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "node-nest-security": [
-        "auth NestJS"
+      "adaptive-context-budget": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "node-nest-security-aws": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ui-design-system": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ]
     },
     "failures": []
   },
   "fixtureSummary": {
-    "total": 9,
-    "passed": 9,
+    "total": 12,
+    "passed": 12,
     "failed": 0,
     "results": [
       {
@@ -317,6 +337,47 @@
           "Token OIDC de CI no disponible o proveedor Fulcio/Rekor inalcanzable para firma Keyless"
         ],
         "reason": "Fail-closed por falta de identidad OIDC o conectividad con Fulcio/Rekor."
+      },
+      {
+        "id": "FX-SEC-CORRECT-01",
+        "skill": "kubernetes-policy-runtime-security",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de runtime security: TracingPolicy delimitada por pod/namespace, Cilium egress explícito por FQDN, Kyverno failurePolicy Fail, PSS restricted, break-glass temporal con TTL y auditoría, y preflight eBPF/BTF verificado."
+      },
+      {
+        "id": "FX-SEC-INSECURE-01",
+        "skill": "kubernetes-policy-runtime-security",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Break-glass inseguro: procedimiento permanente sin TTL o sin propietario auditable (TTL máximo permitido: 120 min)",
+          "Violación crítica en k8s/tetragon-insecure-global.yaml: Tetragon TracingPolicy con acción Sigkill global sin selector de namespace/workload ni auditoría previa",
+          "Violación Pod Security en k8s/insecure-workload.yaml: Pod con privileged: true detectado; prohibido en producción",
+          "Violación Pod Security en k8s/insecure-workload.yaml: Pod con hostNetwork: true detectado; prohibido en producción",
+          "Violación Pod Security en k8s/insecure-workload.yaml: Pod con allowPrivilegeEscalation: true detectado; debe ser false",
+          "Fuga de permisos de kernel en k8s/insecure-workload.yaml: CAP_SYS_ADMIN indiscriminado en securityContext",
+          "Política de fallo insegura en k8s/kyverno-insecure.yaml: Kyverno con failurePolicy: Ignore en reglas críticas de seguridad; debe ser Fail",
+          "Egress no restringido en k8s/cilium-open-egress.yaml: NetworkPolicy con comodín 0.0.0.0/0 sin delimitación de puertos o FQDNs"
+        ],
+        "reason": "Violaciones críticas de seguridad: SIGKILL global sin selector de namespace, pod con privileged: true y CAP_SYS_ADMIN, Kyverno con failurePolicy: Ignore, egress 0.0.0.0/0 sin puertos y break-glass sin TTL o propietario."
+      },
+      {
+        "id": "FX-SEC-NOTRUN-01",
+        "skill": "kubernetes-policy-runtime-security",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Kernel sin soporte BTF/eBPF, webhook de Kyverno inaccesible o falta de demostración de enforcement en runtime"
+        ],
+        "reason": "Fail-closed por falta de soporte eBPF/BTF en kernel o webhook de Kyverno inaccesible."
       }
     ]
   },

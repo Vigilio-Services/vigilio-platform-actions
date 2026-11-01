@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { executeFullEvalSuite } from '../evals/index.js';
 
-describe('Domain 1: Observabilidad distribuida y SLO - Full Evals Gate', () => {
+describe('Platform Skills - Full Eval Gate & Fixture Verification', () => {
   it('enforces 100% precision, zero false-positives, holdout generalization and valid fixtures', async () => {
     const report = await executeFullEvalSuite();
 
     const { routingSummary, fixtureSummary, gateVerdict } = report;
 
     console.log(`\n============================================================`);
-    console.log(`EVAL GATE: DOMINIO 1 - OBSERVABILIDAD DISTRIBUIDA Y SLO`);
+    console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (DOMAINS 1-4)`);
     console.log(`============================================================`);
     console.log(`ROUTING METRICS (TRAINING + HOLDOUT):`);
     console.log(`  - Total Casos Evaluados: ${routingSummary.overallMetrics.total}`);
@@ -67,7 +67,7 @@ describe('Domain 1: Observabilidad distribuida y SLO - Full Evals Gate', () => {
     assert.equal(routingSummary.overallMetrics.falseNegatives, 0, 'Zero false negatives required');
     assert.equal(routingSummary.overallMetrics.accuracy, 1.0, '100% accuracy required');
     assert.equal(routingSummary.holdoutMetrics.accuracy, 1.0, '100% holdout accuracy required');
-    assert.equal(fixtureSummary.failed, 0, 'All 3 fixtures must pass verification');
+    assert.equal(fixtureSummary.failed, 0, 'All fixtures must pass verification');
     assert.equal(gateVerdict, 'PASS', 'Gate verdict must be PASS');
-  });
+  }, 30000);
 });

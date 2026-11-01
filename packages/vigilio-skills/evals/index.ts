@@ -5,6 +5,7 @@ import { holdoutRoutingCases, trainingRoutingCases } from './cases/routing-cases
 import { runFixtureEvals } from './fixture-eval-runner.js';
 import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
+import { runtimeSecurityFixtures } from './fixtures/runtime-security/fixture-cases.js';
 import { supplyChainFixtures } from './fixtures/supply-chain/fixture-cases.js';
 import { runRoutingEvals } from './routing-eval-runner.js';
 import type { FullEvalReport } from './types.js';
@@ -19,6 +20,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...observabilityFixtureCases,
     ...dataReliabilityFixtureCases,
     ...supplyChainFixtures,
+    ...runtimeSecurityFixtures,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 
