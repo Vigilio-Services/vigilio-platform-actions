@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T19:19:16.737Z",
+  "timestamp": "2026-11-01T19:34:42.352Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T19:19:16.732Z",
+    "timestamp": "2026-11-01T19:34:42.347Z",
     "overallMetrics": {
-      "total": 98,
-      "truePositives": 408,
+      "total": 114,
+      "truePositives": 452,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 78,
-      "truePositives": 314,
+      "total": 90,
+      "truePositives": 345,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 20,
-      "truePositives": 94,
+      "total": 24,
+      "truePositives": 107,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -101,6 +101,18 @@
         "passed": 12,
         "failed": 0,
         "accuracy": 1
+      },
+      "scalability": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "finops": {
+        "total": 8,
+        "passed": 8,
+        "failed": 0,
+        "accuracy": 1
       }
     },
     "missingSkillsCount": {},
@@ -136,10 +148,12 @@
       ],
       "node-nest-persistence": [
         "DB NestJS",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "platform-data-reliability": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "node-nest-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
@@ -209,13 +223,15 @@
       ],
       "php-laravel-persistence": [
         "metadata declarativa: proyecto/keyword/ecosistema",
-        "DB Laravel"
+        "DB Laravel",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "php-laravel-quality": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "php-laravel-queues": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "php-laravel-realtime": [
         "metadata declarativa: proyecto/keyword/ecosistema"
@@ -242,6 +258,16 @@
       "ux-information-architecture": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
+      "node-nest-async-workers": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "platform-scalability-capacity": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "platform-finops": [
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
       "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
@@ -255,8 +281,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 27,
-    "passed": 27,
+    "total": 33,
+    "passed": 33,
     "failed": 0,
     "results": [
       {
@@ -604,6 +630,80 @@
           "Preflight On-Prem o Cilium eBPF incompleto (status: FAILED)"
         ],
         "reason": "Fail-closed por falta de conectividad a nodos o API server bare-metal."
+      },
+      {
+        "id": "FX-SCL-CORRECT-01",
+        "skill": "platform-scalability-capacity",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato de capacidad: requests/limits garantizados, KEDA para I/O asíncrono, TopologySpreadConstraints multizona, PDB activo y preflight verificado."
+      },
+      {
+        "id": "FX-SCL-INSECURE-01",
+        "skill": "platform-scalability-capacity",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Deployment sin requests de recursos en k8s/payment-deployment.yaml; prohibido desplegar sin dimensionamiento",
+          "Deployment sin topologySpreadConstraints en k8s/payment-deployment.yaml; riesgo de punto único de falla zonal",
+          "Uso de HPA por CPU para tareas asíncronas en k8s/payment-hpa.yaml; debe utilizarse KEDA ScaledObject sobre colas",
+          "Falta PodDisruptionBudget (PDB) para proteger disponibilidad durante mantenimientos"
+        ],
+        "reason": "Viola el contrato de capacidad: carece de requests/limits provocando disputa de CPU, escala workers asíncronos por CPU en vez de profundidad de cola y no define PodDisruptionBudget."
+      },
+      {
+        "id": "FX-SCL-NOTRUN-01",
+        "skill": "platform-scalability-capacity",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight de capacidad y autoscaling falló o cluster inaccesible"
+        ],
+        "reason": "No se puede certificar el escalado elástico: el cluster o el operador KEDA no están accesibles y la evidencia de preflight reporta preflight_passed: false."
+      },
+      {
+        "id": "FX-FIN-CORRECT-01",
+        "skill": "platform-finops",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple el contrato FinOps: etiquetas de imputación (Owner, Environment, CostCenter, Project), nodos Karpenter ARM64/Spot con consolidación continua, y auditoría OpenCost validada."
+      },
+      {
+        "id": "FX-FIN-INSECURE-01",
+        "skill": "platform-finops",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Recursos con etiquetas contables obligatorias ausentes o incompletas",
+          "Agente OpenCost inactivo o sin exportador Prometheus configurado"
+        ],
+        "reason": "Fallo de auditoría FinOps."
+      },
+      {
+        "id": "FX-FIN-NOTRUN-01",
+        "skill": "platform-finops",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight FinOps falló o telemetría de costos inaccesible",
+          "Recursos con etiquetas contables obligatorias ausentes o incompletas",
+          "Agente OpenCost inactivo o sin exportador Prometheus configurado"
+        ],
+        "reason": "No se puede auditar la gobernanza FinOps: el exportador de métricas de OpenCost no responde y el preflight de costos falló."
       }
     ]
   },

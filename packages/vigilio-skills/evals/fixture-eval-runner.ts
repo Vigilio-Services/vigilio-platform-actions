@@ -982,7 +982,199 @@ export function evaluateOnpremFoundationFixture(fixture: FixtureTestCase): Fixtu
   };
 }
 
+export function evaluateScalabilityFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/capacity-preflight-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta evidencia preflight: reports/capacity-preflight-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        cluster_ready?: boolean;
+      };
+      if (parsed.preflight_passed !== true || parsed.cluster_ready !== true) {
+        violations.push('Preflight de capacidad y autoscaling falló o cluster inaccesible');
+      }
+    } catch {
+      violations.push('reports/capacity-preflight-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de preflight de capacidad.',
+    };
+  }
+
+  // 2. Static YAML checks for Scalability
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/^kind:\s*Deployment\b/m.test(content)) {
+        if (!/requests:/i.test(content)) {
+          violations.push(
+            `Deployment sin requests de recursos en ${filename}; prohibido desplegar sin dimensionamiento`,
+          );
+        }
+        if (!/topologySpreadConstraints:/i.test(content)) {
+          violations.push(
+            `Deployment sin topologySpreadConstraints en ${filename}; riesgo de punto único de falla zonal`,
+          );
+        }
+      }
+      if (
+        /^kind:\s*HorizontalPodAutoscaler\b/m.test(content) &&
+        /cpu/i.test(content) &&
+        !fixture.files['k8s/payment-keda.yaml']
+      ) {
+        violations.push(
+          `Uso de HPA por CPU para tareas asíncronas en ${filename}; debe utilizarse KEDA ScaledObject sobre colas`,
+        );
+      }
+    }
+  }
+
+  // Availability check: must have PodDisruptionBudget
+  const hasPdb = Object.entries(fixture.files).some(([_, c]) =>
+    /^kind:\s*PodDisruptionBudget\b/m.test(c),
+  );
+  if (!hasPdb) {
+    violations.push(
+      'Falta PodDisruptionBudget (PDB) para proteger disponibilidad durante mantenimientos',
+    );
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
+export function evaluateFinopsFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/finops-audit-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push('Falta evidencia de auditoría FinOps: reports/finops-audit-evidence.json');
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        preflight_passed?: boolean;
+        cost_allocation_tags_verified?: boolean;
+        opencost_active?: boolean;
+      };
+      if (parsed.preflight_passed !== true) {
+        violations.push('Preflight FinOps falló o telemetría de costos inaccesible');
+      }
+      if (parsed.cost_allocation_tags_verified === false) {
+        violations.push('Recursos con etiquetas contables obligatorias ausentes o incompletas');
+      }
+      if (parsed.opencost_active === false) {
+        violations.push('Agente OpenCost inactivo o sin exportador Prometheus configurado');
+      }
+    } catch {
+      violations.push('reports/finops-audit-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  if (violations.length > 0) {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'FAIL',
+      actualVerdict: 'FAIL',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fallo de auditoría FinOps.',
+    };
+  }
+
+  // 2. Static YAML checks for FinOps
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*NodePool/i.test(content)) {
+        if (!/arm64/i.test(content)) {
+          violations.push(
+            `NodePool en ${filename} no incluye arquitectura eficiente ARM64 (Graviton)`,
+          );
+        }
+        if (/consolidationPolicy:\s*Never/i.test(content)) {
+          violations.push(
+            `Consolidación desactivada en ${filename}; Karpenter debe consolidar nodos ociosos`,
+          );
+        }
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-scalability-capacity') {
+    return evaluateScalabilityFixture(fixture);
+  }
+  if (fixture.skill === 'platform-finops') {
+    return evaluateFinopsFixture(fixture);
+  }
   if (fixture.skill === 'onprem-kubernetes-foundation') {
     return evaluateOnpremFoundationFixture(fixture);
   }

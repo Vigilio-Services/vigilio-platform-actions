@@ -5,11 +5,13 @@ import { holdoutRoutingCases, trainingRoutingCases } from './cases/routing-cases
 import { runFixtureEvals } from './fixture-eval-runner.js';
 import { AWS_FOUNDATION_FIXTURES } from './fixtures/aws-foundation/fixture-cases.js';
 import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-cases.js';
+import { FINOPS_FIXTURES } from './fixtures/finops/fixture-cases.js';
 import { GITOPS_FIXTURES } from './fixtures/gitops/fixture-cases.js';
 import { observabilityFixtureCases } from './fixtures/observability/fixture-cases.js';
 import { ONPREM_FOUNDATION_FIXTURES } from './fixtures/onprem-foundation/fixture-cases.js';
 import { PROMOTION_FIXTURES } from './fixtures/promotion/fixture-cases.js';
 import { runtimeSecurityFixtures } from './fixtures/runtime-security/fixture-cases.js';
+import { SCALABILITY_FIXTURES } from './fixtures/scalability/fixture-cases.js';
 import { supplyChainFixtures } from './fixtures/supply-chain/fixture-cases.js';
 import { TERRAFORM_FIXTURES } from './fixtures/terraform/fixture-cases.js';
 import { runRoutingEvals } from './routing-eval-runner.js';
@@ -31,6 +33,8 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...TERRAFORM_FIXTURES,
     ...AWS_FOUNDATION_FIXTURES,
     ...ONPREM_FOUNDATION_FIXTURES,
+    ...SCALABILITY_FIXTURES,
+    ...FINOPS_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

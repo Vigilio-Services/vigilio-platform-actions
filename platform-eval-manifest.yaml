@@ -89,21 +89,21 @@ skills:
 
   - id: "platform-scalability-capacity"
     domain: "capacity"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-SCL-CORRECT-01"
+      insecure: "FX-SCL-INSECURE-01"
+      not_run: "FX-SCL-NOTRUN-01"
+    cases_count: 8
 
   - id: "platform-finops"
     domain: "finops"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-FIN-CORRECT-01"
+      insecure: "FX-FIN-INSECURE-01"
+      not_run: "FX-FIN-NOTRUN-01"
+    cases_count: 8
 
   - id: "platform-resilience-disaster-recovery"
     domain: "disaster-recovery"

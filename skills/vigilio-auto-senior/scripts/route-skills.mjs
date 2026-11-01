@@ -133,7 +133,7 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -205,6 +205,13 @@ for (const file of signals.files) {
   if (/(?:metallb.*|longhorn.*)\.ya?ml$/i.test(file)) {
     signals.onprem = true;
     signals.kubernetes = true;
+  }
+  if (/(?:keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*)\.ya?ml$/i.test(file)) {
+    signals.scalability = true;
+    signals.kubernetes = true;
+  }
+  if (/(?:opencost.*|finops.*)\.ya?ml$/i.test(file)) {
+    signals.finops = true;
   }
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.

@@ -5,7 +5,7 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "finops, opencost, gravition, arm64, cost-optimization, spot, karpenter"
+routing_keywords: "finops, opencost, graviton, arm64, cost-optimization, spot, kubecost, cost-allocation, cloud-cost"
 routing_files: "*.tf, values*.yaml, kustomization.yaml, opencost*.yaml"
 routing_capabilities: "finops-intelligence, cost-optimization"
 requires: []

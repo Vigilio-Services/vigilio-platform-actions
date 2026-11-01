@@ -1710,6 +1710,148 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['onprem-kubernetes-foundation'],
     },
   },
+
+  // ------------------------------------------------------------
+  // DOMAIN 7a: PLATFORM SCALABILITY & CAPACITY
+  // ------------------------------------------------------------
+  {
+    id: 'SCL-TRAIN-POS-01',
+    domain: 'scalability',
+    description: 'Escalado elástico con KEDA para procesadores asíncronos en colas SQS',
+    task: 'Configurar escalabilidad elástica basada en eventos con KEDA ScaledObject según profundidad de colas SQS',
+    files: ['k8s/payment-keda.yaml', 'k8s/deployment.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['platform-observability-sre', 'platform-data-reliability'],
+    },
+  },
+  {
+    id: 'SCL-TRAIN-POS-02',
+    domain: 'scalability',
+    description:
+      'Configuración de TopologySpreadConstraints multizona para alta disponibilidad zonal',
+    task: 'Configurar TopologySpreadConstraints multizona y balanceo de pods para evitar fallos zonales en Kubernetes',
+    files: ['k8s/deployment.yaml', 'k8s/topology-spread.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
+  {
+    id: 'SCL-TRAIN-POS-03',
+    domain: 'scalability',
+    description:
+      'Definición de PodDisruptionBudgets (PDB) para proteger disponibilidad durante mantenimientos',
+    task: 'Establecer PodDisruptionBudgets con minAvailable para proteger la disponibilidad del microservicio en mantenimientos',
+    files: ['k8s/pdb.yaml', 'k8s/deployment.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+  {
+    id: 'SCL-TRAIN-POS-04',
+    domain: 'scalability',
+    description: 'Dimensionamiento y calibración de requests y limits de CPU y memoria',
+    task: 'Dimensionar requests y limits de recursos garantizados para evitar disputas de CPU y OOMKill en el clúster',
+    files: ['k8s/deployment.yaml', 'values.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'SCL-TRAIN-POS-05',
+    domain: 'scalability',
+    description: 'Configurar escalabilidad horizontal HPA con métricas de latencia de servicio',
+    task: 'Configurar autoscaling horizontal de pods con HPA y métricas de concurrencia y latencia',
+    files: ['k8s/hpa.yaml', 'values.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+  {
+    id: 'SCL-TRAIN-NEG-01',
+    domain: 'scalability',
+    description: 'Balanceo de carga MetalLB en onprem no debe activar escalabilidad',
+    task: 'Configurar pool de direcciones IP virtuales en MetalLB para balanceo L4 en datacenter onpremise',
+    files: ['onprem/metallb.yaml'],
+    expected: {
+      mustSelect: ['onprem-kubernetes-foundation'],
+      mustNotSelect: ['platform-scalability-capacity'],
+    },
+  },
+
+  // ------------------------------------------------------------
+  // DOMAIN 7b: PLATFORM FINOPS & COST INTELLIGENCE
+  // ------------------------------------------------------------
+  {
+    id: 'FIN-TRAIN-POS-01',
+    domain: 'finops',
+    description: 'Implementar gobernanza FinOps con etiquetas obligatorias de imputación de costos',
+    task: 'Configurar gobernanza FinOps con etiquetas obligatorias de imputacion contable CostCenter, Owner y Environment',
+    files: ['infra/cost-allocation.tf', 'k8s/karpenter-nodepool.yaml'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-scalability-capacity', 'platform-data-reliability'],
+    },
+  },
+  {
+    id: 'FIN-TRAIN-POS-02',
+    domain: 'finops',
+    description: 'Optimización de cómputo con arquitectura ARM64 AWS Graviton y nodos Karpenter',
+    task: 'Optimizar costos de infraestructura cloud migrando cargas de trabajo a instancias ARM64 Graviton con Karpenter',
+    files: ['k8s/karpenter-nodepool.yaml'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+  {
+    id: 'FIN-TRAIN-POS-03',
+    domain: 'finops',
+    description: 'Desplegar agente OpenCost para telemetría y visibilidad de costos por pod',
+    task: 'Desplegar agente OpenCost para obtener visibilidad en tiempo real del costo por pod y namespace en Kubernetes',
+    files: ['k8s/opencost.yaml', 'values-opencost.yaml'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'FIN-TRAIN-POS-04',
+    domain: 'finops',
+    description: 'Orquestación de instancias Spot para workers asíncronos y consolidación de nodos',
+    task: 'Aprovechar instancias Spot y consolidacion de nodos ociosos para optimizar costos de cómputo con FinOps',
+    files: ['k8s/karpenter-nodepool.yaml'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+  {
+    id: 'FIN-TRAIN-POS-05',
+    domain: 'finops',
+    description: 'Configurar detección de anomalías de costos y alertas de presupuesto FinOps',
+    task: 'Configurar alertas de presupuesto y detección de anomalías de costos cloud con métricas de FinOps',
+    files: ['infra/finops-alarms.tf', 'infra/budgets.tf'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+  {
+    id: 'FIN-TRAIN-NEG-01',
+    domain: 'finops',
+    description: 'Configuración de base de datos Postgres CNPG no debe activar FinOps',
+    task: 'Configurar clúster PostgreSQL de alta disponibilidad con CloudNativePG y replicación sincrónica',
+    files: ['k8s/postgres-cluster.yaml'],
+    expected: {
+      mustSelect: ['platform-data-reliability'],
+      mustNotSelect: ['platform-finops'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2157,6 +2299,63 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
       mustSelect: ['node-nest-build-feature'],
 
       mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+  // ------------------------------------------------------------
+  // HOLDOUT DOMAIN 7: SCALABILITY & FINOPS
+  // ------------------------------------------------------------
+  {
+    id: 'SCL-HOLD-POS-01',
+    domain: 'scalability',
+    description: 'Escalado elástico por eventos KEDA en holdout',
+    task: 'Configurar autoscaling elástico con KEDA ScaledObject y TopologySpreadConstraints multizona',
+    files: ['k8s/keda.yaml', 'k8s/deployment.yaml'],
+    expected: {
+      mustSelect: ['platform-scalability-capacity'],
+      mustNotSelect: ['onprem-kubernetes-foundation'],
+    },
+  },
+  {
+    id: 'SCL-HOLD-NEG-01',
+    domain: 'scalability',
+    description: 'Swagger OpenAPI en backend no debe activar escalabilidad',
+    task: 'Generar especificación OpenAPI Swagger para microservicio NestJS con decoradores ApiProperty',
+    files: ['src/main.ts', 'src/payment/dto/payment.dto.ts', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/swagger': '11.0.0', '@nestjs/core': '11.0.0' },
+      }),
+    },
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+      mustNotSelect: ['platform-scalability-capacity'],
+    },
+  },
+  {
+    id: 'FIN-HOLD-POS-01',
+    domain: 'finops',
+    description: 'Visibilidad de costos OpenCost y etiquetas en holdout',
+    task: 'Implementar visibilidad de costos cloud con OpenCost y auditoria de etiquetas contables FinOps',
+    files: ['k8s/opencost.yaml', 'infra/tags.tf'],
+    expected: {
+      mustSelect: ['platform-finops'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'FIN-HOLD-NEG-01',
+    domain: 'finops',
+    description: 'Configurar linter Biome en frontend no debe activar FinOps',
+    task: 'Configurar reglas de formateo y linting con Biome en aplicación web frontend',
+    files: ['biome.json', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        devDependencies: { '@biomejs/biome': '1.9.0' },
+      }),
+    },
+    expected: {
+      mustSelect: [],
+      mustNotSelect: ['platform-finops'],
     },
   },
 ];
