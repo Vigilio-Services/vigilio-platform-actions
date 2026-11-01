@@ -92,6 +92,7 @@ const signals = {
   observability: false,
   database: false,
   backup: false,
+  supplyChain: false,
 };
 const MAX_FILES = 350,
   MAX_DEPTH = 4;
@@ -131,10 +132,11 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|policy.*)\.ya?ml$/i.test(
         e.name,
       ) &&
-        depth <= 3)
+        depth <= 3) ||
+      (e.name === 'openvex.json' && depth <= 3)
     )
       signals.files.push(relative);
   }
@@ -185,6 +187,9 @@ for (const file of signals.files) {
   if (/(?:postgres.*|valkey.*|cnpg.*|backup.*)\.ya?ml$/i.test(file)) {
     signals.database = true;
     signals.backup = true;
+  }
+  if (/(?:cosign.*|syft.*|policy.*)\.ya?ml$/i.test(file) || file.endsWith('openvex.json')) {
+    signals.supplyChain = true;
   }
 }
 // CMake alone is NOT evidence of C++; project(... LANGUAGES C) is a C-only project.
@@ -278,6 +283,7 @@ const stack = new Set([
   ...(signals.terraform ? ['terraform', 'aws'] : []),
   ...(signals.kubernetes ? ['kubernetes'] : []),
   ...(signals.backup || signals.database ? ['database', 'data-reliability'] : []),
+  ...(signals.supplyChain ? ['supply-chain'] : []),
 ]);
 const reviewOnly = intent === 'review';
 const noCodePlan = !projectFound && intent === 'architecture';

@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T09:46:56.629Z",
+  "timestamp": "2026-11-01T10:02:57.640Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T09:46:56.628Z",
+    "timestamp": "2026-11-01T10:02:57.639Z",
     "overallMetrics": {
-      "total": 21,
-      "truePositives": 106,
+      "total": 26,
+      "truePositives": 123,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 15,
-      "truePositives": 75,
+      "total": 18,
+      "truePositives": 85,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 6,
-      "truePositives": 31,
+      "total": 8,
+      "truePositives": 38,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -55,8 +55,8 @@
         "accuracy": 1
       },
       "supply-chain": {
-        "total": 1,
-        "passed": 1,
+        "total": 6,
+        "passed": 6,
         "failed": 0,
         "accuracy": 1
       },
@@ -162,12 +162,6 @@
       "node-nest-technologies": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "aws-platform-foundation": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
-      "terraform-iac-delivery": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
       "cpp-native-delivery": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
@@ -179,6 +173,15 @@
       ],
       "software-supply-chain-security": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "kubernetes-policy-runtime-security": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "aws-platform-foundation": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "terraform-iac-delivery": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "precision-skill-reading": [
         "metadata declarativa: proyecto/keyword/ecosistema"
@@ -196,8 +199,8 @@
     "failures": []
   },
   "fixtureSummary": {
-    "total": 6,
-    "passed": 6,
+    "total": 9,
+    "passed": 9,
     "failed": 0,
     "results": [
       {
@@ -276,6 +279,44 @@
           "Destino de backup S3 inaccesible o credenciales ausentes en preflight"
         ],
         "reason": "Fail-closed por falta de conectividad verificada con bucket de backups S3."
+      },
+      {
+        "id": "FX-SC-CORRECT-01",
+        "skill": "software-supply-chain-security",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Cumple contrato de supply-chain: firma Cosign Keyless, SBOM CycloneDX con Syft, atestación SLSA v1.2 y verificación Kyverno."
+      },
+      {
+        "id": "FX-SC-INSECURE-01",
+        "skill": "software-supply-chain-security",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Violación de inmutabilidad en .github/workflows/build-insecure.yml: tag mutable :latest detectado; las imágenes deben referenciarse por digest inmutable @sha256:",
+          "Violación de inmutabilidad en k8s/deployment.yaml: tag mutable :latest detectado; las imágenes deben referenciarse por digest inmutable @sha256:",
+          "Fuga de secretos de firma en .github/workflows/build-insecure.yml: uso de clave privada o password estático (COSIGN_PASSWORD); use Cosign Keyless con OIDC",
+          "Fuga de secretos de firma en .github/workflows/build-insecure.yml: uso de clave privada o password estático (COSIGN_KEY); use Cosign Keyless con OIDC",
+          "Omisión de seguridad en .github/workflows/build-insecure.yml: se detectó supresión de errores en escaneo de vulnerabilidades sin documento OpenVEX formal"
+        ],
+        "reason": "Violaciones críticas detectadas: tag mutable :latest, claves estáticas de Cosign y omisión de fallos en escáner Grype."
+      },
+      {
+        "id": "FX-SC-NOTRUN-01",
+        "skill": "software-supply-chain-security",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Token OIDC de CI no disponible o proveedor Fulcio/Rekor inalcanzable para firma Keyless"
+        ],
+        "reason": "Fail-closed por falta de identidad OIDC o conectividad con Fulcio/Rekor."
       }
     ]
   },

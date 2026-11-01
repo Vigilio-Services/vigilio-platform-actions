@@ -201,7 +201,100 @@ export function evaluateDataReliabilityFixture(fixture: FixtureTestCase): Fixtur
   };
 }
 
+export function evaluateSupplyChainFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Preflight connectivity & OIDC token check (Fail-closed)
+  const preflightChecks = fixture.files['reports/preflight-checks.json'];
+  if (preflightChecks) {
+    try {
+      const parsed = JSON.parse(preflightChecks) as {
+        oidcTokenAvailable?: boolean;
+        fulcioConnectivity?: string;
+      };
+      if (parsed.oidcTokenAvailable === false || parsed.fulcioConnectivity === 'UNREACHABLE') {
+        violations.push(
+          'Token OIDC de CI no disponible o proveedor Fulcio/Rekor inalcanzable para firma Keyless',
+        );
+        return {
+          id: fixture.id,
+          skill: fixture.skill,
+          type: fixture.type,
+          passed: fixture.expectedVerdict === 'NOT_RUN',
+          actualVerdict: 'NOT_RUN',
+          expectedVerdict: fixture.expectedVerdict,
+          violations,
+          reason: 'Fail-closed por falta de identidad OIDC o conectividad con Fulcio/Rekor.',
+        };
+      }
+    } catch {
+      violations.push('reports/preflight-checks.json inválido');
+    }
+  }
+
+  // 2. Mutable tags detection (:latest)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (
+        /(?:image:\s*["']?[^"'\n]+:latest\b|docker\s+(?:build|push)\s+[^@\n]+:latest\b)/i.test(
+          content,
+        )
+      ) {
+        violations.push(
+          `Violación de inmutabilidad en ${filename}: tag mutable :latest detectado; las imágenes deben referenciarse por digest inmutable @sha256:`,
+        );
+      }
+    }
+  }
+
+  // 3. Static secrets or private keys for Cosign
+  const forbiddenCosignSecrets = [/COSIGN_PASSWORD/i, /COSIGN_KEY/i, /--key\s+[^@\n]+\.key/i];
+
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      for (const pattern of forbiddenCosignSecrets) {
+        if (pattern.test(content)) {
+          violations.push(
+            `Fuga de secretos de firma en ${filename}: uso de clave privada o password estático (${pattern.source}); use Cosign Keyless con OIDC`,
+          );
+        }
+      }
+    }
+  }
+
+  // 4. Suppressed vulnerability scanner failures without OpenVEX
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (
+        /(?:grype|trivy)[^\n]+\|\|\s*true/i.test(content) ||
+        /continue-on-error:\s*true/i.test(content)
+      ) {
+        violations.push(
+          `Omisión de seguridad en ${filename}: se detectó supresión de errores en escaneo de vulnerabilidades sin documento OpenVEX formal`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'software-supply-chain-security') {
+    return evaluateSupplyChainFixture(fixture);
+  }
   if (fixture.skill === 'platform-data-reliability') {
     return evaluateDataReliabilityFixture(fixture);
   }

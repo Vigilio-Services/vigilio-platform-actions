@@ -200,6 +200,60 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
   },
 
   // ============================================================
+  // DOMINIO 3: SUPPLY CHAIN SECURITY (SOFTWARE-SUPPLY-CHAIN-SECURITY)
+  // ============================================================
+  {
+    id: 'SC-TRAIN-POS-01',
+    domain: 'supply-chain',
+    description: 'Firma OCI Keyless con Cosign y generación de SBOM Syft en GitHub Actions',
+    task: 'Integrar firma de imágenes Docker con Cosign Keyless, generar SBOM CycloneDX con Syft y atestación SLSA',
+    files: ['.github/workflows/docker-publish.yml', 'Dockerfile'],
+    expected: {
+      mustSelect: ['software-supply-chain-security'],
+      mustNotSelect: ['platform-observability-sre', 'platform-data-reliability'],
+    },
+  },
+  {
+    id: 'SC-TRAIN-POS-02',
+    domain: 'supply-chain',
+    description:
+      'Configuración de verificación de atestaciones SLSA v1.2 y firmas Cosign con Kyverno ClusterPolicy',
+    task: 'Configurar verificación de atestaciones de procedencia SLSA v1.2 con Kyverno ClusterPolicy en Kubernetes',
+    files: ['k8s/kyverno-policy.yaml', 'Dockerfile'],
+    expected: {
+      mustSelect: ['software-supply-chain-security'],
+      mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+  {
+    id: 'SC-TRAIN-POS-03',
+    domain: 'supply-chain',
+    description:
+      'Triaje de vulnerabilidades con OpenVEX y escaneo de paquetes de contenedor con Grype',
+    task: 'Escanear vulnerabilidades de contenedor con Grype y aplicar triaje de falsos positivos con OpenVEX',
+    files: ['reports/openvex.json', 'Dockerfile'],
+    expected: {
+      mustSelect: ['software-supply-chain-security'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'SC-TRAIN-NEG-01',
+    domain: 'supply-chain',
+    description:
+      'Dockerfile de desarrollo local para microservicio NestJS sin pipelines ni firma no debe activar supply-chain',
+    task: 'Escribir Dockerfile multi-stage simple para correr microservicio NestJS en modo desarrollo con nodemon',
+    files: ['Dockerfile', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+      mustNotSelect: ['software-supply-chain-security'],
+    },
+  },
+
+  // ============================================================
   // CASOS DE CONTROL DE OTROS DOMINIOS DE PLATAFORMA
   // ============================================================
   {
@@ -210,17 +264,6 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
     files: ['terraform/main.tf', 'terraform/variables.tf', 'terraform/backend.tf'],
     expected: {
       mustSelect: ['terraform-iac-delivery'],
-      mustNotSelect: ['platform-observability-sre'],
-    },
-  },
-  {
-    id: 'CTRL-TRAIN-SC-01',
-    domain: 'supply-chain',
-    description: 'Firma OCI Keyless con Cosign y generación de SBOM Syft en GitHub Actions',
-    task: 'Integrar firma de imágenes Docker con Cosign Keyless, generar SBOM CycloneDX con Syft y atestación SLSA',
-    files: ['.github/workflows/docker-publish.yml', 'Dockerfile'],
-    expected: {
-      mustSelect: ['software-supply-chain-security'],
       mustNotSelect: ['platform-observability-sre'],
     },
   },
@@ -338,6 +381,33 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['node-nest-build-feature'],
       mustNotSelect: ['platform-data-reliability'],
+    },
+  },
+  {
+    id: 'SC-HOLD-POS-01',
+    domain: 'supply-chain',
+    description:
+      'Verificación de firma criptográfica y procedencia de imágenes OCI con Kyverno en Kubernetes',
+    task: 'Verificar firmas Cosign y procedencia en admisión de pods en el clúster usando políticas Kyverno',
+    files: ['k8s/policy-verify.yaml', 'Dockerfile'],
+    expected: {
+      mustSelect: ['software-supply-chain-security'],
+      mustNotSelect: ['platform-observability-sre'],
+    },
+  },
+  {
+    id: 'SC-HOLD-NEG-01',
+    domain: 'supply-chain',
+    description:
+      'Configuración de Hadolint para validar buenas prácticas en Dockerfile no debe activar supply-chain security',
+    task: 'Configurar Hadolint para verificar directivas RUN y COPY en Dockerfile',
+    files: ['.hadolint.yaml', 'Dockerfile', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({ dependencies: { '@nestjs/core': '11.0.0' } }),
+    },
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+      mustNotSelect: ['software-supply-chain-security'],
     },
   },
 ];

@@ -5,9 +5,9 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "supply-chain, slsa, cosign, syft, sbom, grype, openvex, kyverno, kind: ClusterPolicy"
-routing_files: "cosign*.yaml, Dockerfile, .github/workflows/*.yml, policy*.yaml"
-routing_capabilities: "supply-chain-security, devsecops"
+routing_keywords: "supply-chain, slsa, cosign, syft, sbom, grype, openvex, cyclonedx, spdx, keyless, fulcio, rekor, provenance, attestation, kyverno, clusterpolicy"
+routing_files: "cosign*.yaml, Dockerfile, .github/workflows/*.yml, policy*.yaml, syft*.yaml, openvex*.json"
+routing_capabilities: "supply-chain-security, container-security, sbom-signing"
 requires: []
 optional: []
 conflicts: []
