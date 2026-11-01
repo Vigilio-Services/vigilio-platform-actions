@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "scalability, keda, hpa, karpenter, pdb, topology-spread, autoscaling"
-routing_files: "values.yaml, kustomization.yaml, HorizontalPodAutoscaler"
+routing_keywords: "scalability, keda, hpa, karpenter, pdb, topology-spread, autoscaling, kind: HorizontalPodAutoscaler, kind: ScaledObject"
+routing_files: "values*.yaml, kustomization.yaml, hpa*.yaml, scaledobject*.yaml"
 routing_capabilities: "capacity-planning, autoscaling-optimization"
 requires: []
 optional: []

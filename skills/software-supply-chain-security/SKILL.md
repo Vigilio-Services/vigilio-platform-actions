@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "supply-chain, slsa, cosign, syft, sbom, grype, openvex, kyverno"
-routing_files: "cosign-policy.yaml, Dockerfile, .github/workflows/*.yml, ClusterPolicy"
+routing_keywords: "supply-chain, slsa, cosign, syft, sbom, grype, openvex, kyverno, kind: ClusterPolicy"
+routing_files: "cosign*.yaml, Dockerfile, .github/workflows/*.yml, policy*.yaml"
 routing_capabilities: "supply-chain-security, devsecops"
 requires: []
 optional: []
@@ -50,7 +50,7 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Implementar atestaciones de procedencia SLSA, firma Keyless con Cosign y admisión fail-closed con Kyverno.
+- ✅ **Correcto:** Implementar atestaciones de procedencia estructuradas (SLSA Build track demostrado), firma Keyless con Cosign y admisión fail-closed con Kyverno.
 - ❌ **Incorrecto:** Permitir el despliegue de imágenes arbitrarias descargadas de registros públicos sin validación criptográfica.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 

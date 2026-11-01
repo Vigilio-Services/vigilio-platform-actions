@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "gitops, argocd, flux, helm, kustomize, rollouts, sync-waves"
-routing_files: "kustomization.yaml, ApplicationSet, values.yaml, Chart.yaml"
+routing_keywords: "gitops, argocd, flux, helm, kustomize, rollouts, sync-waves, kind: ApplicationSet, kind: Rollout"
+routing_files: "Chart.yaml, values*.yaml, kustomization.yaml, application*.yaml"
 routing_capabilities: "gitops-delivery, progressive-delivery"
 requires: []
 optional: []

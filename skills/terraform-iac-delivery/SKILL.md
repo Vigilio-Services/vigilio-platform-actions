@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "terraform, iac, hcl, modules, state, drift, checkov, tflint"
-routing_files: "*.tf, *.tfvars, .terraform.lock.hcl, terraform.tfstate"
+routing_keywords: "terraform, iac, hcl, modules, state, drift, checkov, tflint, use_lockfile"
+routing_files: "*.tf, *.tfvars, *.hcl, .terraform.lock.hcl"
 routing_capabilities: "iac-delivery, terraform-architecture"
 requires: []
 optional: []
@@ -29,7 +29,7 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 ## Flujo
 
 1. Estratifica Terraform en bootstrap, modules, stacks y environments.
-2. Configura backend remoto con bloqueo concurrente (S3/DynamoDB en AWS, Azure Blob en Azure, GCS en GCP, PostgreSQL o Consul según el entorno destino).
+2. Configura backend remoto con bloqueo concurrente (en AWS: S3 versionado con bloqueo nativo use_lockfile = true; DynamoDB solo para migraciones legacy; Azure Blob Leases en Azure; GCS en GCP; PostgreSQL o Consul en On-Prem).
 3. Ejecuta terraform fmt, tflint y escaneo de seguridad con Checkov en PR.
 4. Genera plan especulativo y audita cambios de recursos.
 5. Aplica cambios exclusivamente en merge a main mediante runner CI con identidad federada (OIDC del proveedor cloud correspondiente).
@@ -50,7 +50,7 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Mantener módulos puros reutilizables, estado particionado y aplicar planes aprobados mediante OIDC federado en CI.
+- ✅ **Correcto:** Mantener módulos puros reutilizables, backend S3 con use_lockfile = true (o bloqueo nativo del proveedor) y aplicar planes aprobados mediante OIDC federado en CI.
 - ❌ **Incorrecto:** Ejecutar terraform apply manual en producción o alojar todo el estado en un archivo monolítico sin bloqueo.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 

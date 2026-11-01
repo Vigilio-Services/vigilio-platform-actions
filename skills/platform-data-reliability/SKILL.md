@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "data-reliability, postgresql, cloudnativepg, valkey, redis, statefulset, csi"
-routing_files: "values.yaml, kustomization.yaml, Cluster, postgresql.yaml"
+routing_keywords: "data-reliability, postgresql, cloudnativepg, valkey, redis, statefulset, csi, kind: Cluster"
+routing_files: "values*.yaml, kustomization.yaml, postgres*.yaml, valkey*.yaml"
 routing_capabilities: "data-engineering, storage-reliability"
 requires: []
 optional: []

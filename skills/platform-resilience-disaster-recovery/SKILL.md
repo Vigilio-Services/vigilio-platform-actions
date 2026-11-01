@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "disaster-recovery, velero, chaos-mesh, backup, rpo, rto, failover"
-routing_files: "velero-schedule.yaml, values.yaml, kustomization.yaml"
+routing_keywords: "disaster-recovery, velero, chaos-mesh, backup, rpo, rto, failover, kind: Schedule, kind: Backup"
+routing_files: "velero*.yaml, values*.yaml, kustomization.yaml"
 routing_capabilities: "sre-resilience, disaster-recovery"
 requires: []
 optional: []

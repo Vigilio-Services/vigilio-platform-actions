@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "ebpf, tetragon, kyverno, runtime-security, sigkill, tracing-policy"
-routing_files: "TracingPolicy, CiliumNetworkPolicy, ClusterPolicy, kustomization.yaml"
+routing_keywords: "ebpf, tetragon, kyverno, runtime-security, sigkill, tracing-policy, kind: TracingPolicy, kind: CiliumNetworkPolicy"
+routing_files: "tracing*.yaml, policy*.yaml, kustomization.yaml"
 routing_capabilities: "runtime-security, ebpf-enforcement"
 requires: []
 optional: []

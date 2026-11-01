@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "kubernetes, onprem, baremetal, k3s, rke2, cilium, metallb, longhorn"
-routing_files: "kustomization.yaml, values.yaml, Chart.yaml, CiliumNetworkPolicy"
+routing_keywords: "kubernetes, onprem, baremetal, k3s, rke2, cilium, metallb, longhorn, kind: CiliumNetworkPolicy"
+routing_files: "Chart.yaml, values*.yaml, kustomization.yaml"
 routing_capabilities: "kubernetes-infrastructure, onprem-edge"
 requires: []
 optional: []

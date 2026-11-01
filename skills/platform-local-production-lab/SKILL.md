@@ -6,7 +6,7 @@ lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "prod-local, kind, docker, privileged, lab, simulation, local-dev"
-routing_files: "kind-config.yaml, docker-compose.yaml, setup.ps1, setup.sh"
+routing_files: "kind-config.yaml, docker-compose*.yaml, setup.ps1, setup.sh"
 routing_capabilities: "local-lab, environment-simulation"
 requires: []
 optional: []

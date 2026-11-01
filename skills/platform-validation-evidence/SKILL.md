@@ -5,8 +5,8 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "evidence, audit, verification, compatibility, preflight, gates"
-routing_files: "compatibility.json, package.json, COMPATIBILITY.md"
+routing_keywords: "evidence, audit, verification, compatibility, preflight, gates, validation-trail"
+routing_files: "compatibility.json, COMPATIBILITY.md, package.json"
 routing_capabilities: "governance, audit-evidence"
 requires: []
 optional: []
