@@ -1,6 +1,6 @@
 ---
 name: software-supply-chain-security
-description: Implementa capacidades compatibles con SLSA (firma Cosign, SBOM Syft, escaneo Grype, triaje OpenVEX). El nivel demostrado depende de la evidencia del pipeline.
+description: Implementa capacidades compatibles con SLSA v1.2 (firma Cosign, SBOM Syft, escaneo Grype, triaje OpenVEX). El nivel demostrado depende de la evidencia del pipeline.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -38,7 +38,7 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 - No admitir en producción imágenes no firmadas o construidas fuera del pipeline oficial.
 - No ignorar vulnerabilidades críticas sin un documento de justificación OpenVEX auditable.
-- No firmar imágenes con claves privadas compartidas o sin libro mayor de transparencia (Rekor).
+- No firmar imágenes con claves privadas compartidas o sin registro en el log de transparencia (Rekor, según política institucional VIGILIO cuando el modelo de confidencialidad lo permita).
 
 ## Respuesta
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Seguridad De La Cadena De Suministro"
-  short_description: "Garantiza seguridad SLSA Nivel 3 con firma Cosign, generación de SBOM Syft, escaneo Grype y triaje OpenVEX."
-  default_prompt: "Use $software-supply-chain-security to sign OCI images with Cosign, generate SBOMs with Syft, and enforce SLSA policies."
+  short_description: "Implementa capacidades compatibles con SLSA v1.2 con firma Cosign, generación de SBOM Syft, escaneo Grype y triaje OpenVEX."
+  default_prompt: "Use $software-supply-chain-security to sign OCI images with Cosign, generate SBOMs with Syft, and enforce SLSA v1.2 provenance policies."

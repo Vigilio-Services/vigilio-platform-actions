@@ -26,6 +26,6 @@ Lee completamente cada fuente aplicable.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Implementar atestaciones de procedencia SLSA, firma Keyless con Cosign y admisión fail-closed con Kyverno.
+- ✅ **Correcto:** Implementar atestaciones de procedencia SLSA v1.2 (el nivel alcanzado depende del entorno de ejecución demostrado), firma Keyless con Cosign, verificación en Rekor (política VIGILIO cuando la confidencialidad lo permita) y admisión fail-closed con Kyverno.
 - ❌ **Incorrecto:** Permitir el despliegue de imágenes arbitrarias descargadas de registros públicos sin validación criptográfica.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
