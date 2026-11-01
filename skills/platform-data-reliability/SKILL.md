@@ -2,11 +2,11 @@
 name: platform-data-reliability
 description: Administra cargas con estado y operadores de bases de datos CloudNativePG y Valkey con replicación y PITR en Kubernetes.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "data-reliability, postgresql, cloudnativepg, valkey, redis, statefulset, csi"
-routing_files: "package.json"
+routing_files: "values.yaml, kustomization.yaml, Cluster, postgresql.yaml"
 routing_capabilities: "data-engineering, storage-reliability"
 requires: []
 optional: []

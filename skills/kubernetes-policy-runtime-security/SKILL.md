@@ -2,11 +2,11 @@
 name: kubernetes-policy-runtime-security
 description: Aplica monitorización e intercepción en tiempo de ejecución a nivel de kernel con Cilium Tetragon eBPF y Kyverno.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "ebpf, tetragon, kyverno, runtime-security, sigkill, tracing-policy"
-routing_files: "package.json"
+routing_files: "TracingPolicy, CiliumNetworkPolicy, ClusterPolicy, kustomization.yaml"
 routing_capabilities: "runtime-security, ebpf-enforcement"
 requires: []
 optional: []
@@ -28,17 +28,19 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Despliega el sensor eBPF de Tetragon en el clúster Kubernetes.
-2. Aplica TracingPolicies para detectar y bloquear ejecución de shells interactivas (sh, bash).
-3. Impide la ejecución de binarios desde rutas no autorizadas (/tmp, /dev/shm).
-4. Configura acciones reactivas Sigkill inmediatas a nivel de kernel Linux.
-5. Exporta eventos de seguridad estructurados hacia OpenTelemetry y el SIEM corporativo.
+1. Verifica compatibilidad de kernel, Cilium, Tetragon y hooks de syscall (execve/execveat).
+2. Despliega sensor eBPF de Tetragon en modo Observe (registro pasivo de eventos y medición de falsos positivos).
+3. Avanza a modo Audit: genera alertas de seguridad sin bloqueo, refinando excepciones para health checks, sidecars y operadores.
+4. Tras validar cero falsos positivos, activa modo Enforce (acción Sigkill) con rollout gradual por namespaces.
+5. Define un mecanismo de break-glass auditado con ticket y TTL para emergencias operativas.
+6. Exporta eventos de seguridad estructurados hacia OpenTelemetry y el SIEM corporativo.
 
 ## Límites
 
-- No ejecutar pods en producción con privilegios CAP_SYS_ADMIN sin justificación extrema.
-- No confiar únicamente en la seguridad de espacio de usuario de los contenedores.
-- No silenciar alertas de eventos de intrusión generados por Tetragon.
+- No activar enforcement SIGKILL directo en producción sin fase previa de observación y auditoría.
+- No omitir la matriz de compatibilidad de kernel antes del despliegue en nodos de producción.
+- No bloquear health checks o sidecars de observabilidad sin excepciones explícitas.
+- No operar sin un procedimiento de break-glass documentado.
 
 ## Respuesta
 
@@ -50,8 +52,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Bloquear llamadas al sistema sospechosas a nivel de kernel Linux mediante eBPF con terminación SIGKILL instantánea.
-- ❌ **Incorrecto:** Limitarse a revisar logs de aplicación después de un compromiso de seguridad sin capacidad de bloqueo en tiempo real.
+- ✅ **Correcto:** Desplegar Tetragon en progresión Observe → Audit → Enforce con excepciones verificadas y procedimiento de break-glass.
+- ❌ **Incorrecto:** Activar SIGKILL indiscriminado en producción sin fase de observación previa ni procedimiento de emergencia documentado.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

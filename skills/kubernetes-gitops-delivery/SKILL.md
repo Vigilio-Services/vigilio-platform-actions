@@ -2,11 +2,11 @@
 name: kubernetes-gitops-delivery
 description: Gestiona la entrega continua declarativa en Kubernetes con ArgoCD, Kustomize, Helm, Sync Waves y Canary Rollouts.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "gitops, argocd, flux, helm, kustomize, rollouts, sync-waves"
-routing_files: "package.json"
+routing_files: "kustomization.yaml, ApplicationSet, values.yaml, Chart.yaml"
 routing_capabilities: "gitops-delivery, progressive-delivery"
 requires: []
 optional: []

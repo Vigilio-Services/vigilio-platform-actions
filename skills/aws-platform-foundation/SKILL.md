@@ -2,11 +2,11 @@
 name: aws-platform-foundation
 description: Diseña la fundación cloud en AWS con topología multicuenta, VPCs de 3 AZs, endpoints privados y federación OIDC/IRSA.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "aws, vpc, iam, oidc, irsa, kms, eks, privatelink, cloud"
-routing_files: "package.json"
+routing_files: "*.tf, *.tfvars, provider.tf, backend.tf"
 routing_capabilities: "cloud-architecture, aws-foundation"
 requires: []
 optional: []

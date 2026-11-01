@@ -2,11 +2,11 @@
 name: platform-cicd-factory
 description: Centraliza flujos CI/CD mediante plantillas y acciones reutilizables sin duplicar lógica en repositorios consumidores.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "cicd, pipeline-factory, github-actions, gitlab-ci, reusable-workflows"
-routing_files: "package.json"
+routing_files: ".github/workflows/*.yml, .gitlab-ci.yml, Dockerfile"
 routing_capabilities: "pipeline-automation, devops-factory"
 requires: []
 optional: []

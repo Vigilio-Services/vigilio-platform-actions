@@ -333,7 +333,7 @@ profiles:
 
   platform-core:
     description: "Núcleo de plataforma, gobernanza de workspaces, promoción y evidencia"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - governance
     skills:
@@ -344,7 +344,7 @@ profiles:
 
   platform-gitops:
     description: "Entrega continua declarativa con GitOps, ArgoCD y progressive delivery"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-core
     skills:
@@ -353,7 +353,7 @@ profiles:
 
   platform-devsecops:
     description: "Seguridad de la cadena de suministro, SBOM, Cosign y runtime eBPF con Tetragon"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-core
     skills:
@@ -362,7 +362,7 @@ profiles:
 
   platform-sre:
     description: "SRE, observabilidad, resiliencia ante desastres, confiabilidad de datos y FinOps"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-core
     skills:
@@ -373,7 +373,7 @@ profiles:
 
   platform-aws-production:
     description: "Plataforma completa de producción en AWS con EKS, Terraform, GitOps y FinOps"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-gitops
       - platform-devsecops
@@ -385,7 +385,7 @@ profiles:
 
   platform-onprem-production:
     description: "Plataforma completa de producción On-Premise y Edge con Cilium, MetalLB y CSI"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-gitops
       - platform-devsecops
@@ -395,7 +395,7 @@ profiles:
 
   platform-prod-local:
     description: "Laboratorio de simulación local de producción con Kind, Docker y perfiles eBPF"
-    lifecycle: stable
+    lifecycle: experimental
     extends:
       - platform-core
     skills:

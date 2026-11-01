@@ -2,11 +2,11 @@
 name: platform-resilience-disaster-recovery
 description: Diseña continuidad de negocio, backups de estado con Velero, conmutación multi-región e ingeniería del caos.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "disaster-recovery, velero, chaos-mesh, backup, rpo, rto, failover"
-routing_files: "package.json"
+routing_files: "velero-schedule.yaml, values.yaml, kustomization.yaml"
 routing_capabilities: "sre-resilience, disaster-recovery"
 requires: []
 optional: []

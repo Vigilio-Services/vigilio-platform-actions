@@ -2,11 +2,11 @@
 name: platform-environment-promotion
 description: Gobierna la jerarquía de entornos y la promoción inmutable de artefactos entre local, review, staging y producción.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "environments, promotion, immutability, staging, production, gitops"
-routing_files: "package.json"
+routing_files: "values.yaml, kustomization.yaml, .env.example, Dockerfile"
 routing_capabilities: "platform-engineering, release-governance"
 requires: []
 optional: []

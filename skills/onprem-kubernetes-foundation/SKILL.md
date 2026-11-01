@@ -2,11 +2,11 @@
 name: onprem-kubernetes-foundation
 description: Diseña y opera clústeres Kubernetes on-premise y edge con Cilium eBPF, MetalLB, CSI Longhorn y cert-manager.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "kubernetes, onprem, baremetal, k3s, rke2, cilium, metallb, longhorn"
-routing_files: "package.json"
+routing_files: "kustomization.yaml, values.yaml, Chart.yaml, CiliumNetworkPolicy"
 routing_capabilities: "kubernetes-infrastructure, onprem-edge"
 requires: []
 optional: []

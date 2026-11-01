@@ -1,12 +1,12 @@
 ---
 name: software-supply-chain-security
-description: Garantiza seguridad SLSA Nivel 3 con firma Cosign, generación de SBOM Syft, escaneo Grype y triaje OpenVEX.
+description: Implementa capacidades compatibles con SLSA (firma Cosign, SBOM Syft, escaneo Grype, triaje OpenVEX). El nivel demostrado depende de la evidencia del pipeline.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "supply-chain, slsa, cosign, syft, sbom, grype, openvex, kyverno"
-routing_files: "package.json"
+routing_files: "cosign-policy.yaml, Dockerfile, .github/workflows/*.yml, ClusterPolicy"
 routing_capabilities: "supply-chain-security, devsecops"
 requires: []
 optional: []

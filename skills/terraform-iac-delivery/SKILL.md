@@ -2,11 +2,11 @@
 name: terraform-iac-delivery
 description: Aprovisiona y entrega infraestructura como código con Terraform estratificado, bloqueo de estado y pruebas de políticas.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "terraform, iac, hcl, modules, state, drift, checkov, tflint"
-routing_files: "package.json"
+routing_files: "*.tf, *.tfvars, .terraform.lock.hcl, terraform.tfstate"
 routing_capabilities: "iac-delivery, terraform-architecture"
 requires: []
 optional: []
@@ -29,14 +29,14 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 ## Flujo
 
 1. Estratifica Terraform en bootstrap, modules, stacks y environments.
-2. Configura backend remoto S3 con KMS y bloqueo concurrente con DynamoDB.
+2. Configura backend remoto con bloqueo concurrente (S3/DynamoDB en AWS, Azure Blob en Azure, GCS en GCP, PostgreSQL o Consul según el entorno destino).
 3. Ejecuta terraform fmt, tflint y escaneo de seguridad con Checkov en PR.
 4. Genera plan especulativo y audita cambios de recursos.
-5. Aplica cambios exclusivamente en merge a main mediante runner CI con rol OIDC.
+5. Aplica cambios exclusivamente en merge a main mediante runner CI con identidad federada (OIDC del proveedor cloud correspondiente).
 
 ## Límites
 
-- No incluir credenciales estáticas de AWS en código HCL o variables de CI.
+- No incluir credenciales estáticas de proveedores cloud en código HCL o variables de CI.
 - No declarar providers o backends hardcodeados dentro de módulos reutilizables.
 - No ejecutar terraform apply desde terminales locales hacia producción.
 

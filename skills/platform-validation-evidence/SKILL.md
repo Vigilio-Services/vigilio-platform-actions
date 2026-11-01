@@ -2,11 +2,11 @@
 name: platform-validation-evidence
 description: Genera y audita evidencia operativa, pruebas de preflight, validación de contratos y matrices de compatibilidad.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "evidence, audit, verification, compatibility, preflight, gates"
-routing_files: "package.json"
+routing_files: "compatibility.json, package.json, COMPATIBILITY.md"
 routing_capabilities: "governance, audit-evidence"
 requires: []
 optional: []

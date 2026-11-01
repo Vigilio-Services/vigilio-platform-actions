@@ -2,11 +2,11 @@
 name: platform-scalability-capacity
 description: Configura escalabilidad elástica en Kubernetes con KEDA, HPA, aprovisionamiento con Karpenter y límites PDB.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "scalability, keda, hpa, karpenter, pdb, topology-spread, autoscaling"
-routing_files: "package.json"
+routing_files: "values.yaml, kustomization.yaml, HorizontalPodAutoscaler"
 routing_capabilities: "capacity-planning, autoscaling-optimization"
 requires: []
 optional: []

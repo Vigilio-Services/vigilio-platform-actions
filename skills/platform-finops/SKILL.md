@@ -2,11 +2,11 @@
 name: platform-finops
 description: Implementa inteligencia de costos cloud, etiquetado obligatorio, optimización ARM64/Graviton y visibilidad con OpenCost.
 owner: governance-platform
-lifecycle: stable
+lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
 routing_keywords: "finops, opencost, gravition, arm64, cost-optimization, spot, karpenter"
-routing_files: "package.json"
+routing_files: "*.tf, values.yaml, kustomization.yaml, opencost-values.yaml"
 routing_capabilities: "finops-intelligence, cost-optimization"
 requires: []
 optional: []
