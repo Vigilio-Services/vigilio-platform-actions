@@ -44,21 +44,21 @@ skills:
 
   - id: "kubernetes-gitops-delivery"
     domain: "gitops"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-GTO-CORRECT-01"
+      insecure: "FX-GTO-INSECURE-01"
+      not_run: "FX-GTO-NOTRUN-01"
+    cases_count: 12
 
   - id: "platform-environment-promotion"
     domain: "promotion"
-    status: "pending"
+    status: "completed"
     fixtures:
-      correct: null
-      insecure: null
-      not_run: null
-    cases_count: 0
+      correct: "FX-PRM-CORRECT-01"
+      insecure: "FX-PRM-INSECURE-01"
+      not_run: "FX-PRM-NOTRUN-01"
+    cases_count: 12
 
   - id: "terraform-iac-delivery"
     domain: "iac"

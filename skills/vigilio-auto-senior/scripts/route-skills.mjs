@@ -133,7 +133,7 @@ function traverse(dir, depth) {
         'Dockerfile',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -183,6 +183,13 @@ for (const file of signals.files) {
   if (file === 'rust-toolchain.toml') signals.rust = true;
   if (/\.(tf|tfvars)$/i.test(file) || file.endsWith('terragrunt.hcl')) signals.terraform = true;
   if (/(?:kustomization|Chart|values.*)\.ya?ml$/i.test(file)) signals.kubernetes = true;
+  if (/(?:application.*|applicationset.*|rollout.*)\.ya?ml$/i.test(file)) {
+    signals.gitops = true;
+    signals.kubernetes = true;
+  }
+  if (/promotion.*\.ya?ml$/i.test(file)) {
+    signals.promotion = true;
+  }
   if (/(?:otel-collector.*|prometheus.*|slo.*|alert.*)\.ya?ml$/i.test(file))
     signals.observability = true;
   if (/(?:postgres.*|valkey.*|cnpg.*|backup.*)\.ya?ml$/i.test(file)) {
@@ -286,6 +293,8 @@ const stack = new Set([
   ...(signals.godot ? ['godot', 'game'] : []),
   ...(signals.terraform ? ['terraform', 'aws'] : []),
   ...(signals.kubernetes ? ['kubernetes'] : []),
+  ...(signals.gitops ? ['gitops'] : []),
+  ...(signals.promotion ? ['promotion'] : []),
   ...(signals.backup || signals.database ? ['database', 'data-reliability'] : []),
   ...(signals.supplyChain ? ['supply-chain'] : []),
   ...(signals.runtimeSecurity ? ['runtime-security'] : []),

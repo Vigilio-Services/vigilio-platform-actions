@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T18:48:10.563Z",
+  "timestamp": "2026-11-01T19:04:39.578Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T18:48:10.560Z",
+    "timestamp": "2026-11-01T19:04:39.573Z",
     "overallMetrics": {
-      "total": 38,
-      "truePositives": 178,
+      "total": 62,
+      "truePositives": 271,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 28,
-      "truePositives": 127,
+      "total": 48,
+      "truePositives": 203,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 10,
-      "truePositives": 51,
+      "total": 14,
+      "truePositives": 68,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -67,10 +67,10 @@
         "accuracy": 1
       },
       "gitops": {
-        "total": 0,
-        "passed": 0,
+        "total": 12,
+        "passed": 12,
         "failed": 0,
-        "accuracy": 0
+        "accuracy": 1
       },
       "finops": {
         "total": 0,
@@ -166,7 +166,8 @@
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "php-laravel-runtime": [
-        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
+        "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "rust-native-delivery": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
@@ -189,7 +190,8 @@
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "symbol-ownership-architecture": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
       ],
       "ux-desktop-experience": [
         "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
@@ -200,10 +202,49 @@
       "terraform-iac-delivery": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "ux-web-experience": [
+      "kubernetes-gitops-delivery": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "platform-environment-promotion": [
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)"
+      ],
+      "ui-design-system": [
+        "idea nueva: skill candidata (no ejecutada; stack sujeto a decisión)",
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "web-mfe-technologies": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-build-feature": [
+        "Composer/PHP detectado"
+      ],
+      "php-laravel-testing": [
+        "testing PHP"
+      ],
+      "php-laravel-contracts": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-persistence": [
+        "metadata declarativa: proyecto/keyword/ecosistema",
+        "DB Laravel"
+      ],
+      "php-laravel-quality": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-queues": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-realtime": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-security": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "php-laravel-technologies": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "adaptive-context-budget": [
@@ -211,16 +252,13 @@
       ],
       "node-nest-security-aws": [
         "metadata declarativa: proyecto/keyword/ecosistema"
-      ],
-      "ui-design-system": [
-        "metadata declarativa: proyecto/keyword/ecosistema"
       ]
     },
     "failures": []
   },
   "fixtureSummary": {
-    "total": 12,
-    "passed": 12,
+    "total": 18,
+    "passed": 18,
     "failed": 0,
     "results": [
       {
@@ -378,6 +416,83 @@
           "Kernel sin soporte BTF/eBPF, webhook de Kyverno inaccesible o falta de demostración de enforcement en runtime"
         ],
         "reason": "Fail-closed por falta de soporte eBPF/BTF en kernel o webhook de Kyverno inaccesible."
+      },
+      {
+        "id": "FX-GTO-CORRECT-01",
+        "skill": "kubernetes-gitops-delivery",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "ArgoCD declarativo con self-heal y prune activados, Sync Waves ordenadas (1-4), Canary Rollout con análisis métrico, y preflight verificado."
+      },
+      {
+        "id": "FX-GTO-INSECURE-01",
+        "skill": "kubernetes-gitops-delivery",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Deriva declarativa o intervención manual detectada en el clúster GitOps",
+          "Sincronización insegura en gitops/applications/payment-app.yaml: selfHeal o prune desactivado; permite derivas no controladas",
+          "Rollout inseguro en gitops/canary/payment-rollout.yaml: Canary sin AnalysisTemplate métrico para validación automatizada",
+          "Salto brusco de tráfico en gitops/canary/payment-rollout.yaml: Canary salta directamente al 100% sin pausas progresivas",
+          "Violación de GitOps en gitops/base/manual-hotfix.sh: parche manual directo con kubectl; Git debe ser la única fuente de verdad"
+        ],
+        "reason": "ArgoCD con selfHeal: false y prune: false ignorando derivas, hotfix manual con kubectl fuera de Git, Rollout sin análisis de métricas."
+      },
+      {
+        "id": "FX-GTO-NOTRUN-01",
+        "skill": "kubernetes-gitops-delivery",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight GitOps o API de ArgoCD inaccesible (status: FAILED)",
+          "Deriva declarativa o intervención manual detectada en el clúster GitOps"
+        ],
+        "reason": "Fail-closed por falta de conectividad al controlador GitOps o clúster destino."
+      },
+      {
+        "id": "FX-PRM-CORRECT-01",
+        "skill": "platform-environment-promotion",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Promoción de artefacto con digest inmutable sha256 idéntico entre staging y producción, aislamiento de bases de datos y evidencia de smoke tests aprobados."
+      },
+      {
+        "id": "FX-PRM-INSECURE-01",
+        "skill": "platform-environment-promotion",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Evidencia de smoke tests en staging o registro inaccesible (status: VERIFIED)",
+          "Recompilación de artefacto entre entornos detectada: los digests de imagen no coinciden",
+          "Tag mutable en producción en environments/production/kustomization.yaml: se detectó newTag mutable en vez de digest inmutable sha256",
+          "Contaminación de entorno en environments/staging/config.yaml: entorno de staging conectando a base de datos de producción",
+          "Secreto en texto plano en environments/staging/config.yaml: credenciales embebidas directamente en el manifiesto"
+        ],
+        "reason": "Uso de tag mutable \"latest\" en producción, recompilación de imagen entre entornos, staging conectado a DB de producción y secreto en texto plano."
+      },
+      {
+        "id": "FX-PRM-NOTRUN-01",
+        "skill": "platform-environment-promotion",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Evidencia de smoke tests en staging o registro inaccesible (status: FAILED)"
+        ],
+        "reason": "Fail-closed por falta de verificación de digest o pruebas de staging."
       }
     ]
   },

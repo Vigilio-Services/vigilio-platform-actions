@@ -5,9 +5,9 @@ owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
 routing_ecosystems: "cross-stack"
-routing_keywords: "environments, promotion, immutability, staging, production, gitops, deployment-gates"
-routing_files: "values.yaml, values-*.yaml, kustomization.yaml, .env.example, Dockerfile"
-routing_capabilities: "platform-engineering, release-governance"
+routing_keywords: "environments, promotion, promocion, inmutabilidad, immutability, staging, produccion, production, artifact-promotion, deployment-gates, environment-promotion"
+routing_files: "values.yaml, values-*.yaml, kustomization.yaml, .env.example, Dockerfile, promotion*.yaml"
+routing_capabilities: "platform-engineering, release-governance, artifact-promotion"
 requires: []
 optional: []
 conflicts: []

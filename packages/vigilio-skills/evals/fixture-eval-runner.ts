@@ -442,7 +442,254 @@ export function evaluateRuntimeSecurityFixture(fixture: FixtureTestCase): Fixtur
   };
 }
 
+export function evaluateGitopsDeliveryFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Dynamic preflight evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/gitops-sync-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push(
+      'Falta archivo obligatorio de evidencia GitOps: reports/gitops-sync-evidence.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        status?: string;
+        argocdApiHealthy?: boolean;
+        targetClusterReachable?: boolean;
+        gitSourceSynced?: boolean;
+        driftDetected?: boolean;
+        manualInterventionDetected?: boolean;
+      };
+      if (
+        parsed.status !== 'VERIFIED' ||
+        !parsed.argocdApiHealthy ||
+        !parsed.targetClusterReachable
+      ) {
+        violations.push(`Preflight GitOps o API de ArgoCD inaccesible (status: ${parsed.status})`);
+      }
+      if (
+        parsed.driftDetected ||
+        parsed.gitSourceSynced === false ||
+        parsed.manualInterventionDetected
+      ) {
+        violations.push('Deriva declarativa o intervención manual detectada en el clúster GitOps');
+      }
+    } catch {
+      violations.push('reports/gitops-sync-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fail-closed por falta de conectividad al controlador GitOps o clúster destino.',
+    };
+  }
+
+  if (violations.length > 0 && fixture.expectedVerdict === 'NOT_RUN') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: true,
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: 'NOT_RUN',
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  // 2. Static Application automated sync check (selfHeal, prune)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*Application/i.test(content)) {
+        if (/selfHeal:\s*false/i.test(content) || /prune:\s*false/i.test(content)) {
+          violations.push(
+            `Sincronización insegura en ${filename}: selfHeal o prune desactivado; permite derivas no controladas`,
+          );
+        }
+      }
+    }
+  }
+
+  // 3. Canary Rollout verification (AnalysisTemplate metric gates)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/kind:\s*Rollout/i.test(content) && /strategy:\s*canary/i.test(content)) {
+        if (!/analysis:/i.test(content) || !/templates:/i.test(content)) {
+          violations.push(
+            `Rollout inseguro en ${filename}: Canary sin AnalysisTemplate métrico para validación automatizada`,
+          );
+        }
+        if (/setWeight:\s*100\b/i.test(content) && !/pause:/i.test(content)) {
+          violations.push(
+            `Salto brusco de tráfico en ${filename}: Canary salta directamente al 100% sin pausas progresivas`,
+          );
+        }
+      }
+    }
+  }
+
+  // 4. Manual hotfix detection (kubectl apply / edit outside Git)
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (
+      /kubectl\s+(?:apply|edit|patch|create|delete)\b/i.test(content) &&
+      !filename.includes('test') &&
+      !filename.includes('preflight')
+    ) {
+      violations.push(
+        `Violación de GitOps en ${filename}: parche manual directo con kubectl; Git debe ser la única fuente de verdad`,
+      );
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
+export function evaluateEnvironmentPromotionFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  // 1. Dynamic promotion evidence check (Fail-closed)
+  const evidenceRaw = fixture.files['reports/promotion-gate-evidence.json'];
+  if (!evidenceRaw) {
+    violations.push(
+      'Falta archivo obligatorio de evidencia de promoción: reports/promotion-gate-evidence.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(evidenceRaw) as {
+        status?: string;
+        stagingSmokeTestsPassed?: boolean;
+        registryDigestVerified?: boolean;
+        rebuiltInTargetEnvironment?: boolean;
+        sourceDigest?: string;
+        targetDigest?: string;
+      };
+      if (
+        parsed.status !== 'VERIFIED' ||
+        !parsed.stagingSmokeTestsPassed ||
+        !parsed.registryDigestVerified
+      ) {
+        violations.push(
+          `Evidencia de smoke tests en staging o registro inaccesible (status: ${parsed.status})`,
+        );
+      }
+      if (
+        parsed.rebuiltInTargetEnvironment ||
+        (parsed.sourceDigest && parsed.targetDigest && parsed.sourceDigest !== parsed.targetDigest)
+      ) {
+        violations.push(
+          'Recompilación de artefacto entre entornos detectada: los digests de imagen no coinciden',
+        );
+      }
+    } catch {
+      violations.push('reports/promotion-gate-evidence.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: 'Fail-closed por falta de verificación de digest o pruebas de staging.',
+    };
+  }
+
+  if (violations.length > 0 && fixture.expectedVerdict === 'NOT_RUN') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: true,
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: 'NOT_RUN',
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  // 2. Mutable tag detection in production manifests
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (
+      filename.includes('production') &&
+      (filename.endsWith('.yaml') || filename.endsWith('.yml'))
+    ) {
+      if (/newTag:\s*(?:latest|staging|dev|main|master)\b/i.test(content)) {
+        violations.push(
+          `Tag mutable en producción en ${filename}: se detectó newTag mutable en vez de digest inmutable sha256`,
+        );
+      }
+    }
+  }
+
+  // 3. Staging database cross-environment contamination
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.includes('staging') && (filename.endsWith('.yaml') || filename.endsWith('.yml'))) {
+      if (/host:\s*(?:prod|production)-/i.test(content)) {
+        violations.push(
+          `Contaminación de entorno en ${filename}: entorno de staging conectando a base de datos de producción`,
+        );
+      }
+    }
+  }
+
+  // 4. Plaintext secrets embedded in configuration
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/password:\s*"[a-zA-Z0-9_-]{8,}"/i.test(content)) {
+        violations.push(
+          `Secreto en texto plano en ${filename}: credenciales embebidas directamente en el manifiesto`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  const passed = actualVerdict === fixture.expectedVerdict;
+
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-environment-promotion') {
+    return evaluateEnvironmentPromotionFixture(fixture);
+  }
+  if (fixture.skill === 'kubernetes-gitops-delivery') {
+    return evaluateGitopsDeliveryFixture(fixture);
+  }
   if (fixture.skill === 'kubernetes-policy-runtime-security') {
     return evaluateRuntimeSecurityFixture(fixture);
   }
