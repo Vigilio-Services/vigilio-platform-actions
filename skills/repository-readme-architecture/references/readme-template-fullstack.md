@@ -41,13 +41,14 @@ La plataforma ofrece una experiencia omnicanal completa:
 
 ## Tech Stack Unificado
 
-| Capa | Tecnologías |
-|------|-------------|
-| **Backend** | NestJS 10, Fastify, PostgreSQL, Prisma, Redis, RabbitMQ |
-| **Frontend** | React 18, Vite, Tailwind CSS, TanStack Query, Zustand |
-| **Contratos** | Zod schemas exportados vía `packages/contracts` |
-| **Infraestructura Local** | Docker Compose, PostgreSQL 16, Redis 7, RabbitMQ 3 |
+| Capa | Tecnologías (versiones fijadas en manifiestos y lockfile) |
+|------|----------------------------------------------------------|
+| **Backend** | NestJS (Fastify), PostgreSQL, Drizzle/Prisma, Redis, RabbitMQ |
+| **Frontend** | React, Vite, Tailwind CSS, TanStack Query, Zustand |
+| **Contratos** | Zod schemas exportados vía `packages/contracts` (Tree-Shaking) |
+| **Infraestructura Local** | Docker Compose (imágenes fijadas en `docker-compose.yml`) |
 | **Tooling** | pnpm workspaces, Biome, Vitest, Playwright |
+| **Fuente de Versiones** | [vigilio-docs/technology/versions.md](../.vigilio-docs/technology/versions.md) |
 
 ---
 

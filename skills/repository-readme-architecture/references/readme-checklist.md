@@ -33,6 +33,11 @@ Esta guía condensa los errores más comunes de desarrolladores y agentes de IA 
 - **Error**: Modificar APIs sin versionar ni documentar breaking changes.
 - **Solución Senior**: Enlazar el archivo `CHANGELOG.md` y documentar la política de versionado (SemVer `MAJOR.MINOR.PATCH`).
 
+### 7. Hardcodear Versiones de Runtime en el README
+- **Error**: Colocar `Node.js 20+` o `pnpm 9+` en el texto del README mientras `package.json` o la plataforma exigen `Node 24` y `pnpm 11+`.
+- **Riesgo**: Desfase de documentación (drift), desarrolladores instalando runtimes incompatibles y fallas en CI.
+- **Solución Senior**: No duplicar números estáticos. Referenciar `package.json#engines`, `package.json#packageManager`, `docker-compose.yml` y la fuente canónica central `technology/versions.md`.
+
 ---
 
 ## Developer Checklist Pre-Merge / Pre-Release
@@ -40,7 +45,7 @@ Esta guía condensa los errores más comunes de desarrolladores y agentes de IA 
 Antes de dar por completado un README o aprobar un PR, verifica:
 
 - [ ] **Onboarding < 10 min**: ¿Un dev en una máquina limpia puede levantar el entorno siguiendo solo el README?
-- [ ] **Prerrequisitos Clave**: ¿Se especifican las versiones mínimas de Node, pnpm, Docker, etc.?
+- [ ] **Cero Versiones Hardcodeadas**: ¿Los prerrequisitos referencian `package.json` (`engines`, `packageManager`), `docker-compose.yml` y `technology/versions.md` en vez de números fijos desfasados?
 - [ ] **Cero Secretos**: ¿Todos los strings de conexión y tokens son valores dummy seguros?
 - [ ] **.env.example Alineado**: ¿Todas las variables de la tabla del README existen en `.env.example`?
 - [ ] **Comandos Probados**: ¿Todos los comandos (`pnpm install`, `pnpm test`, `pnpm build`) funcionan tal cual están escritos?

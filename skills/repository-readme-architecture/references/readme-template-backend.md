@@ -41,12 +41,13 @@ Esta plantilla está optimizada para servicios backend robustos. Adapta las secc
 
 ## Tech Stack
 
-- **Runtime & Lenguaje**: Node.js 20 LTS / TypeScript 5.x
-- **Framework**: NestJS 10.x (Fastify adapter)
-- **Validación**: Zod / class-validator
-- **Base de Datos**: PostgreSQL 16 con Prisma / TypeORM
+- **Runtime & Lenguaje**: Node.js (fijado en `package.json#engines`) / TypeScript
+- **Framework**: NestJS (Fastify adapter)
+- **Validación**: Zod
+- **Base de Datos & Caché**: PostgreSQL con Drizzle/Prisma; Redis/Valkey (versiones en `docker-compose.yml`)
 - **Mensajería**: RabbitMQ / Redis Streams
 - **Testing**: Vitest / Supertest
+- **Línea Canónica de Plataforma**: Verificada en [vigilio-docs/technology/versions.md](../.vigilio-docs/technology/versions.md)
 
 ---
 
@@ -105,8 +106,9 @@ src/
 ## Quick Start (<10 min)
 
 ### Prerrequisitos
-- Node.js 20+ y pnpm 9+
-- Docker y Docker Compose
+- **Node.js**: Definido en `package.json` (`"engines"`) o `.nvmrc` / `.node-version`.
+- **Package Manager**: pnpm (definido en `package.json` (`"packageManager"`)).
+- **Docker y Docker Compose**: Para infraestructura local contenerizada (servicios fijados en `docker-compose.yml`).
 
 ### 1. Clonar el repositorio
 ```bash

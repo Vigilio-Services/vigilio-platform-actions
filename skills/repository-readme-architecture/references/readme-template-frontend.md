@@ -40,13 +40,14 @@ Esta plantilla está optimizada para aplicaciones y Micro Frontends (MFE). Adapt
 
 ## Tech Stack
 
-- **Framework**: React 18 / Vite 5
-- **Lenguaje**: TypeScript 5.x estricto
-- **Estilos**: Tailwind CSS / CSS Modules
-- **State Management**: TanStack Query (React Query) + Zustand
+- **Framework**: React / Vite (fijados en `package.json` y `pnpm-lock.yaml`)
+- **Lenguaje**: TypeScript estricto
+- **Estilos**: Tailwind CSS
+- **State Management**: TanStack Query + Zustand / Signals
 - **Formularios & Validación**: React Hook Form + Zod
 - **Mocking**: Mock Service Worker (MSW)
 - **Testing**: Vitest + React Testing Library + Playwright
+- **Línea Canónica de Plataforma**: Verificada en [vigilio-docs/technology/versions.md](../.vigilio-docs/technology/versions.md)
 
 ---
 
@@ -98,7 +99,8 @@ src/
 ## Quick Start (<5 min)
 
 ### Prerrequisitos
-- Node.js 20+ y pnpm 9+
+- **Node.js**: Definido en `package.json` (`"engines"`) o `.nvmrc` / `.node-version`.
+- **Package Manager**: pnpm (definido en `package.json` (`"packageManager"`)).
 
 ### 1. Clonar e instalar
 ```bash
