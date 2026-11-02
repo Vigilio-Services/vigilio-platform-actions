@@ -27,6 +27,8 @@ pnpm --filter @vigilio-services/prompt-builder build
 node packages/prompt-builder/dist/cli.js --help
 ```
 
+For complete end-to-end guidance on generating Senior-level project documentation compatible with Prompt Builder and Vigilio Skills, see [docs/senior-docs-factory.md](docs/senior-docs-factory.md).
+
 ## Start a project from an idea or migration inventory
 
 Prompt Builder keeps product discovery separate from implementation. `init-project` creates the
