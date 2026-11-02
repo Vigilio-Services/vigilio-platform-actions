@@ -1,5 +1,13 @@
 # @vigilio-services/vigilio-skills
 
+## 0.8.2
+
+### Patch Changes
+
+- Calibrate Zod 4 native syntax (`z.uuid()`, `z.email()`) across platform skills (`grill-me`, `improve-codebase-architecture`).
+- Synchronize canonical documentation bundle (532 docs) with latest November 2026 stable baselines (Node 24.22.2 LTS, Laravel 13.39.0, Spatie Laravel Data 4.23.1, Biome 2.6.3, Playwright 1.64.1, BullMQ v6).
+- Enforce single source of truth (SSOT) versions pointing to `technology/versions.md`.
+
 ## 0.8.1
 
 ### Patch Changes
