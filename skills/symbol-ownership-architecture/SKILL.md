@@ -26,19 +26,34 @@ supersedes: []
 
 ## Regla de decisión
 
-**NO crear carpetas por reflejo**: `const/`, `types/`, `libs/`, `interfaces/`, `shared/` son opcionales. Colocar símbolos según propietario, cohesión, reuso real y dependencia; constantes locales permanecen en función si no expresan política compartida. `config/` para parámetros de runtime, `contracts/ports/` para fronteras, `lib/` para utilidades puras propietarias, `shared/` para uso transversal confirmado.
+**Constantes de Negocio vs Variables Locales**:
+- **OBLIGATORIO extraer a `constants/*.constants.ts` (o `config/`)**: Magic numbers, límites operativos, TTLs, regexes, políticas de retry y códigos de error del módulo. Jamás mantener constantes de negocio hardcodeadas dentro de los servicios.
+- **Variables locales en función**: Variables temporales (`const total = a + b`, `const item = await ...`) permanecen dentro del scope de su método. NO crear carpetas por reflejo para variables locales efímeras.
+- **NO crear carpetas vacías por reflejo**: `libs/`, `interfaces/`, `shared/` solo se crean cuando existe un segundo consumidor real o un boundary arquitectónico confirmado.
+
+**Contratos vs Interfaces según Stack Backend**:
+- **Backend TS + NestJS + Zod**: El backend es el Single Source of Truth (`src/**/presentation/http/dto/`, `domain/schemas/`). Se compila el paquete `packages/contracts` (o `@vigilioyonatan/*-contracts`) y el frontend/cliente lo consume directamente reutilizando DTOs y schemas.
+- **Backend NO TS / NO Nest (Laravel, Python, Go, API externa 3rd party)**: No aplica generar contratos desde NestJS. El frontend/consumer declara legítimamente sus propias `interfaces/`, `types/` y DTOs locales (o generados vía OpenAPI/Swagger) sin crear un paquete de contratos fantasma.
 
 ## Procedimiento
 
 1. Inspeccionar archivos reales e imports afectados; distinguir código nuevo de API publicada.
 2. Clasificar cada símbolo `LOCAL | FEATURE_POLICY | FEATURE_CONTRACT | CROSS_FEATURE | PUBLIC_API | SECRET_RUNTIME`.
-3. Solo extraer símbolos que lo justifican; no romper DI, circularidad, seguridad, tests ni rutas del framework.
-4. Buscar consumidores (import graph + búsquedas) y preservar nombres externos; migrar exports cuando sea necesario.
-5. Probar unitarios, integración y contratos del stack; REVIEW read-only; reportar resultados.
+3. Extraer constantes de módulo a `{feature}/constants/{feature}.constants.ts` y parámetros de runtime a `config/`.
+4. En contratos: si el backend es NestJS/TS, reutilizar DTOs/schemas compilados en `packages/contracts`; si el backend no es TS/Nest, definir `interfaces/` y `types/` locales en el consumidor.
+5. Solo extraer shared/libs cuando existe segundo consumidor verificado; no romper DI, circularidad, seguridad ni tests.
+6. Probar unitarios, integración y contratos del stack; REVIEW read-only; reportar resultados.
 
 ## Correcto / Incorrecto
 
-✅ `auth/config/password-hashing.config.ts` para política Argon2 compartida; `auth/application/ports` para puerto, servicio enfocado. ✅ `const session = ...` local en AuthService. ✅ `MovementConfig` Godot en Resource feature reutilizada.
+✅ `orders/constants/orders.constants.ts` (`MAX_ORDER_ITEMS = 50`, `ORDER_TIMEOUT_MS = 5000`) importado en `OrdersService`.
+✅ Backend NestJS: DTOs en `src/orders/presentation/http/dto/` exportados y consumidos por frontend vía `packages/contracts`.
+✅ Frontend con backend Laravel/Python: `interfaces/order.interface.ts` y `types/order-status.type.ts` definidos localmente en el frontend.
+✅ `const total = items.reduce(...)` como variable local dentro de un método de `OrdersService`.
 
-❌ mover cada `const` local a `const/`; declarar interfaces de Auth en el service; crear `shared/` sin segundo consumidor; mover parámetros secretos a Git; `pub` Rust global sin necesidad; autoload Godot para cada constante; hacer mass rename sin tests.
+❌ Hardcodear `if (items.length > 50)` o `await sleep(5000)` dentro de `OrdersService` sin extraer constante.
+❌ Mover variables locales temporales (`const result = ...`) a una carpeta `const/`.
+❌ En Backend NestJS: duplicar manualmente interfaces y tipos en el frontend en vez de reutilizar el paquete de contracts.
+❌ En Backend Laravel/Python: inventar un paquete `packages/contracts` de NestJS que no existe.
+❌ Crear `shared/` o `libs/` sin un segundo módulo consumidor real.
 

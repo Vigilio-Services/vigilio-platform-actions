@@ -10,6 +10,7 @@ profiles:
       - review-code-change
       - vigilio-architecture-guide
       - symbol-ownership-architecture
+      - repository-readme-architecture
       - precision-skill-reading
       - adaptive-context-budget
 
