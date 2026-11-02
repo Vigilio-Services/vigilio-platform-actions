@@ -52,14 +52,17 @@ Esta plantilla está optimizada para aplicaciones y Micro Frontends (MFE). Adapt
 
 ## Consumo de Contratos
 
-### Escenario A: Backend es TypeScript + NestJS
-Este frontend **NO inventa interfaces ni DTOs duplicados**. Consume directamente el paquete de contratos compilado por el backend:
+### Escenario A: Backend es TypeScript + NestJS (con Tree-Shaking)
+Este frontend **NO inventa interfaces ni DTOs duplicados**. Consume directamente el subpath exportado por el microservicio backend:
 
 ```typescript
-// ✅ Correcto: importar contratos canónicos
-import type { CreateOrderDto, OrderResponseDto } from '@empresa/orders-contracts';
-import { createOrderSchema } from '@empresa/orders-contracts';
+// ✅ Correcto: importar contratos canónicos con Tree-Shaking granular
+import type { CreateOrderDto, OrderResponseDto } from '@empresa/orders-contracts/ecommerce-bus-impl';
+import { createOrderSchema } from '@empresa/orders-contracts/ecommerce-bus-impl';
 ```
+
+> **Optimización de Recursos (Tree-Shaking)**:
+> Al importar desde el subpath específico del servicio (`/ecommerce-bus-impl`), el bundler (Vite / Rollup) aplica tree-shaking agresivo, eliminando cualquier esquema no consumido de otros microservicios (facturación, catálogo, autenticación). Esto reduce el tamaño del bundle a menos de 150KB y optimiza el consumo de memoria y CPU del navegador cliente.
 
 ### Escenario B: Backend NO es NestJS / TS (ej. Laravel, Python o 3rd-party)
 Si el backend no provee un paquete de contratos TypeScript:

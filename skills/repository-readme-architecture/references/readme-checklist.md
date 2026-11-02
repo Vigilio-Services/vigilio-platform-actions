@@ -45,4 +45,5 @@ Antes de dar por completado un README o aprobar un PR, verifica:
 - [ ] **.env.example Alineado**: ¿Todas las variables de la tabla del README existen en `.env.example`?
 - [ ] **Comandos Probados**: ¿Todos los comandos (`pnpm install`, `pnpm test`, `pnpm build`) funcionan tal cual están escritos?
 - [ ] **Ownership Claro**: ¿Se explica la regla de constantes de negocio (`constants/`) y el origen de los contratos?
+- [ ] **Contratos y Tree-Shaking**: ¿Si el backend es TS/Nest, se documenta la importación por subpaths con tree-shaking para no inflar el bundle del frontend?
 - [ ] **Troubleshooting Incluido**: ¿Se documentan los 2 o 3 errores más comunes que ocurren al iniciar?

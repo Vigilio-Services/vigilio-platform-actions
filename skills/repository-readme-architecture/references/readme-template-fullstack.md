@@ -74,28 +74,31 @@ La plataforma ofrece una experiencia omnicanal completa:
 
 ---
 
-## Flujo Canónico de Contratos
+## Flujo Canónico de Contratos (con Tree-Shaking)
 
 ```
-┌─────────────────────────┐
-│ apps/bus-impl (NestJS)   │
-│ src/**/dto/*.dto.ts     │
-└────────────┬────────────┘
-             │
-             │ pnpm contracts:generate
-             ▼
-┌─────────────────────────┐
-│ packages/contracts       │
-│ Artefacto TypeScript    │
-└────────────┬────────────┘
-             │
-             │ workspace:*
-             ▼
-┌─────────────────────────┐
-│ apps/web-mfe (React)    │
-│ Importa DTOs sin duplicar│
-└─────────────────────────┘
+┌─────────────────────────────────┐
+│ apps/bus-impl (NestJS Backend)   │
+│ src/**/dto/*.dto.ts             │
+└────────────────┬────────────────┘
+                 │
+                 │ pnpm contracts:generate
+                 ▼
+┌─────────────────────────────────┐
+│ packages/contracts               │
+│ exports: ./ecommerce-bus-impl   │
+│ sideEffects: false (Tree-Shake)  │
+└────────────────┬────────────────┘
+                 │
+                 │ import from '@empresa/contracts/ecommerce-bus-impl'
+                 ▼
+┌─────────────────────────────────┐
+│ apps/web-mfe (React Frontend)   │
+│ Empaqueta solo schemas usados   │
+└─────────────────────────────────┘
 ```
+
+> **Tree-Shaking y Ahorro de Recursos**: Al exponer subpaths por microservicio con `"sideEffects": false`, el frontend solo compila los schemas que efectivamente invoca, evitando sobrecargar al cliente con cientos de DTOs del backend.
 
 > **Nota Senior Mode**: Si el backend fuera reemplazado por un stack no TypeScript (ej. Laravel o Go), `packages/contracts` se retira y `apps/web-mfe` declara sus propios types/interfaces o consume la especificación OpenAPI generada.
 

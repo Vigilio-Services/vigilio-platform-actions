@@ -1,5 +1,13 @@
 # @vigilio-services/vigilio-skills
 
+## 0.8.1
+
+### Patch Changes
+
+- Add `repository-readme-architecture` skill with production-grade templates for backend (`bus-impl`), frontend (`web-mfe`), fullstack monorepos, and developer checklists.
+- Clarify symbol ownership rules in `symbol-ownership-architecture`: mandate extraction of business rules and domain constants to `constants/*.constants.ts` while keeping local function variables in scope.
+- Clarify contract generation: backend TS/NestJS compiles and exports `packages/contracts` with subpath exports (e.g. `@empresa/orders-contracts/ecommerce-bus-impl`) and `"sideEffects": false` for tree-shaking; non-TS/NestJS backends (Laravel, Python, Go) consume local interfaces and types without generating fake contract packages.
+
 ## 0.8.0
 
 ### Minor Changes

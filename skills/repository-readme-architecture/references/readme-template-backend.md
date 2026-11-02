@@ -153,13 +153,13 @@ Servicio activo en `http://localhost:3000`. Swagger disponible en `http://localh
 
 ## Contratos y API
 
-### Si el Backend es NestJS (Single Source of Truth)
+### Si el Backend es NestJS (Single Source of Truth con Tree-Shaking)
 Este servicio es dueño de los contratos canónicos. Para compilar y publicar el paquete consumido por frontend:
 ```bash
 pnpm contracts:generate
 pnpm contracts:build
 ```
-Genera `packages/contracts` listo para ser importado por `apps/web-mfe` o `apps/mobile-mfe`.
+Genera `packages/contracts` listo para ser importado por `apps/web-mfe` o `apps/mobile-mfe` mediante subpaths específicos por servicio (ej. `@empresa/orders-contracts/ecommerce-bus-impl`). El paquete declara `"sideEffects": false` para garantizar **Tree-Shaking total**, evitando que el frontend cargue esquemas de otros servicios no utilizados.
 
 ### Si el Backend NO es NestJS (ej. Laravel o Python)
 Si este repositorio es un consumidor de un backend externo o no-TS:

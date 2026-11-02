@@ -32,7 +32,7 @@ supersedes: []
 - **NO crear carpetas vacías por reflejo**: `libs/`, `interfaces/`, `shared/` solo se crean cuando existe un segundo consumidor real o un boundary arquitectónico confirmado.
 
 **Contratos vs Interfaces según Stack Backend**:
-- **Backend TS + NestJS + Zod**: El backend es el Single Source of Truth (`src/**/presentation/http/dto/`, `domain/schemas/`). Se compila el paquete `packages/contracts` (o `@vigilioyonatan/*-contracts`) y el frontend/cliente lo consume directamente reutilizando DTOs y schemas.
+- **Backend TS + NestJS + Zod**: El backend es el Single Source of Truth (`src/**/presentation/http/dto/`, `domain/schemas/`). Se compila el paquete `packages/contracts` con subpaths por bounded context (ej. `@empresa/orders-contracts/ecommerce-bus-impl`) y `"sideEffects": false` para garantizar **Tree-Shaking**. El frontend consume exclusivamente los DTOs y schemas que usa, optimizando el consumo de bundle y recursos en el navegador.
 - **Backend NO TS / NO Nest (Laravel, Python, Go, API externa 3rd party)**: No aplica generar contratos desde NestJS. El frontend/consumer declara legítimamente sus propias `interfaces/`, `types/` y DTOs locales (o generados vía OpenAPI/Swagger) sin crear un paquete de contratos fantasma.
 
 ## Procedimiento
