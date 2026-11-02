@@ -1,5 +1,13 @@
 # @vigilio-services/vigilio-skills
 
+## 0.8.3
+
+### Patch Changes
+
+- Add `platform-compose-vps-delivery` skill and `platform-compose-vps` / `node-nest-compose` profiles for Tier 1 Cloud-Neutral VPS projects (1–3 VPS with hardened Rootless Podman/Docker Compose, Caddy TLS, product-agnostic Ansible `platform-ops`, and `pgBackRest` PITR without Kubernetes overhead).
+- Enrich all 17 platform skills, `vigilio-architecture-guide`, `symbol-ownership-architecture`, and `repository-readme-architecture` with Senior Mode guardrails (`Qué Hacer / Qué NO Hacer`), FinOps (`Infracost`, `OpenCost`, ARM64/Graviton, Spot on idempotent workers), DevSecOps (`pnpm` `packages: []`, `Containerfile.runtime`, Kyverno CEL `ValidatingPolicy`/`ImageValidatingPolicy`, Gateway API, Tetragon), and strict prohibition of global `contracts/` or `packages/contracts/` directories.
+- Bundle the updated `vigilio-docs` 3-tier reference topologies snapshot and extend `PlatformContext` schema/types plus routing and synthetic fixture evaluation suites (`100%` exact-match routing, `51` fixtures).
+
 ## 0.8.2
 
 ### Patch Changes

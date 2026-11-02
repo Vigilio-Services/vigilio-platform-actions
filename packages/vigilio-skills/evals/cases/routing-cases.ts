@@ -2261,6 +2261,44 @@ export const trainingRoutingCases: readonly RoutingTestCase[] = [
       mustNotSelect: ['platform-local-production-lab'],
     },
   },
+  // ------------------------------------------------------------
+  // DOMINIO 17: CLOUD-NEUTRAL COMPOSE VPS DELIVERY (TIER 1)
+  // ------------------------------------------------------------
+  {
+    id: 'VPS-TRAIN-POS-01',
+    domain: 'compose-vps',
+    description:
+      'Despliegue Cloud-Neutral en VPS con Podman Compose rootless, Caddyfile TLS y backups pgBackRest',
+    task: 'Configurar despliegue compose-vps con rootless-podman, Caddyfile TLS automático y backups pgbackrest sin Kubernetes',
+    files: ['compose/compose.yaml', 'caddy/Caddyfile'],
+    expected: {
+      mustSelect: ['platform-compose-vps-delivery'],
+      mustNotSelect: ['kubernetes-gitops-delivery', 'onprem-kubernetes-foundation'],
+    },
+  },
+  {
+    id: 'VPS-TRAIN-POS-02',
+    domain: 'compose-vps',
+    description:
+      'Endurecimiento de host VPS con roles Ansible agnósticos en platform-ops y Containerfile.runtime',
+    task: 'Endurecer servidor VPS mediante roles Ansible de platform-ops para podman-compose y Containerfile.runtime sin tokens',
+    files: ['Containerfile.runtime', 'compose/compose.yaml'],
+    expected: {
+      mustSelect: ['platform-compose-vps-delivery'],
+      mustNotSelect: ['aws-platform-foundation', 'terraform-iac-delivery'],
+    },
+  },
+  {
+    id: 'VPS-TRAIN-NEG-01',
+    domain: 'compose-vps',
+    description: 'Despliegue GitOps en Kubernetes con ArgoCD no debe activar entrega Compose VPS',
+    task: 'Configurar sincronización GitOps con ArgoCD ApplicationSet y Rollouts Canary en clúster Kubernetes',
+    files: ['gitops/applicationset.yaml', 'gitops/rollout.yaml'],
+    expected: {
+      mustSelect: ['kubernetes-gitops-delivery'],
+      mustNotSelect: ['platform-compose-vps-delivery'],
+    },
+  },
 ];
 
 export const holdoutRoutingCases: readonly RoutingTestCase[] = [
@@ -2900,6 +2938,34 @@ export const holdoutRoutingCases: readonly RoutingTestCase[] = [
     expected: {
       mustSelect: ['platform-finops'],
       mustNotSelect: ['platform-local-production-lab'],
+    },
+  },
+  {
+    id: 'VPS-HOLD-POS-01',
+    domain: 'compose-vps',
+    description:
+      'Arquitectura Nivel 1 cloud-neutral-vps con Caddy y Podman Compose endurecido para proyecto mediano',
+    task: 'Implementar vps-delivery sobre cloud-neutral-vps usando un único compose.yaml endurecido con Caddy y pgbackrest',
+    files: ['compose.yaml', 'Caddyfile'],
+    expected: {
+      mustSelect: ['platform-compose-vps-delivery'],
+      mustNotSelect: ['kubernetes-gitops-delivery', 'aws-platform-foundation'],
+    },
+  },
+  {
+    id: 'VPS-HOLD-NEG-01',
+    domain: 'compose-vps',
+    description: 'Esquema Zod 4 en módulo de dominio NestJS no debe activar entrega Compose VPS',
+    task: 'Definir schema Zod 4 de facturación dentro del módulo propietario en NestJS',
+    files: ['src/modules/billing/domain/schemas/invoice.schema.ts', 'package.json'],
+    fileContents: {
+      'package.json': JSON.stringify({
+        dependencies: { '@nestjs/core': '11.0.0', zod: '4.3.6' },
+      }),
+    },
+    expected: {
+      mustSelect: ['node-nest-build-feature'],
+      mustNotSelect: ['platform-compose-vps-delivery'],
     },
   },
   ...adversarialRoutingCases,

@@ -5,6 +5,7 @@
 | Necesidad | Fuente |
 |---|---|
 | Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
+| Taxonomía de las 3 arquitecturas | [arquitecturas de referencia](../../.vigilio-docs/platform/architecture/reference-topologies.md) |
 | Contrato canónico | [vigilio-docs/prod-local-lab](../../.vigilio-docs/platform/labs/production-local-simulation.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 

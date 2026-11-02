@@ -31,29 +31,28 @@ supersedes: []
 - **Variables locales en función**: Variables temporales (`const total = a + b`, `const item = await ...`) permanecen dentro del scope de su método. NO crear carpetas por reflejo para variables locales efímeras.
 - **NO crear carpetas vacías por reflejo**: `libs/`, `interfaces/`, `shared/` solo se crean cuando existe un segundo consumidor real o un boundary arquitectónico confirmado.
 
-**Contratos vs Interfaces según Stack Backend**:
-- **Backend TS + NestJS + Zod**: El backend es el Single Source of Truth (`src/**/presentation/http/dto/`, `domain/schemas/`). Se compila el paquete `packages/contracts` con subpaths por bounded context (ej. `@empresa/orders-contracts/ecommerce-bus-impl`) y `"sideEffects": false` para garantizar **Tree-Shaking**. El frontend consume exclusivamente los DTOs y schemas que usa, optimizando el consumo de bundle y recursos en el navegador.
-- **Backend NO TS / NO Nest (Laravel, Python, Go, API externa 3rd party)**: No aplica generar contratos desde NestJS. El frontend/consumer declara legítimamente sus propias `interfaces/`, `types/` y DTOs locales (o generados vía OpenAPI/Swagger) sin crear un paquete de contratos fantasma.
+**Ownership de Schemas y Contratos HTTP (Cero carpeta `contracts/` global)**:
+- **Backend TS + NestJS + Zod 4**: Cada módulo de negocio es dueño exclusivo de sus schemas (`src/modules/<modulo>/domain/schemas/*.schema.ts`) y DTOs HTTP (`src/modules/<modulo>/presentation/http/dto/*.dto.ts`). **Prohibido crear carpetas `contracts/` o `packages/contracts/` globales**: la interoperabilidad con frontend u otros servicios se valida mediante `openapi diff` automatizado en CI y generación tipada desde el artefacto OpenAPI publicado (o subpaths directos del módulo propietario cuando conviven en el mismo repo).
+- **Backend NO TS / NO Nest (Laravel, Python, Go, API externa 3rd party)**: El frontend/consumer declara sus propias `interfaces/`, `types/` y DTOs locales por feature o los genera desde el artefacto OpenAPI/Scalar sin crear carpetas `contracts/` fantasma.
 
 ## Procedimiento
 
 1. Inspeccionar archivos reales e imports afectados; distinguir código nuevo de API publicada.
 2. Clasificar cada símbolo `LOCAL | FEATURE_POLICY | FEATURE_CONTRACT | CROSS_FEATURE | PUBLIC_API | SECRET_RUNTIME`.
 3. Extraer constantes de módulo a `{feature}/constants/{feature}.constants.ts` y parámetros de runtime a `config/`.
-4. En contratos: si el backend es NestJS/TS, reutilizar DTOs/schemas compilados en `packages/contracts`; si el backend no es TS/Nest, definir `interfaces/` y `types/` locales en el consumidor.
+4. En schemas y contratos HTTP: mantenerlos dentro del módulo propietario (`domain/schemas/`, `presentation/http/dto/`) sin carpetas `contracts/` ni `packages/contracts/`, verificando compatibilidad con `openapi diff`.
 5. Solo extraer shared/libs cuando existe segundo consumidor verificado; no romper DI, circularidad, seguridad ni tests.
 6. Probar unitarios, integración y contratos del stack; REVIEW read-only; reportar resultados.
 
 ## Correcto / Incorrecto
 
 ✅ `orders/constants/orders.constants.ts` (`MAX_ORDER_ITEMS = 50`, `ORDER_TIMEOUT_MS = 5000`) importado en `OrdersService`.
-✅ Backend NestJS: DTOs en `src/orders/presentation/http/dto/` exportados y consumidos por frontend vía `packages/contracts`.
-✅ Frontend con backend Laravel/Python: `interfaces/order.interface.ts` y `types/order-status.type.ts` definidos localmente en el frontend.
+✅ Backend NestJS: schemas Zod 4 en `src/modules/orders/domain/schemas/` y DTOs en `src/modules/orders/presentation/http/dto/`, verificados con `openapi diff` en CI sin carpeta `contracts/`.
+✅ Frontend con backend externo o separado: `features/orders/types/order.types.ts` o tipos generados desde el artefacto OpenAPI verificado.
 ✅ `const total = items.reduce(...)` como variable local dentro de un método de `OrdersService`.
 
 ❌ Hardcodear `if (items.length > 50)` o `await sleep(5000)` dentro de `OrdersService` sin extraer constante.
 ❌ Mover variables locales temporales (`const result = ...`) a una carpeta `const/`.
-❌ En Backend NestJS: duplicar manualmente interfaces y tipos en el frontend en vez de reutilizar el paquete de contracts.
-❌ En Backend Laravel/Python: inventar un paquete `packages/contracts` de NestJS que no existe.
+❌ Crear carpetas globales `contracts/` o `packages/contracts/` manuales que acoplen despliegues o dupliquen los schemas de los módulos propietarios.
 ❌ Crear `shared/` o `libs/` sin un segundo módulo consumidor real.
 

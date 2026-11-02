@@ -63,6 +63,14 @@ profiles:
       - platform-observability-sre
       - node-nest-testing
 
+  node-nest-compose:
+    description: "Backend NestJS desplegado sobre 1-3 VPS con Docker/Podman Compose endurecido sin Kubernetes"
+    lifecycle: experimental
+    extends:
+      - node-nest
+    skills:
+      - platform-compose-vps-delivery
+
   node-nest-eks:
     description: "Backend NestJS desplegado sobre Kubernetes EKS"
     lifecycle: stable
@@ -403,4 +411,17 @@ profiles:
       - platform-local-production-lab
       - platform-data-reliability
       - kubernetes-policy-runtime-security
+
+  platform-compose-vps:
+    description: "Plataforma Cloud-Neutral de producción en 1-3 VPS con Docker/Podman Compose, Caddy, Ansible, PITR y FinOps"
+    lifecycle: experimental
+    extends:
+      - platform-core
+    skills:
+      - platform-compose-vps-delivery
+      - software-supply-chain-security
+      - platform-observability-sre
+      - platform-data-reliability
+      - platform-finops
+      - platform-local-production-lab
 

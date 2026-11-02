@@ -153,22 +153,19 @@ Servicio activo en `http://localhost:3000`. Swagger disponible en `http://localh
 
 ---
 
-## Contratos y API
+## Contratos HTTP y OpenAPI (Sin Carpeta `contracts/` Global)
 
-### Si el Backend es NestJS (Single Source of Truth con Tree-Shaking)
-Este servicio es dueño de los contratos canónicos. Para compilar y publicar el paquete consumido por frontend:
+Cada módulo de negocio es dueño exclusivo de sus schemas Zod 4 (`src/modules/<modulo>/domain/schemas/*.schema.ts`) y DTOs HTTP (`src/modules/<modulo>/presentation/http/dto/*.dto.ts`). No se crean carpetas `contracts/` ni `packages/contracts/` globales.
+
+Para exportar y verificar compatibilidad de la especificación OpenAPI en local y CI:
 ```bash
-pnpm contracts:generate
-pnpm contracts:build
+pnpm openapi:export
+pnpm openapi:diff
 ```
-Genera `packages/contracts` listo para ser importado por `apps/web-mfe` o `apps/mobile-mfe` mediante subpaths específicos por servicio (ej. `@empresa/orders-contracts/ecommerce-bus-impl`). El paquete declara `"sideEffects": false` para garantizar **Tree-Shaking total**, evitando que el frontend cargue esquemas de otros servicios no utilizados.
 
-### Si el Backend NO es NestJS (ej. Laravel o Python)
-Si este repositorio es un consumidor de un backend externo o no-TS:
-- No inventar `packages/contracts`.
-- Declarar DTOs e interfaces locales en `src/interfaces/` o generar tipos desde el archivo OpenAPI:
+Los consumidores externos o frontends en repositorios separados generan sus tipos desde el artefacto OpenAPI versionado o definen sus interfaces de borde en `src/features/<feature>/types/`:
 ```bash
-pnpm openapi:generate
+pnpm openapi:codegen
 ```
 
 ---

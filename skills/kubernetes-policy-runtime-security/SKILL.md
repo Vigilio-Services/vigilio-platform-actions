@@ -1,6 +1,6 @@
 ---
 name: kubernetes-policy-runtime-security
-description: Aplica monitorización e intercepción en tiempo de ejecución a nivel de kernel con Cilium Tetragon eBPF y Kyverno bajo el modelo Observe -> Audit -> Enforce con break-glass auditado con TTL.
+description: Aplica seguridad de red, admisión y kernel en Kubernetes: Cilium eBPF con WireGuard, Gateway API, políticas Kyverno 1.19+ CEL estables (ValidatingPolicy e ImageValidatingPolicy en Audit+Deny) y Tetragon eBPF Observe -> Audit -> Enforce con break-glass TTL.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -16,7 +16,7 @@ supersedes: []
 
 <skill-content>
 
-# Seguridad En Runtime Con eBPF Y Tetragon
+# Seguridad En Admisión, Red Y Runtime Con Kyverno CEL, Cilium Y Tetragon eBPF
 
 ## Lectura obligatoria de referencias
 
@@ -28,22 +28,16 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Verifica compatibilidad de kernel (BTF habilitado, Linux >= 5.10), Cilium, Tetragon y hooks de syscall (`execve`, `execveat`, `sys_enter`).
-2. Despliega sensor eBPF de Tetragon en modo Observe (registro pasivo de telemetría y medición del baseline de falsos positivos).
-3. Avanza a modo Audit: genera alertas de seguridad en SIEM/OTel sin interrupción de procesos, refinando excepciones para health checks, sidecars y operadores.
-4. Tras verificar tasa de falsos positivos cero (`falsePositiveRate: 0.0`), activa modo Enforce progresivo (`Sigkill`) acotado por namespace y workload mediante `TracingPolicy`.
-5. Implementa políticas de red Cilium (`CiliumNetworkPolicy`) con modelo default-deny y egress explícito limitado por FQDN y puertos indispensables.
-6. Define un protocolo de Break-Glass de emergencia auditado: ticket formal, propietario, motivo, TTL improrrogable (<= 120 min) y revocación/restauración automática.
-7. Aplica políticas de admisión Kyverno con `failurePolicy: Fail` en producción para rechazar pods privilegiados (`privileged: true`, `CAP_SYS_ADMIN`).
+1. **Compatibilidad de Kernel y CNI Cilium eBPF:** Verifica kernel Linux `>= 5.10` con BTF habilitado; despliega Cilium reemplazando `kube-proxy`, activa cifrado transparente **WireGuard** entre nodos, usa **Gateway API** en lugar del retirado `ingress-nginx` comunitario y aplica `CiliumNetworkPolicy` default-deny con egress explícito por FQDN/puerto.
+2. **Admisión Fail-Closed con Kyverno CEL (`1.19+`):** Escribe políticas sobre los CRDs CEL estables **`ValidatingPolicy` e `ImageValidatingPolicy`** (`validationActions: [Audit, Deny]`, `failurePolicy: Fail`) junto con Pod Security Admission `restricted`, exigiendo digest inmutable, firma Cosign OIDC, SBOM, `runAsNonRoot: true`, `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false` y `capabilities.drop: ["ALL"]` tanto en `preview` como en `production`.
+3. **Progresión Tetragon eBPF (`Observe -> Audit -> Enforce`):** Inicia `TracingPolicy` en modo `Observe` sobre syscalls críticas (`execve`, `execveat`, `openat`), refina excepciones en modo `Audit` hasta medir `falsePositiveRate: 0.0`, y activa `Enforce` (`Sigkill`) acotado por namespace y workload para bloquear shells interactivas o escrituras ilegítimas.
+4. **Protocolo Break-Glass con TTL:** Toda excepción de emergencia requiere ticket formal, propietario, motivo auditado, TTL improrrogable (`<= 120 min`) y revocación automática.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Límites Senior)
 
-- No activar enforcement SIGKILL global en el clúster sin selector de namespace y fase previa de observación y auditoría.
-- No otorgar `CAP_SYS_ADMIN`, `privileged: true` ni `hostNetwork: true` en manifiestos de producción.
-- No configurar `failurePolicy: Ignore` en webhooks de admisión de Kyverno para controles de seguridad críticos.
-- No abrir egress hacia `0.0.0.0/0` indiscriminadamente en `CiliumNetworkPolicy`.
-- No admitir procedimientos de break-glass permanentes o sin propietario/expiración auditable.
-- No emitir veredicto `PASS` basándose únicamente en sintaxis YAML si falta la evidencia verificable del runtime de eBPF.
+- ✅ **Hacer:** Demostrar admisión y bloqueo runtime mediante pruebas negativas reales (intento de desplegar imagen sin firma o ejecutar shell dentro del pod siendo rechazado/terminado).
+- ❌ **No hacer:** Escribir políticas nuevas con el `ClusterPolicy` legado de Kyverno próximo a retiro, activar `SIGKILL` global sin selector de namespace ni fase previa de auditoría, otorgar `privileged: true` / `CAP_SYS_ADMIN` / `hostNetwork: true`, usar `failurePolicy: Ignore` o abrir egress `0.0.0.0/0`.
+- ❌ **No hacer:** Emitir veredicto `PASS` basándose solo en lint YAML cuando el kernel o el webhook no fueron verificados en ejecución (`NOT_RUN`).
 
 ## Respuesta
 
@@ -55,8 +49,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Desplegar Tetragon en progresión Observe → Audit → Enforce con TracingPolicies acotadas por namespace, Cilium default-deny y break-glass temporal auditado con TTL.
-- ❌ **Incorrecto:** Activar SIGKILL global indiscriminado, permitir pods privilegiados, usar `failurePolicy: Ignore` en Kyverno o dejar break-glass permanente sin expiración.
+- ✅ **Correcto:** Combinar `ValidatingPolicy`/`ImageValidatingPolicy` CEL en modo `Deny`, Cilium default-deny con WireGuard, progresión Tetragon `Observe -> Audit -> Enforce` por namespace y break-glass con TTL.
+- ❌ **Incorrecto:** Activar `SIGKILL` global indiscriminado, permitir pods privilegiados, usar `failurePolicy: Ignore` en Kyverno o dejar break-glass permanente sin expiración.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia de runtime de eBPF o conectividad con webhooks. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md`.
 
 </skill-content>

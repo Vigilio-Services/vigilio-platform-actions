@@ -21,9 +21,9 @@ Esta guía condensa los errores más comunes de desarrolladores y agentes de IA 
 - **Impacto**: Los desarrolladores y la IA terminan creando carpetas duplicadas o metiendo lógica de dominio en el controlador.
 - **Solución Senior**: Limitar el árbol a las carpetas principales (Domain, Application, Infrastructure, Presentation) con un comentario de una línea que defina el ownership.
 
-### 4. No Aclarar el Origen de los Contratos (TS/NestJS vs Otros)
-- **Error**: Asumir que siempre hay un `packages/contracts` incluso cuando el backend está en Laravel o Python; o viceversa, duplicar DTOs en el frontend cuando el backend NestJS ya los compila.
-- **Solución Senior**: Sección explícita: si backend es TS/Nest, se compila `packages/contracts`; si el backend es externo o no-TS, el frontend define sus `interfaces/` locales o usa OpenAPI.
+### 4. No Aclarar el Ownership Modular de Schemas y OpenAPI
+- **Error**: Crear carpetas globales `contracts/` o `packages/contracts/` manuales que acoplan repositorios y duplican esquemas fuera de sus módulos propietarios.
+- **Solución Senior**: Documentar que los schemas Zod 4 y DTOs viven dentro de cada módulo (`domain/schemas/`, `presentation/http/dto/`) y que la compatibilidad HTTP se protege mediante `openapi diff` automatizado en CI.
 
 ### 5. Omitir Pruebas antes de Desplegar
 - **Error**: Describir cómo hacer `docker build` o `git push` sin documentar cómo correr la suite de tests unitarios y de integración.

@@ -5,7 +5,9 @@
 | Necesidad | Fuente |
 |---|---|
 | Reglas operativas compartidas | [contrato común](../../.vigilio-docs/standards/platform/common-operational-contract.md) |
+| Taxonomía de las 3 arquitecturas | [arquitecturas de referencia](../../.vigilio-docs/platform/architecture/reference-topologies.md) |
 | Contrato canónico | [vigilio-docs/repository-boundaries](../../.vigilio-docs/platform/architecture/repository-boundaries.md) |
+| Estrategia de workspace | [vigilio-docs/workspace-strategy](../../.vigilio-docs/platform/architecture/workspace-strategy.md) |
 | Contexto dinámico | [vigilio-docs/platform-context](../../.vigilio-docs/standards/platform/platform-context.md) |
 | Evidencia operacional | [vigilio-docs/evidence](../../.vigilio-docs/platform/sre/operational-evidence.md) |
 

@@ -51,26 +51,16 @@ Esta plantilla está optimizada para aplicaciones y Micro Frontends (MFE). Adapt
 
 ---
 
-## Consumo de Contratos
+## Consumo de API y Tipos por Feature (Cero Carpeta `contracts/` Global)
 
-### Escenario A: Backend es TypeScript + NestJS (con Tree-Shaking)
-Este frontend **NO inventa interfaces ni DTOs duplicados**. Consume directamente el subpath exportado por el microservicio backend:
+Este frontend **no depende de carpetas globales `contracts/` ni `packages/contracts/`**:
+- Genera tipos/clientes con tree-shaking desde el artefacto OpenAPI verificado por `openapi diff` del backend (`pnpm openapi:codegen`), o
+- Declara los schemas Zod 4 de validación de formularios y tipos de respuesta dentro de su propio módulo propietario (`src/features/<feature>/schemas/` y `src/features/<feature>/types/`).
 
 ```typescript
-// ✅ Correcto: importar contratos canónicos con Tree-Shaking granular
-import type { CreateOrderDto, OrderResponseDto } from '@empresa/orders-contracts/ecommerce-bus-impl';
-import { createOrderSchema } from '@empresa/orders-contracts/ecommerce-bus-impl';
-```
-
-> **Optimización de Recursos (Tree-Shaking)**:
-> Al importar desde el subpath específico del servicio (`/ecommerce-bus-impl`), el bundler (Vite / Rollup) aplica tree-shaking agresivo, eliminando cualquier esquema no consumido de otros microservicios (facturación, catálogo, autenticación). Esto reduce el tamaño del bundle a menos de 150KB y optimiza el consumo de memoria y CPU del navegador cliente.
-
-### Escenario B: Backend NO es NestJS / TS (ej. Laravel, Python o 3rd-party)
-Si el backend no provee un paquete de contratos TypeScript:
-- El frontend gestiona sus propias interfaces y tipos en `src/features/[feature]/types/`.
-- Opcionalmente genera interfaces desde el schema OpenAPI:
-```bash
-pnpm openapi:codegen
+// ✅ Correcto: tipos generados desde OpenAPI + validación de formulario en la feature propietaria
+import type { CreateOrderRequest, OrderResponse } from '@/shared/api/generated/orders.types';
+import { createOrderFormSchema } from '@/features/orders/schemas/create-order.schema';
 ```
 
 ---

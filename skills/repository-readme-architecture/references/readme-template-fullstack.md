@@ -1,6 +1,6 @@
 # Plantilla de README para Monorepo / Fullstack E-Commerce
 
-Esta plantilla está optimizada para proyectos fullstack (Backend + Frontend + Packages/Contracts) en un monorepo administrado con pnpm workspaces o Turborepo.
+Esta plantilla está optimizada para proyectos fullstack (Backend + Frontend + UI Kit, sin carpetas `contracts/` globales) administrados con pnpm workspaces.
 
 ```markdown
 # [Nombre de la Plataforma] (ej. Vigilio Commerce Platform)
@@ -45,9 +45,9 @@ La plataforma ofrece una experiencia omnicanal completa:
 |------|----------------------------------------------------------|
 | **Backend** | NestJS (Fastify), PostgreSQL, Drizzle/Prisma, Redis, RabbitMQ |
 | **Frontend** | React, Vite, Tailwind CSS, TanStack Query, Zustand |
-| **Contratos** | Zod schemas exportados vía `packages/contracts` (Tree-Shaking) |
-| **Infraestructura Local** | Docker Compose (imágenes fijadas en `docker-compose.yml`) |
-| **Tooling** | pnpm workspaces, Biome, Vitest, Playwright |
+| **Validación & API** | Schemas Zod 4 por módulo propietario + artefacto OpenAPI (`openapi diff` en CI) |
+| **Infraestructura Local** | Docker/Podman Compose (imágenes fijadas en `compose.yaml`) |
+| **Tooling** | pnpm workspaces (`packages: []` supply-chain hardening), Biome, Vitest, Playwright |
 | **Fuente de Versiones** | [vigilio-docs/technology/versions.md](../.vigilio-docs/technology/versions.md) |
 
 ---
@@ -57,51 +57,48 @@ La plataforma ofrece una experiencia omnicanal completa:
 ```
 .
 ├── apps/
-│   ├── bus-impl/             # Backend API NestJS (Single Source of Truth)
-│   │   ├── src/
+│   ├── bus-impl/             # Backend API NestJS (schemas/DTOs dentro de cada módulo)
+│   │   ├── src/modules/
 │   │   └── Dockerfile
-│   └── web-mfe/              # Frontend React Vite (Consumidor)
-│       ├── src/
-│       └── Dockerfile
+│   └── web-mfe/              # Frontend React Vite (Consumidor OpenAPI)
+│       ├── src/features/
+│       └── Containerfile.runtime
 ├── packages/
-│   ├── contracts/            # Artefacto compilado con DTOs y schemas compartidos
-│   └── ui-kit/               # Componentes visuales transversales
+│   └── ui-kit/               # Componentes visuales transversales con consumidor real
 ├── docker/
 │   ├── postgres/
 │   └── docker-compose.yml    # Infraestructura de base de datos y colas
-├── pnpm-workspace.yaml       # Configuración de monorepo pnpm
+├── pnpm-workspace.yaml       # Configuración endurecida de workspace pnpm
 └── README.md
 ```
 
 ---
 
-## Flujo Canónico de Contratos (con Tree-Shaking)
+## Flujo Canónico de Compatibilidad API (Cero Carpeta `contracts/`)
 
 ```
-┌─────────────────────────────────┐
-│ apps/bus-impl (NestJS Backend)   │
-│ src/**/dto/*.dto.ts             │
-└────────────────┬────────────────┘
-                 │
-                 │ pnpm contracts:generate
-                 ▼
-┌─────────────────────────────────┐
-│ packages/contracts               │
-│ exports: ./ecommerce-bus-impl   │
-│ sideEffects: false (Tree-Shake)  │
-└────────────────┬────────────────┘
-                 │
-                 │ import from '@empresa/contracts/ecommerce-bus-impl'
-                 ▼
-┌─────────────────────────────────┐
-│ apps/web-mfe (React Frontend)   │
-│ Empaqueta solo schemas usados   │
-└─────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ apps/bus-impl (NestJS Backend)           │
+│ src/modules/<mod>/domain/schemas/*.ts    │
+│ src/modules/<mod>/presentation/http/dto/ │
+└────────────────────┬─────────────────────┘
+                     │
+                     │ pnpm openapi:export + openapi:diff (CI Gate)
+                     ▼
+┌──────────────────────────────────────────┐
+│ Artefacto OpenAPI 3.1 Verificado         │
+│ Sin carpetas globales contracts/         │
+└────────────────────┬─────────────────────┘
+                     │
+                     │ pnpm openapi:codegen (tipos tree-shakeable)
+                     ▼
+┌──────────────────────────────────────────┐
+│ apps/web-mfe (React Frontend)            │
+│ Valida formularios por feature + tipado  │
+└──────────────────────────────────────────┘
 ```
 
-> **Tree-Shaking y Ahorro de Recursos**: Al exponer subpaths por microservicio con `"sideEffects": false`, el frontend solo compila los schemas que efectivamente invoca, evitando sobrecargar al cliente con cientos de DTOs del backend.
-
-> **Nota Senior Mode**: Si el backend fuera reemplazado por un stack no TypeScript (ej. Laravel o Go), `packages/contracts` se retira y `apps/web-mfe` declara sus propios types/interfaces o consume la especificación OpenAPI generada.
+> **Regla Senior Mode**: No se crean carpetas `contracts/` ni `packages/contracts/` manuales. Cada módulo de negocio es propietario de sus schemas Zod 4 y DTOs HTTP, evitando acoplar el ciclo de release entre repositorios.
 
 ---
 
@@ -111,7 +108,7 @@ La plataforma ofrece una experiencia omnicanal completa:
 ```bash
 git clone https://github.com/empresa/commerce-platform.git
 cd commerce-platform
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### 2. Variables de Entorno
@@ -125,10 +122,10 @@ cp apps/web-mfe/.env.example apps/web-mfe/.env
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-### 4. Compilar Contratos y Ejecutar Migraciones
+### 4. Ejecutar Migraciones y Generar Tipos OpenAPI
 ```bash
 pnpm --filter @empresa/bus-impl db:migrate
-pnpm contracts:build
+pnpm --filter @empresa/web-mfe openapi:codegen
 ```
 
 ### 5. Iniciar Todo en Modo Desarrollo

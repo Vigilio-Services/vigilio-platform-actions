@@ -1,6 +1,6 @@
 ---
 name: platform-validation-evidence
-description: Genera y audita evidencia operativa, pruebas de preflight, validación de contratos y matrices de compatibilidad.
+description: Genera y audita evidencia operativa determinista (PASS, FAIL, NOT_RUN, BLOCKED), preflights, compatibilidad OpenAPI sin carpeta contracts/ y trazabilidad DORA/auditoría.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -28,17 +28,16 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Ejecuta validaciones estáticas y preflights antes de cualquier cambio operacional.
-2. Recopila hashes criptográficos de configuración, dependencias y matrices de compatibilidad.
-3. Verifica contratos entre servicios consumidores y proveedores.
-4. Registra trazas de auditoría inmutables vinculadas a tickets Jira o PRs aprobados.
-5. Emite reportes de estado deterministas indicando PASS o bloqueando en fail-closed.
+1. Ejecuta validaciones estáticas y preflights antes de cualquier cambio operacional (interpolación `compose config`, `helm template`/`kustomize build`, `terraform validate/test`, `promtool test rules`, `conftest`).
+2. Recopila hashes SHA-256 de artefactos OCI, planes IaC, SBOMs, contratos de red y matrices de compatibilidad (`compatibility.json` / `COMPATIBILITY.md`) vinculadas al commit exacto.
+3. Verifica compatibilidad entre servicios mediante `openapi diff` automatizado contra el artefacto OpenAPI generado por cada módulo propietario (prohibido mantener carpetas `contracts/` o `packages/contracts/` manuales).
+4. Distingue con rigor de ingeniería entre **validado estáticamente en repositorio**, **probado en laboratorio local (`prod-local`)** y **demostrado en producción real** (restore drills PITR, SLOs vivos, mTLS/WireGuard, Tetragon enforce).
+5. Emite reportes deterministas (`reports/operational-evidence.json`) libres de PII/secretos usando exclusivamente los estados `PASS`, `FAIL`, `NOT_RUN` o `BLOCKED` en modo fail-closed.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Senior Mode)
 
-- No declarar gates aprobados sin evidencia auditable.
-- No omitir validaciones de compatibilidad entre repositorios interdependientes.
-- No almacenar evidencia con información sensible o PII sin encriptar.
+- ✅ **Hacer:** Reportar honestamente `NOT_RUN` o `BLOCKED` cuando un clúster, cuenta cloud, bucket S3 o kernel eBPF no está disponible en la sesión actual, adjuntando qué se verificó estáticamente y qué falta ejecutar.
+- ❌ **No hacer:** Fabricar estados `PASS`, declarar un sistema "100% production-ready" solo porque los YAML/Markdown existen, volcar variables de entorno o PII en archivos de evidencia o crear directorios `contracts/` duplicados.
 
 ## Respuesta
 
@@ -50,8 +49,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Registrar evidencia criptográfica de pruebas, contratos y hashes de artefactos en matrices de compatibilidad versionadas.
-- ❌ **Incorrecto:** Asumir compatibilidad entre microservicios sin pruebas de preflight automatizadas ni verificación de esquemas.
+- ✅ **Correcto:** Registrar evidencia criptográfica de preflights, `openapi diff`, restore drills y hashes de artefactos diferenciando validación estática de verificación en vivo (`PASS` vs `NOT_RUN`).
+- ❌ **Incorrecto:** Asumir compatibilidad sin preflight automatizado, ocultar controles no ejecutados bajo un `PASS` global o guardar secretos en los reportes JSON.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

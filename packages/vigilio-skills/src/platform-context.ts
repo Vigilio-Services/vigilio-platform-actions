@@ -7,9 +7,10 @@ export const platformContextRelativePath = '.vigilio/platform-context.yaml';
 
 export interface PlatformContext {
   schemaVersion: 1;
+  topologyTier?: 'compose-vps' | 'k8s-gitops-selfhosted' | 'cloud-aws-gitops';
   project: {
     name: string;
-    type: 'application' | 'platform' | 'library' | 'monorepo';
+    type: 'application' | 'platform' | 'service' | 'workspace' | 'library' | 'monorepo';
   };
   repositories: {
     application: string;
@@ -17,14 +18,15 @@ export interface PlatformContext {
     gitops: string;
     images: string;
   };
-  environments: Array<'local' | 'development' | 'testing' | 'staging' | 'production'>;
+  environments: string[];
   delivery?: {
-    provider: 'github' | 'gitlab' | 'bitbucket' | 'other';
-    gitopsEngine: 'argocd' | 'flux' | 'none';
-    containerRegistry: string;
+    provider?: 'github' | 'gitlab' | 'azure-devops' | 'bitbucket' | 'other';
+    gitopsEngine?: 'argocd' | 'flux' | 'none';
+    containerRegistry?: string;
   };
   infrastructure?: {
-    provider: 'onprem' | 'aws' | 'azure' | 'gcp' | 'hybrid' | 'none';
+    provider?: 'onprem' | 'aws' | 'azure' | 'gcp' | 'vps' | 'cloud-neutral' | 'hybrid' | 'none';
+    orchestrator?: 'compose' | 'kubernetes' | 'serverless';
     kubernetesDistribution?: string;
   };
   labs?: {

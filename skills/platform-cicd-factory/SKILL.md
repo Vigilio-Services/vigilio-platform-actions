@@ -1,6 +1,6 @@
 ---
 name: platform-cicd-factory
-description: Centraliza flujos CI/CD mediante plantillas y acciones reutilizables sin duplicar lógica en repositorios consumidores.
+description: Centraliza flujos CI/CD mediante plantillas y acciones reutilizables fijadas por SHA con permisos mínimos, OIDC sin secretos estáticos y gates fail-closed para Compose, Kubernetes GitOps y Cloud.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -28,17 +28,16 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Diseña flujos de trabajo reutilizables en platform-actions (.github/workflows/reusable-*.yml).
-2. Estandariza etapas: Lint -> Test -> Security Scan -> Build OCI -> Sign -> Promote.
-3. Reemplaza pipelines duplicados en aplicaciones individuales por invocaciones limpias.
-4. Configura federación OIDC para runners de CI sin claves estáticas de larga duración.
-5. Implementa gates de seguridad fail-closed que bloqueen commits ante fallos de calidad.
+1. Centraliza workflows y componentes reutilizables en `platform-actions` (`.github/workflows/reusable-*.yml` o plantillas GitLab CI) fijando cada acción de terceros por **commit SHA completo** (40 hex) y declarando `permissions: contents: read` por defecto + `persist-credentials: false` en `actions/checkout`.
+2. Estandariza gates deterministas e independientes del desarrollador: `Static Quality (lint/typecheck/openapi diff sin carpeta contracts/) -> Unit/Integration Tests -> Secret & SAST/IaC Scan -> Build OCI Rootless -> SBOM Syft + Escaneo CVE/OpenVEX -> Cosign Keyless OIDC -> Promote Digest`.
+3. Adapta el tramo de entrega según la topología sin duplicar el pipeline de build: SSH restringido + verificación Cosign + `podman/docker compose` en Nivel 1 (`compose-vps`), o commit declarativo de `@sha256:...` en el repo GitOps para Nivel 2 y Nivel 3 (cero `kubeconfig` de producción en CI).
+4. Usa federación OIDC de vida corta (`id-token: write` acotado únicamente al job de firma o cloud plan/apply) y concurrencia segura por rama/entorno (`concurrency` sin cancelar despliegues productivos en curso).
+5. Valida los propios workflows con `actionlint` y bloquea merges ante cualquier `continue-on-error: true` o `|| true` en controles de seguridad.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Senior Mode)
 
-- No copiar y pegar archivos completos de pipeline entre repositorios de aplicación.
-- No almacenar credenciales permanentes de nube en secretos de repositorio.
-- No desactivar etapas de escaneo de seguridad para acelerar tiempos de compilación.
+- ✅ **Hacer:** Fijar acciones externas por SHA inmutable, desactivar `persist-credentials` en checkout, separar permisos OIDC por job y verificar compatibilidad HTTP mediante `openapi diff` generado desde los módulos propietarios.
+- ❌ **No hacer:** Copiar y pegar YAML de CI entre decenas de repositorios, fijar acciones a `@main` / `@v4` mutables, guardar claves AWS/SSH globales permanentes o introducir paquetes `contracts/` compartidos solo para acoplar CI.
 
 ## Respuesta
 
@@ -50,8 +49,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Centralizar la lógica de pipelines en plantillas reutilizables versionadas invocadas por microservicios y frontends.
-- ❌ **Incorrecto:** Mantener decenas de copias divergentes de archivos CI/CD con configuraciones desactualizadas o vulnerables.
+- ✅ **Correcto:** Centralizar la lógica de pipelines en plantillas reutilizables versionadas con acciones fijadas por SHA, OIDC efímero y gates fail-closed.
+- ❌ **Incorrecto:** Mantener copias divergentes de archivos CI/CD con `continue-on-error: true`, credenciales estáticas o despliegues imperativos `kubectl apply` desde runners de build.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

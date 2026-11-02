@@ -6,6 +6,7 @@ import { runFixtureEvals } from './fixture-eval-runner.js';
 import { AWS_FOUNDATION_FIXTURES } from './fixtures/aws-foundation/fixture-cases.js';
 import { dataReliabilityFixtureCases } from './fixtures/backup-pitr/fixture-cases.js';
 import { CICD_FACTORY_FIXTURES } from './fixtures/cicd-factory/fixture-cases.js';
+import { COMPOSE_VPS_FIXTURES } from './fixtures/compose-vps/fixture-cases.js';
 import { FINOPS_FIXTURES } from './fixtures/finops/fixture-cases.js';
 import { GITOPS_FIXTURES } from './fixtures/gitops/fixture-cases.js';
 import { LOCAL_PRODUCTION_LAB_FIXTURES } from './fixtures/local-production-lab/fixture-cases.js';
@@ -46,6 +47,7 @@ export async function executeFullEvalSuite(): Promise<FullEvalReport> {
     ...REPOSITORY_WORKSPACE_FIXTURES,
     ...VALIDATION_EVIDENCE_FIXTURES,
     ...LOCAL_PRODUCTION_LAB_FIXTURES,
+    ...COMPOSE_VPS_FIXTURES,
   ];
   const fixtureSummary = runFixtureEvals(allFixtures);
 

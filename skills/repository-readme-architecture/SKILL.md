@@ -22,9 +22,9 @@ supersedes: []
 
 1. **Regla de los 10 Minutos**: Cualquier desarrollador nuevo o agente de IA debe clonar, configurar variables de entorno, instalar dependencias y levantar el proyecto en menos de 10 minutos sin hacer preguntas.
 2. **Cero Secretos Hardcodeados**: Ningún secreto, API key o contraseña en el README ni en git. Todo se documenta en `.env.example` con descripciones de formato.
-3. **Flujo de Contratos Explícito**:
-   - Si el backend es **NestJS / TypeScript**: Documentar cómo se compilan y consumen los contratos (`packages/contracts`) para compartir DTOs y schemas sin duplicación.
-   - Si el backend es **Laravel, Python, Go o API externa**: Documentar que el consumidor gestiona sus propias `interfaces/`, `types/` y DTOs locales o generados vía OpenAPI/Swagger.
+3. **Flujo de API y Contratos sin Carpeta `contracts/` Global**:
+   - Si el backend es **NestJS / TypeScript**: Documentar que cada módulo de dominio posee sus propios schemas Zod 4 (`domain/schemas/`) y DTOs HTTP (`presentation/http/dto/`), publicando la especificación OpenAPI verificada con `openapi diff` en CI (sin carpetas globales `contracts/` ni `packages/contracts/`).
+   - Si el backend es **Laravel, Python, Go o API externa**: Documentar que el consumidor gestiona sus propias `interfaces/`, `types/` por feature o genera clientes tipados desde OpenAPI/Scalar.
 4. **Testing Obligatorio antes de Deploy**: Comandos claros para unitarios, e2e y linting en local y en CI.
 5. **Estructura de Carpetas Explicada**: No solo listar el árbol, sino explicar la responsabilidad arquitectónica de cada directorio.
 
@@ -60,7 +60,7 @@ Read each linked reference completely before the work that depends on it:
 ## Reglas Correcto / Incorrecto
 
 ✅ Instrucciones paso a paso reproducibles en terminal virgen.
-✅ Explicar qué stack backend genera contratos (`packages/contracts`) y cuándo el frontend usa `interfaces/` locales.
+✅ Explicar cómo cada módulo posee sus schemas/DTOs y cómo se valida compatibilidad OpenAPI (`openapi diff`) sin crear carpetas globales `contracts/`.
 ✅ Explicar cómo levantar dependencias auxiliares con `docker compose up -d`.
 ✅ Incluir tabla exhaustiva de variables de entorno con valores dummy seguros.
 

@@ -1,6 +1,6 @@
 ---
 name: platform-repository-workspace
-description: Delimita repositorios, organiza submódulos e impone higiene estricta de artefactos en workspaces.
+description: Delimita fronteras entre repositorios en las 3 arquitecturas (sin package.json raíz ni carpeta contracts/), organiza submódulos auditables e impone endurecimiento supply-chain pnpm (packages: []) e higiene de artefactos.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -16,7 +16,7 @@ supersedes: []
 
 <skill-content>
 
-# Gobernanza De Repositorios Y Workspaces
+# Gobernanza De Repositorios, Fronteras Y Workspaces
 
 ## Lectura obligatoria de referencias
 
@@ -28,17 +28,18 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Identifica los límites de responsabilidad del repositorio (app, infra, docker, gitops).
-2. Selecciona la estrategia de organización según las necesidades del proyecto: submódulos Git, manifiestos de workspace con SHAs, herramientas multirepo, monorepo con CODEOWNERS, o dependencias publicadas como paquetes. La elección depende de ownership, permisos, atomicidad de cambios y frecuencia de actualización.
-3. Centraliza las versiones de herramientas en versions.yaml.
-4. Define un .gitignore integral que excluya carpetas no versionadas (node_modules, .terraform, .logs).
-5. Verifica que no existan subcarpetas duplicadas o metarepositorios sin control de versionado.
+1. **Delimita fronteras según el nivel de arquitectura:**
+   - **Nivel 1 (`compose-vps`):** 5 repositorios desacoplados (`apps/<product>-impl`, `apps/<product>-web`, `<product>-deploy`, `platform-ops`, `prod-local`).
+   - **Niveles 2 y 3 (Kubernetes GitOps / Cloud AWS):** `apps/*` independientes (o montados por submódulos SHA), `infra/` (estados Terraform separados) y `deploy/` (estado deseado Argo CD; CI de apps jamás recibe `kubeconfig`).
+2. **Cero carpeta `contracts/` y cero `package.json` en raíz coordinadora:** Prohíbe crear `contracts/` o `packages/contracts/` manuales; cada módulo de negocio es propietario de sus schemas Zod 4 (`domain/schemas/*.schema.ts`) y DTOs (`presentation/http/dto/*.dto.ts`) con gate `openapi diff` en CI. Nunca coloques `package.json` ni `pnpm-workspace.yaml` en la carpeta raíz que agrupa múltiples repositorios.
+3. **Endurecimiento Supply-Chain en cada repo Node (`packages: []`):** En cada repositorio de aplicación usa `pnpm-workspace.yaml` con `packages: []` para imponer `engineStrict: true`, `preferFrozenLockfile: true`, `verifyStoreIntegrity: true`, `strictDepBuilds: true`, `dangerouslyAllowAllBuilds: false`, `minimumReleaseAge: 1440` y lista blanca explícita `allowBuilds`.
+4. **Control canónico de herramientas e higiene:** Fija versiones de binarios CLI en `versions.yaml` descargándolos con verificación SHA-256 en `.tools/` (ignorado en Git) y bloquea secretos con `.gitleaks.toml`.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Límites Senior)
 
-- No comitear carpetas .logs, .artifacts, coverage o dumps de base de datos.
-- No anidar repositorios Git dentro de carpetas sin control de submódulos.
-- No utilizar versiones flotantes de herramientas en scripts locales o pipelines.
+- ✅ **Hacer:** Mantener lockfiles independientes por repositorio, proteger `main` con `CODEOWNERS` y mantener roles de host (`platform-ops`) libres de nombres o reglas de negocio de un producto.
+- ❌ **No hacer:** Ejecutar `pnpm install` en la raíz de un checkout multi-repo, crear carpetas `contracts/` duplicadas, permitir `dangerouslyAllowAllBuilds: true` o comitear ejecutables binarios, `.terraform/`, `.tfstate`, `.logs/`, `.artifacts/`, `coverage/` o dumps SQL.
+- ❌ **No hacer:** Anidar repositorios `.git` huérfanos sin control de submódulos ni utilizar versiones flotantes de herramientas en scripts o pipelines.
 
 ## Respuesta
 
@@ -50,8 +51,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Estratificar código de app, infraestructura y manifiestos GitOps en repositorios independientes con una estrategia de orquestación explícita y auditable (submódulos, paquetes o manifiestos declarativos).
-- ❌ **Incorrecto:** Mezclar código fuente, módulos de Terraform y copias masivas no versionadas en una misma carpeta sin fronteras de CI.
+- ✅ **Correcto:** Estratificar código de app, infraestructura (`platform-ops`/`infra`) y despliegue (`<product>-deploy`/`deploy`) en repositorios independientes con `pnpm-workspace.yaml` endurecido (`packages: []`) y propiedad de DTOs dentro de cada módulo.
+- ❌ **Incorrecto:** Mezclar código fuente, estado de Terraform, carpetas `contracts/` paralelas y copias masivas no versionadas en una misma carpeta sin fronteras de CI.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

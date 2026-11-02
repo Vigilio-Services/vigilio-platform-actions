@@ -134,12 +134,14 @@ function traverse(dir, depth) {
         'conanfile.py',
         'project.godot',
         'Dockerfile',
+        'Containerfile.runtime',
+        'Caddyfile',
         'Tiltfile',
         'compatibility.json',
         'COMPATIBILITY.md',
       ].includes(e.name) ||
       (/\.(?:cpp|hpp|cxx|cc|h|c|rs|tf|tfvars)$/i.test(e.name) && depth <= 3) ||
-      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|barman.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*|kind.*|docker-compose.*)\.ya?ml$/i.test(
+      (/(?:kustomization|Chart|values.*|application.*|applicationset.*|rollout.*|promotion.*|metallb.*|longhorn.*|keda.*|scaledobject.*|hpa.*|pdb.*|topology.*|karpenter.*|opencost.*|finops.*|velero.*|chaos.*|dr.*|otel-collector.*|prometheus.*|slo.*|alert.*|postgres.*|valkey.*|cnpg.*|barman.*|backup.*|cosign.*|syft.*|tracing.*|cilium.*|kyverno.*|policy-runtime.*|kind.*|docker-compose.*|compose)\.ya?ml$/i.test(
         e.name,
       ) &&
         depth <= 3) ||
@@ -245,7 +247,7 @@ signals.qt =
   /find_package\s*\(\s*Qt6\b[^)]*\b(?:Widgets|Quick|Gui)\b/i.test(combinedCMake);
 signals.webengine = /WebEngine(?:Widgets|Core|Quick)|QWebEngine/i.test(combinedCMake);
 const projectFound = signals.files.some((f) =>
-  /(package.json|composer.json|Cargo.toml|CMakeLists.txt|project.godot|\.tf|kustomization\.ya?ml|Chart\.ya?ml)$/.test(
+  /(package.json|composer.json|Cargo.toml|CMakeLists.txt|project.godot|\.tf|kustomization\.ya?ml|Chart\.ya?ml|Caddyfile|Containerfile\.runtime|compose\.ya?ml)$/.test(
     f,
   ),
 );

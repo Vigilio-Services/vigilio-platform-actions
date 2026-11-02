@@ -1,6 +1,6 @@
 ---
 name: platform-environment-promotion
-description: Gobierna la jerarquía de entornos y la promoción inmutable de artefactos entre local, review, staging y producción.
+description: Gobierna la jerarquía de entornos (prod-local, review, staging, producción) y la promoción encadenada de digests OCI inmutables (@sha256) sin recompilación en Compose, Kubernetes GitOps y Cloud.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -28,17 +28,16 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Define la jerarquía de progresión: prod-local -> review -> dev -> staging -> producción.
-2. Compila la imagen de contenedor una única vez en CI y genera su digest SHA-256.
-3. Promueve el artefacto hacia staging aplicando variables de entorno y secrets externos.
-4. Ejecuta smoke tests y validación de SLO en staging.
-5. Promueve el mismo digest SHA-256 a producción mediante commit declarativo en el repositorio GitOps.
+1. Define la jerarquía estricta de progresión según la topología: `prod-local -> staging -> production` en Nivel 1 (`compose-vps`), o `prod-local -> deploy-preview (Review App por MR) -> staging -> production` en Nivel 2 y Nivel 3 (GitOps).
+2. Compila cada imagen OCI **una única vez** en CI (`Build Once, Promote Many`), fírmala con Cosign OIDC y registra su digest inmutable `@sha256:...` (para frontend SPA, compila el bundle neutral o sirve runtime estático vía `Containerfile.runtime` sin filtrar tokens de build).
+3. Inyecta configuración por ambiente mediante `ENV_FILE` validado (`compose config --quiet`) en Nivel 1 o overlays Kustomize/Helm + `ExternalSecret` en Nivel 2/3, bloqueando mediante Conftest cualquier `seed` o flag debug en `preview`, `staging` y `production`.
+4. Ejecuta migraciones compatibles `expand-contract` como tarea one-shot previa al rollout (`profiles: [tools]` o `PreSync` Job) + smoke tests e inspección de presupuesto de error SLO en `staging`.
+5. Promueve exactamente el **mismo digest `@sha256:...`** de `staging` a `production` mediante PR auditable (encadenando la lectura del digest verificado en `staging`, nunca reconstruyendo desde el código fuente).
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Senior Mode)
 
-- No recompilar código fuente entre entornos.
-- No utilizar tags mutables (latest, staging-latest) para despliegues de producción.
-- No conectar entornos de desarrollo o staging a recursos de datos de producción.
+- ✅ **Hacer:** Encadenar la promoción leyendo el `@sha256:...` ya validado en `staging`, aislar completamente redes/credenciales/datos por entorno y mantener rollback instantáneo re-apuntando al digest anterior con esquemas compatibles hacia atrás.
+- ❌ **No hacer:** Recompilar imágenes Docker por ambiente (`npm run build:staging` vs `build:prod` creando artefactos distintos), usar tags mutables (`:latest`, `:main`, `:staging`), compartir bases de datos o colas entre `staging` y `production` o correr seeds de prueba fuera de `local`/`dev`.
 
 ## Respuesta
 
@@ -50,8 +49,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Promover el mismo digest SHA-256 verificado a través de Staging hacia Producción mediante PR declarativo en GitOps.
-- ❌ **Incorrecto:** Reconstruir imágenes de Docker en cada entorno o permitir despliegues directos desde máquinas de desarrollo.
+- ✅ **Correcto:** Promover el mismo digest SHA-256 firmado y verificado en `staging` hacia `production` mediante cambio declarativo auditable sin recompilar.
+- ❌ **Incorrecto:** Reconstruir imágenes en cada entorno, usar tags mutables `:latest` o permitir despliegues manuales directos desde estaciones de trabajo.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

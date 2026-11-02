@@ -69,6 +69,26 @@
       "platform-observability-sre",
       "node-nest-testing"
     ],
+    "node-nest-compose": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "repository-readme-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "node-nest-technologies",
+      "node-nest-build-feature",
+      "node-nest-realtime",
+      "node-nest-async-workers",
+      "node-nest-persistence",
+      "node-nest-security",
+      "node-nest-security-aws",
+      "platform-observability-sre",
+      "node-nest-testing",
+      "platform-compose-vps-delivery"
+    ],
     "node-nest-eks": [
       "vigilio-auto-senior",
       "complete-work-no-shortcuts",
@@ -624,6 +644,26 @@
       "platform-local-production-lab",
       "platform-data-reliability",
       "kubernetes-policy-runtime-security"
+    ],
+    "platform-compose-vps": [
+      "vigilio-auto-senior",
+      "complete-work-no-shortcuts",
+      "review-code-change",
+      "vigilio-architecture-guide",
+      "symbol-ownership-architecture",
+      "repository-readme-architecture",
+      "precision-skill-reading",
+      "adaptive-context-budget",
+      "platform-repository-workspace",
+      "platform-environment-promotion",
+      "platform-validation-evidence",
+      "platform-cicd-factory",
+      "platform-compose-vps-delivery",
+      "software-supply-chain-security",
+      "platform-observability-sre",
+      "platform-data-reliability",
+      "platform-finops",
+      "platform-local-production-lab"
     ]
   },
   "definitions": {
@@ -690,6 +730,12 @@
         "platform-observability-sre",
         "node-nest-testing"
       ]
+    },
+    "node-nest-compose": {
+      "description": "Backend NestJS desplegado sobre 1-3 VPS con Docker/Podman Compose endurecido sin Kubernetes",
+      "lifecycle": "experimental",
+      "extends": ["node-nest"],
+      "skills": ["platform-compose-vps-delivery"]
     },
     "node-nest-eks": {
       "description": "Backend NestJS desplegado sobre Kubernetes EKS",
@@ -958,6 +1004,19 @@
         "platform-local-production-lab",
         "platform-data-reliability",
         "kubernetes-policy-runtime-security"
+      ]
+    },
+    "platform-compose-vps": {
+      "description": "Plataforma Cloud-Neutral de producción en 1-3 VPS con Docker/Podman Compose, Caddy, Ansible, PITR y FinOps",
+      "lifecycle": "experimental",
+      "extends": ["platform-core"],
+      "skills": [
+        "platform-compose-vps-delivery",
+        "software-supply-chain-security",
+        "platform-observability-sre",
+        "platform-data-reliability",
+        "platform-finops",
+        "platform-local-production-lab"
       ]
     }
   }

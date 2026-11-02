@@ -1,6 +1,6 @@
 ---
 name: platform-finops
-description: Implementa inteligencia de costos cloud, etiquetado obligatorio, optimización ARM64/Graviton y visibilidad con OpenCost.
+description: Implementa inteligencia y optimización FinOps en los 3 niveles (evitar sobreingeniería K8s/NAT en apps simples, gate Infracost en PR, OpenCost, ARM64/Graviton, Spot/Karpenter, TTL en Review Apps, caché y cardinalidad de telemetría).
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -16,7 +16,7 @@ supersedes: []
 
 <skill-content>
 
-# Inteligencia De Costos Cloud Y FinOps
+# Inteligencia De Costos Cloud, Optimización Y FinOps
 
 ## Lectura obligatoria de referencias
 
@@ -28,17 +28,17 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Establece etiquetas obligatorias en Terraform y Kubernetes (Owner, CostCenter, Environment).
-2. Despliega OpenCost para visibilidad en tiempo real del costo de CPU, memoria y almacenamiento por pod.
-3. Optimiza imágenes y compilaciones para arquitecturas ARM64 (AWS Graviton).
-4. Aprovecha orquestación Spot y consolidación de nodos con Karpenter.
-5. Configura reglas de detección de anomalías de costos y alertas automatizadas.
+1. **Elección de arquitectura acorde a escala (Primer ahorro FinOps):** Mantén productos simples a medianos en Nivel 1 (`compose-vps` sobre 1–3 VPS) evitando el impuesto fijo de control planes gestionados, NAT Gateways y balanceadores ociosos hasta que un ADR lo justifique.
+2. **Shift-Left FinOps en IaC (`Infracost`) y Etiquetado:** Bloquea PRs de Terraform sin etiquetas contables (`Owner`, `CostCenter`, `Environment`, `Service`) y audita variaciones de gasto mensual con `Infracost` antes de aplicar cambios.
+3. **Visibilidad Real y Optimización de Cómputo:** Despliega `OpenCost` para atribución por namespace/pod/MR, prioriza compilaciones multi-arch hacia `ARM64` (`AWS Graviton`) y consolida capacidad elástica con `Karpenter` e instancias `Spot` únicamente en workers idempotentes tolerantes a interrupción.
+4. **Higiene de Red, Caché y Entornos Efímeros:** Enruta acceso a S3/DynamoDB/ECR/Secrets por `VPC Endpoints` (evitando cargos por GB en `NAT Gateway`), reduce lecturas de base/origen con `CloudFront OAC` + `Valkey` cache-aside, y aplica `ResourceQuota`, `LimitRange` y expiración automática por TTL a toda Review App (`deploy-preview`).
+5. **FinOps de Observabilidad y Almacenamiento:** Limita la cardinalidad de labels en Prometheus (prohibido IDs únicos), ajusta retención por tier hacia object storage económico y purga artefactos OCI/snapshots no promovidos.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Límites Senior)
 
-- No provisionar recursos sin etiquetas contables de atribución de costos.
-- No mantener instancias sobredimensionadas con baja utilización sostenida.
-- No enrutar tráfico interno a través de NAT Gateways generando costos evitables.
+- ✅ **Hacer:** Reconciliar estimaciones de `OpenCost` / `Infracost` contra facturación real o amortización de hardware antes de declarar ahorro certificado.
+- ❌ **No hacer:** Provisionar recursos sin etiquetas contables, dejar Review Apps huérfanas sin job de expiración TTL, enrutar tráfico masivo a S3 vía NAT Gateway o inflar facturas de métricas con labels `user_id`/`order_id`.
+- ❌ **No hacer:** Poner bases de datos primarias o quórum de control plane sobre nodos `Spot` sacrificando el SLO por ahorro aparente.
 
 ## Respuesta
 
@@ -50,8 +50,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Monitorear costos en tiempo real con OpenCost, migrar a Graviton y rechazar recursos no etiquetados.
-- ❌ **Incorrecto:** Operar infraestructura cloud sin visibilidad granular de gasto por equipo ni alertas de anomalías financieras.
+- ✅ **Correcto:** Dimensionar la plataforma según el nivel real de carga (VPS Compose vs. K8s), auditar PRs con `Infracost`, medir pods con `OpenCost`, usar Graviton/VPC Endpoints y expirar previews automáticamente.
+- ❌ **Incorrecto:** Sobredimensionar clústeres Kubernetes para cargas pequeñas, operar sin alertas de anomalías financieras o presentar una estimación local como costo reconciliado de producción.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>

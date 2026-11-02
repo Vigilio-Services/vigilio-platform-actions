@@ -1659,7 +1659,93 @@ export function evaluateLocalProductionLabFixture(fixture: FixtureTestCase): Fix
   };
 }
 
+export function evaluateComposeVpsFixture(fixture: FixtureTestCase): FixtureResult {
+  const violations: string[] = [];
+
+  const preflightRaw = fixture.files['reports/compose-vps-preflight.json'];
+  if (!preflightRaw) {
+    violations.push(
+      'Falta evidencia obligatoria de preflight Compose VPS: reports/compose-vps-preflight.json',
+    );
+  } else {
+    try {
+      const parsed = JSON.parse(preflightRaw) as {
+        status?: string;
+        composeConfigValid?: boolean;
+        cosignSignatureVerified?: boolean;
+        pitrDrillVerified?: boolean;
+      };
+      if (
+        parsed.status !== 'VERIFIED' ||
+        parsed.composeConfigValid !== true ||
+        parsed.cosignSignatureVerified !== true ||
+        parsed.pitrDrillVerified !== true
+      ) {
+        violations.push(
+          `Preflight de Compose VPS incompleto o no verificado (${parsed.status ?? 'UNKNOWN'})`,
+        );
+      }
+    } catch {
+      violations.push('reports/compose-vps-preflight.json no es un JSON válido');
+    }
+  }
+
+  if (violations.length > 0 && fixture.type === 'not_run') {
+    return {
+      id: fixture.id,
+      skill: fixture.skill,
+      type: fixture.type,
+      passed: fixture.expectedVerdict === 'NOT_RUN',
+      actualVerdict: 'NOT_RUN',
+      expectedVerdict: fixture.expectedVerdict,
+      violations,
+      reason: fixture.reason,
+    };
+  }
+
+  for (const [filename, content] of Object.entries(fixture.files)) {
+    if (/(?:^|\/)contracts\//i.test(filename)) {
+      violations.push(
+        `Frontera modular inválida (${filename}): prohibido crear carpetas globales contracts/`,
+      );
+    }
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) {
+      if (/image:\s*["']?[^"'\n]+:latest\b/i.test(content)) {
+        violations.push(`Tag mutable :latest prohibido en ${filename}; usar digest @sha256:`);
+      }
+      if (/privileged:\s*true/i.test(content)) {
+        violations.push(`Contenedor privilegiado prohibido en ${filename}`);
+      }
+      if (/(?:0\.0\.0\.0:)?(?:5432|6379|4222|9000):(?:5432|6379|4222|9000)/.test(content)) {
+        violations.push(
+          `Puerto de datos interno expuesto públicamente en ${filename}; aislar en red backend`,
+        );
+      }
+      if (!/cap_drop:/i.test(content) || !/read_only:\s*true/i.test(content)) {
+        violations.push(
+          `Falta endurecimiento obligatorio (cap_drop: [ALL] y read_only: true) en ${filename}`,
+        );
+      }
+    }
+  }
+
+  const actualVerdict: FixtureVerdict = violations.length > 0 ? 'FAIL' : 'PASS';
+  return {
+    id: fixture.id,
+    skill: fixture.skill,
+    type: fixture.type,
+    passed: actualVerdict === fixture.expectedVerdict,
+    actualVerdict,
+    expectedVerdict: fixture.expectedVerdict,
+    violations,
+    reason: fixture.reason,
+  };
+}
+
 export function evaluateFixture(fixture: FixtureTestCase): FixtureResult {
+  if (fixture.skill === 'platform-compose-vps-delivery') {
+    return evaluateComposeVpsFixture(fixture);
+  }
   if (fixture.skill === 'platform-local-production-lab') {
     return evaluateLocalProductionLabFixture(fixture);
   }

@@ -9,10 +9,10 @@ describe('Platform Skills - Full Eval Gate & Fixture Verification', () => {
     const { routingSummary, fixtureSummary, gateVerdict } = report;
 
     console.log(`\n============================================================`);
-    console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (16 PLATFORM SKILLS)`);
+    console.log(`EVAL GATE: PLATFORM CATALOG VERIFICATION (17 PLATFORM SKILLS)`);
     console.log(`============================================================`);
     console.log(
-      `MULTI-LABEL ROUTING EVALUATION (120 TRAINING + ${routingSummary.holdoutMetrics.total} HOLDOUT / ADVERSARIAL):`,
+      `MULTI-LABEL ROUTING EVALUATION (${routingSummary.trainingMetrics.total} TRAINING + ${routingSummary.holdoutMetrics.total} HOLDOUT / ADVERSARIAL):`,
     );
     console.log(`  - Total Casos Evaluados:        ${routingSummary.overallMetrics.total}`);
     console.log(
@@ -38,7 +38,9 @@ describe('Platform Skills - Full Eval Gate & Fixture Verification', () => {
     console.log(
       `  - Holdout Exact-Match:          ${(routingSummary.holdoutMetrics.accuracy * 100).toFixed(1)}%`,
     );
-    console.log(`FIXTURE SYNTHETIC CONTRACT CHECKS (16 SKILLS / 48 FIXTURES):`);
+    console.log(
+      `FIXTURE SYNTHETIC CONTRACT CHECKS (17 SKILLS / ${fixtureSummary.total} FIXTURES):`,
+    );
     console.log(`  - Fixtures Evaluados:    ${fixtureSummary.total}`);
     console.log(`  - Fixtures Aprobados:    ${fixtureSummary.passed}`);
     console.log(`  - Fixtures Fallidos:     ${fixtureSummary.failed}`);

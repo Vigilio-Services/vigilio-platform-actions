@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-11-01T22:00:41.486Z",
+  "timestamp": "2026-11-02T06:02:04.156Z",
   "routingSummary": {
-    "timestamp": "2026-11-01T22:00:41.472Z",
+    "timestamp": "2026-11-02T06:02:04.152Z",
     "overallMetrics": {
-      "total": 170,
-      "truePositives": 692,
+      "total": 175,
+      "truePositives": 710,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -16,8 +16,8 @@
       "accuracy": 1
     },
     "trainingMetrics": {
-      "total": 120,
-      "truePositives": 478,
+      "total": 123,
+      "truePositives": 488,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -29,8 +29,8 @@
       "accuracy": 1
     },
     "holdoutMetrics": {
-      "total": 50,
-      "truePositives": 214,
+      "total": 52,
+      "truePositives": 222,
       "falsePositives": 0,
       "falseNegatives": 0,
       "trueNegatives": 0,
@@ -141,6 +141,12 @@
       "prod-local": {
         "total": 9,
         "passed": 9,
+        "failed": 0,
+        "accuracy": 1
+      },
+      "compose-vps": {
+        "total": 5,
+        "passed": 5,
         "failed": 0,
         "accuracy": 1
       },
@@ -338,18 +344,21 @@
       "node-nest-security-aws": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
-      "ux-web-experience": [
+      "platform-compose-vps-delivery": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ],
       "adaptive-context-budget": [
+        "metadata declarativa: proyecto/keyword/ecosistema"
+      ],
+      "ux-web-experience": [
         "metadata declarativa: proyecto/keyword/ecosistema"
       ]
     },
     "failures": []
   },
   "fixtureSummary": {
-    "total": 48,
-    "passed": 48,
+    "total": 51,
+    "passed": 51,
     "failed": 0,
     "results": [
       {
@@ -977,6 +986,44 @@
           "Estado del laboratorio local no verificado (UNAVAILABLE)"
         ],
         "reason": "No se puede aprovisionar ni validar el laboratorio de desarrollo local: Docker/container runtime no responde o Kind no está instalado en el sistema."
+      },
+      {
+        "id": "VPS-FIX-01-CORRECT",
+        "skill": "platform-compose-vps-delivery",
+        "type": "correct",
+        "passed": true,
+        "actualVerdict": "PASS",
+        "expectedVerdict": "PASS",
+        "violations": [],
+        "reason": "Único compose.yaml endurecido non-root con digest sha256, redes internas sin puertos de datos expuestos y backup PITR verificado."
+      },
+      {
+        "id": "VPS-FIX-02-INSECURE",
+        "skill": "platform-compose-vps-delivery",
+        "type": "insecure",
+        "passed": true,
+        "actualVerdict": "FAIL",
+        "expectedVerdict": "FAIL",
+        "violations": [
+          "Tag mutable :latest prohibido en compose/compose.yaml; usar digest @sha256:",
+          "Contenedor privilegiado prohibido en compose/compose.yaml",
+          "Puerto de datos interno expuesto públicamente en compose/compose.yaml; aislar en red backend",
+          "Falta endurecimiento obligatorio (cap_drop: [ALL] y read_only: true) en compose/compose.yaml",
+          "Frontera modular inválida (packages/contracts/index.ts): prohibido crear carpetas globales contracts/"
+        ],
+        "reason": "Se detectaron violaciones graves: imagen :latest mutable, puerto 5432 expuesto públicamente, contenedor privilegiado sin endurecimiento y carpeta global contracts/ prohibida."
+      },
+      {
+        "id": "VPS-FIX-03-NOT-RUN",
+        "skill": "platform-compose-vps-delivery",
+        "type": "not_run",
+        "passed": true,
+        "actualVerdict": "NOT_RUN",
+        "expectedVerdict": "NOT_RUN",
+        "violations": [
+          "Preflight de Compose VPS incompleto o no verificado (UNVERIFIED)"
+        ],
+        "reason": "Fail-closed por falta de verificación de compose config, firma Cosign o restore drill."
       }
     ]
   },

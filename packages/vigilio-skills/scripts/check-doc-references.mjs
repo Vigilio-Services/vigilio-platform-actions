@@ -51,6 +51,7 @@ const platformContracts = [
   'kubernetes-policy-runtime-security/references/canonical-contract.md',
   'onprem-kubernetes-foundation/references/canonical-contract.md',
   'platform-cicd-factory/references/canonical-contract.md',
+  'platform-compose-vps-delivery/references/canonical-contract.md',
   'platform-data-reliability/references/canonical-contract.md',
   'platform-environment-promotion/references/canonical-contract.md',
   'platform-finops/references/canonical-contract.md',
@@ -92,6 +93,8 @@ for (const relativeContract of platformContracts) {
 for (const requiredDoc of [
   'standards/platform/common-operational-contract.md',
   'standards/platform/platform-context.md',
+  'platform/architecture/reference-topologies.md',
+  'platform/compose/cloud-neutral-vps-delivery.md',
   'schemas/platform-context.schema.json',
 ]) {
   if (!fs.existsSync(path.join(docs, requiredDoc))) {

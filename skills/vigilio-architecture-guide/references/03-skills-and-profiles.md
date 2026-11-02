@@ -20,9 +20,13 @@ Las carpetas son **planas** y sus nombres incluyen stack/tarea cuando correspond
 | --- | --- |
 | `core` | compatibilidad histórica; contiene conocimientos compartidos orientados a Node/TypeScript |
 | `core-cross-stack` | operaciones generales multi-lenguaje; preferido para PHP/Laravel |
-| `node-nest` | desarrollo backend NestJS, Zod, Drizzle, testing, seguridad común |
-| `node-nest-eks` | extensiones de seguridad/entrega para NestJS sobre EKS |
-| `node-nest-lambda` | extensiones de Lambda/CDK solo para ese runtime |
+| `node-nest` | desarrollo backend NestJS, Zod 4, Drizzle, testing, seguridad común (sin carpetas `contracts/` globales) |
+| `node-nest-compose` | Nivel 1 (`compose-vps`): extensión para NestJS sobre 1–3 VPS con Docker/Podman Compose endurecido, Caddy TLS y `pgBackRest` sin Kubernetes |
+| `node-nest-eks` | Nivel 3 (`cloud-aws-gitops`): extensiones de seguridad/entrega para NestJS sobre AWS EKS |
+| `node-nest-lambda` | extensiones de Lambda/CDK solo para ese runtime serverless |
+| `platform-compose-vps` | Nivel 1 completo: proyectos simples a medianos en VPS con Compose endurecido, supply chain, observabilidad, PITR, FinOps y `prod-local` |
+| `platform-onprem-production` | Nivel 2 completo (`k8s-gitops-selfhosted`): RKE2/K3s, Cilium eBPF, Gateway API, Argo CD/Rollouts, Kyverno CEL, Tetragon, CNPG y SRE |
+| `platform-aws-production` | Nivel 3 completo (`cloud-aws-gitops`): AWS Organizations, VPC 3-AZ, Terraform, EKS, GitOps, DevSecOps, FinOps y DR |
 | `php-laravel` | backend Laravel, contratos, Eloquent, seguridad, pruebas, colas y runtime |
 | `php-laravel-realtime` | extensión opt-in Reverb/broadcasting |
 | `web-mfe` | frontend web MFE |
@@ -63,8 +67,14 @@ No inventar una capacidad que no esté en el perfil instalado. Antes de llamar a
 ## Elegir perfiles: ejemplos
 
 ```bash
-# Node/Nest + EKS
-pnpm exec vigilio-skills sync --profile core --profile node-nest --profile node-nest-eks --profile openspec
+# Nivel 1 — Proyecto simple a mediano (1-3 VPS con Docker/Podman Compose, sin Kubernetes)
+pnpm exec vigilio-skills sync --profile core --profile node-nest-compose --profile platform-compose-vps --profile openspec
+
+# Nivel 2 — Gran empresa On-Premise / Soberanía de datos (Kubernetes GitOps Self-Hosted)
+pnpm exec vigilio-skills sync --profile core --profile node-nest --profile platform-onprem-production --profile openspec
+
+# Nivel 3 — Gran empresa Cloud AWS + EKS
+pnpm exec vigilio-skills sync --profile core --profile node-nest --profile node-nest-eks --profile platform-aws-production --profile openspec
 
 # Node/Nest + Lambda (no combinar EKS por defecto)
 pnpm exec vigilio-skills sync --profile core --profile node-nest --profile node-nest-lambda --profile openspec

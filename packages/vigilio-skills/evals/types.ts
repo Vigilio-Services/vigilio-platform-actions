@@ -15,6 +15,7 @@ export type EvalDomain =
   | 'repository-workspace'
   | 'validation-evidence'
   | 'prod-local'
+  | 'compose-vps'
   | 'cross-stack'
   | 'backend-nest'
   | 'frontend-web'

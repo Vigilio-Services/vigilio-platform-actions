@@ -1,6 +1,6 @@
 ---
 name: platform-data-reliability
-description: Administra cargas con estado y operadores de bases de datos CloudNativePG y Valkey con replicación y PITR en Kubernetes.
+description: Administra confiabilidad de datos 3-2-1, PostgreSQL HA (pgBackRest en VPS Compose o CloudNativePG con WAL separado y Barman Cloud CNPG-I en Kubernetes), Valkey y drills automatizados de restauración física PITR.
 owner: governance-platform
 lifecycle: experimental
 introduced_in: 0.8.0
@@ -16,7 +16,7 @@ supersedes: []
 
 <skill-content>
 
-# Confiabilidad De Datos En Kubernetes
+# Confiabilidad De Datos, Backups 3-2-1 Y PITR Demostrado
 
 ## Lectura obligatoria de referencias
 
@@ -28,17 +28,18 @@ No cierres gates cuando una fuente requerida resulte inaccesible.
 
 ## Flujo
 
-1. Despliega clústeres PostgreSQL de alta disponibilidad mediante el operador CloudNativePG.
-2. Configura archivado continuo de transacciones WAL hacia buckets S3 para PITR.
-3. Despliega instancias Valkey con réplicas y persistencia AOF periódica.
-4. Define StorageClasses con cifrado obligatorio y reclaimPolicy: Retain en producción.
-5. Valida conmutación por error (failover) automática y pruebas de restauración.
+1. **Regla 3-2-1 y Dominios de Fallo Independientes:** Ni los volúmenes de Compose ni las réplicas síncronas sustituyen un backup. Almacena base backups y archivo continuo de WAL cifrados en un repositorio S3-compatible ubicado en un **host, cuenta o sitio independiente** del almacenamiento productivo.
+2. **PostgreSQL según nivel de plataforma:**
+   - **Nivel 1 (`compose-vps`):** Configura `pgBackRest` (full semanal, diferencial diario, incremental + WAL continuo para PITR) en lugar de depender únicamente de `pg_dump`.
+   - **Niveles 2 y 3 (Kubernetes / Cloud):** Opera `CloudNativePG` en 3 instancias con durabilidad síncrona, **volumen PVC de WAL separado de `PGDATA`**, `Barman Cloud CNPG-I` y directiva GitOps `Prune=false` (o Aurora/RDS Multi-AZ con PITR y `deletion_protection = true`).
+3. **Almacenamiento y Estado Secundario:** Configura `StorageClass` cifrada con `reclaimPolicy: Retain` (`replicaCount >= 3` en Longhorn/Rook-Ceph), Valkey como caché reconstruible (AOF + réplicas solo si el SLO lo exige) y copias versionadas de blobs de usuario.
+4. **Restore Drill Automatizado (Evidencia Obligatoria):** Un backup está incompleto hasta pasar un **drill periódico de restauración lógica y física PITR** en una instancia aislada sin salida a integraciones reales, midiendo RPO, RTO e invariantes de negocio y purgando los recursos temporales al terminar.
 
-## Límites
+## Qué Hacer Y Qué NO Hacer (Límites Senior)
 
-- No usar carpetas efímeras (emptyDir) para bases de datos con datos persistentes.
-- No configurar reclaimPolicy: Delete en volúmenes de producción.
-- No omitir el archivado continuo de WAL hacia almacenamiento externo.
+- ✅ **Hacer:** Separar datos de `development`, `staging` y `production` por completo y exigir `Prune=false` sobre clústeres de base de datos gestionados por Argo CD.
+- ❌ **No hacer:** Usar `emptyDir`/`hostPath` o `reclaimPolicy: Delete` en producción, guardar los backups en el mismo clúster RustFS/disco que aloja los datos primarios o restaurar datos reales en `staging` sin anonimización aprobada.
+- ❌ **No hacer:** Confiar solo en `pg_dump` cuando el RPO exigido requiere replay continuo de WAL (PITR).
 
 ## Respuesta
 
@@ -50,8 +51,8 @@ Incluye evidencia, costos, pruebas y ejemplos aplicables.
 
 ## ✅ Correcto / ❌ Incorrecto: manejo de existente
 
-- ✅ **Correcto:** Aprovechar operadores nativos con replicación síncrona, failover automatizado y archivado WAL continuo.
-- ❌ **Incorrecto:** Ejecutar pods de base de datos sin operador ni respaldos externos confiando en la persistencia local del nodo.
+- ✅ **Correcto:** Ejecutar archivado continuo de WAL (`pgBackRest` o `Barman Cloud CNPG-I` con WAL separado), proteger volúmenes con `Retain` / `Prune=false` y demostrar recuperación mediante drills PITR aislados.
+- ❌ **Incorrecto:** Asumir que un volumen persistente local o un backup nunca restaurado garantiza recuperación ante pérdida del servidor, error humano o ransomware.
 - **Gate:** no reescribir masivamente código heredado; inspeccionar baseline, tests y locks reales; reportar `NOT_RUN` si falta evidencia. La guía de refactor se consulta en `vigilio-docs/standards/engineering/refactoring-existing-code.md` según la revisión de Docs aprobada (no asumir que el link remoto `main` ya esté publicado).
 
 </skill-content>
