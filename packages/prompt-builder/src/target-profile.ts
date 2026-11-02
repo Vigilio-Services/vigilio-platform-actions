@@ -52,7 +52,9 @@ async function readPackageName(file: string) {
 async function validateBackend(input: {
   projectRoot: string;
   backend: TargetRepository;
-  contractPackage: string;
+  contractMode: 'package' | 'openapi' | 'none';
+  contractPackage?: string | undefined;
+  openapiSpec?: string | undefined;
   mode: TargetValidationMode;
 }): Promise<TargetValidation> {
   const warnings: string[] = [];
@@ -69,6 +71,22 @@ async function validateBackend(input: {
     if (input.mode === 'strict') throw new Error(message);
     warnings.push(message);
     return { materialized: false, warnings };
+  }
+  if (input.contractMode === 'openapi') {
+    const specRel = input.openapiSpec ?? input.backend.openapi_spec;
+    if (specRel) {
+      const specPath = resolveInside(root, specRel, 'backend openapi_spec');
+      if (!(await exists(specPath))) {
+        const message = `Backend OpenAPI spec missing: ${specPath}`;
+        if (input.mode === 'strict') throw new Error(message);
+        warnings.push(message);
+        return { materialized: false, warnings };
+      }
+    }
+    return { materialized: true, warnings };
+  }
+  if (input.contractMode === 'none') {
+    return { materialized: true, warnings };
   }
   if (!input.backend.contract_manifest) {
     const message = 'Current backend target requires contract_manifest';
@@ -102,7 +120,8 @@ async function validateBackend(input: {
 async function validateFrontend(input: {
   projectRoot: string;
   frontend: TargetRepository;
-  contractPackage: string;
+  contractMode: 'package' | 'openapi' | 'none';
+  contractPackage?: string | undefined;
   mode: TargetValidationMode;
 }): Promise<TargetValidation> {
   const warnings: string[] = [];
@@ -132,6 +151,9 @@ async function validateFrontend(input: {
     if (input.mode === 'strict') throw new Error(message);
     warnings.push(message);
     return { materialized: false, warnings };
+  }
+  if (input.contractMode !== 'package' || !input.contractPackage) {
+    return { materialized: true, warnings };
   }
   const packageJson = JSON.parse(await readFile(packageManifest, 'utf8')) as Record<
     string,
@@ -173,28 +195,37 @@ export async function resolveTargetProfile(
 
   assertRepositoryShape(profile.backend, `${profileId}.backend`);
   assertRepositoryShape(profile.frontend, `${profileId}.frontend`);
-  if (
-    profile.contract.owner !== profile.backend.repository ||
-    profile.contract.consumer !== profile.frontend.repository
-  ) {
-    throw new Error(
-      `CONTRACT_OWNER_MISMATCH: ${profileId} owner/consumer do not match target repositories`,
-    );
+  const contractMode: 'package' | 'openapi' | 'none' = !profile.contract
+    ? 'none'
+    : (profile.contract.mode ?? (profile.contract.package ? 'package' : 'openapi'));
+  if (profile.contract) {
+    if (
+      profile.contract.owner !== profile.backend.repository ||
+      profile.contract.consumer !== profile.frontend.repository
+    ) {
+      throw new Error(
+        `CONTRACT_OWNER_MISMATCH: ${profileId} owner/consumer do not match target repositories`,
+      );
+    }
+    if (contractMode === 'package' && !profile.contract.package?.trim()) {
+      throw new Error(`Invalid contract package for ${profileId}`);
+    }
   }
-  if (!profile.contract.package?.trim())
-    throw new Error(`Invalid contract package for ${profileId}`);
 
   const mode = options.mode ?? 'strict';
   const backend = await validateBackend({
     projectRoot,
     backend: profile.backend,
-    contractPackage: profile.contract.package,
+    contractMode,
+    contractPackage: profile.contract?.package,
+    openapiSpec: profile.contract?.openapi_spec,
     mode,
   });
   const frontend = await validateFrontend({
     projectRoot,
     frontend: profile.frontend,
-    contractPackage: profile.contract.package,
+    contractMode,
+    contractPackage: profile.contract?.package,
     mode,
   });
   return {
@@ -211,11 +242,16 @@ export async function resolveTargetProfile(
 
 export function formatTargetProfile(profile?: ResolvedTargetProfile) {
   if (!profile) return '- none declared; generic pack';
+  const contractSummary = !profile.contract
+    ? 'modular-schemas / openapi (zero global contracts package)'
+    : profile.contract.package
+      ? `${profile.contract.package} (${profile.contract.owner} -> ${profile.contract.consumer})`
+      : `${profile.contract.mode ?? 'openapi'} (${profile.contract.owner} -> ${profile.contract.consumer})`;
   return [
     `- profile: ${profile.id}`,
     `- backend: ${profile.backend.repository} (${profile.backend.state}; root=${profile.backend.root})`,
     `- frontend: ${profile.frontend.repository} (${profile.frontend.state}; root=${profile.frontend.root}; app=${profile.frontend.app_path ?? 'resolved-from-existing-target'})`,
-    `- contract: ${profile.contract.package} (${profile.contract.owner} -> ${profile.contract.consumer})`,
+    `- contract: ${contractSummary}`,
     `- materialized: backend=${profile.materialized.backend}, frontend=${profile.materialized.frontend}`,
     ...(profile.preflight_warnings.length > 0
       ? [

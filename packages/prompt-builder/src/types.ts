@@ -75,16 +75,21 @@ export type TargetRepository = {
   app_path?: string | undefined;
   package_manifest?: string | undefined;
   contract_manifest?: string | undefined;
+  openapi_spec?: string | undefined;
+};
+
+export type TargetContractPolicy = {
+  owner: string;
+  consumer: string;
+  mode?: 'package' | 'openapi' | 'none' | undefined;
+  package?: string | undefined;
+  openapi_spec?: string | undefined;
 };
 
 export type TargetProfile = {
   backend: TargetRepository;
   frontend: TargetRepository;
-  contract: {
-    owner: string;
-    consumer: string;
-    package: string;
-  };
+  contract?: TargetContractPolicy | undefined;
   forbidden_paths?: string[] | undefined;
 };
 

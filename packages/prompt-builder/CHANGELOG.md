@@ -1,5 +1,13 @@
 # @vigilio-services/prompt-builder
 
+## 0.12.1
+
+### Patch Changes
+
+- Support zero-`contracts/` target profiles (`mode: openapi | none` or omitted `contract`) without requiring global `packages/contracts/package.json` manifests, and accept Rootless Podman (`podman info`) alongside Docker in generated container runtime preflight scripts.
+- Harden Senior Mode visual and recovery runtime handling for stalled or recovering sessions.
+- Bound Senior Mode disk usage by removing inactive attempt worktrees while preserving JSON history, compact failure patches and recoverable refs for commits that fail integration.
+
 ## 0.12.0
 
 ### Minor Changes
@@ -12,8 +20,6 @@
   and persist crash-resumable integration transactions.
 - Raise the default heartbeat timeout to 600 seconds and print a compact supervisor status event on
   every poll so a long agent run is observable without visual emoji.
-- Bound Senior Mode disk usage by removing inactive attempt worktrees while preserving JSON history,
-  compact failure patches and recoverable refs for commits that fail integration.
 
 ## 0.11.1
 

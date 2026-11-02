@@ -616,4 +616,59 @@ dependency_policy: include-transitive
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it('supports zero-contracts OpenAPI target profiles without packages/contracts manifests', async () => {
+    const root = await createFixture();
+    try {
+      await rm(path.join(root, 'apps/bus-impl-v2/packages'), { recursive: true, force: true });
+      await write(
+        root,
+        'apps/bus-impl-v2/openapi/openapi.json',
+        JSON.stringify({ openapi: '3.1.0', info: { title: 'Bus API', version: '1.0.0' } }),
+      );
+      await write(
+        root,
+        'apps/web-mfe-v2/package.json',
+        JSON.stringify({ name: 'web-mfe-v2', dependencies: { react: '19.2.0' } }),
+      );
+      await write(
+        root,
+        'docs/rules/target-profiles.yaml',
+        `
+schema_version: 1
+profiles:
+  k8s-v2:
+    backend:
+      repository: bus-impl-v2
+      root: apps/bus-impl-v2
+      state: current
+      openapi_spec: openapi/openapi.json
+    frontend:
+      repository: web-mfe-v2
+      root: apps/web-mfe-v2
+      state: current
+      app_path: apps/salud/backoffice
+      package_manifest: package.json
+    contract:
+      owner: bus-impl-v2
+      consumer: web-mfe-v2
+      mode: openapi
+    forbidden_paths: [packages/contracts/**, contracts/**]
+`,
+      );
+
+      const result = await buildAll({
+        projectRoot: root,
+        phases: ['apply'],
+        tokenBudget: 60_000,
+      });
+      assert.equal(result.executionPlan.prompt_count, 4);
+      const firstStep = result.executionPlan.steps[0];
+      assert.ok(firstStep);
+      const compiledPrompt = await readFile(path.resolve(root, firstStep.prompt), 'utf8');
+      assert.match(compiledPrompt, /contract: openapi \(bus-impl-v2 -> web-mfe-v2\)/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

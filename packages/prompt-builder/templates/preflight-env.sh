@@ -142,8 +142,14 @@ else bad "vigilio-prompt unavailable/mismatch"; fi
 section "Container runtime"
 DOCKER_SIGNAL="${DOCKER_HOST:-}"
 if policy_required "$PREFLIGHT_REQUIRE_DOCKER" "$DOCKER_SIGNAL"; then
-  command -v docker >/dev/null 2>&1 || bad "docker CLI unavailable"
-  command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && ok "docker daemon ready" || bad "docker daemon unavailable"
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    ok "docker daemon ready"
+  elif command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
+    ok "podman runtime ready"
+  else
+    command -v docker >/dev/null 2>&1 || bad "docker CLI unavailable"
+    bad "docker daemon unavailable"
+  fi
 else
   warn "docker not required by current policy"
 fi

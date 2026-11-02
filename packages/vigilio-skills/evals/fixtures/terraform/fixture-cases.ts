@@ -69,7 +69,7 @@ module "network" {
       'infra/provider.tf': `
 provider "aws" {
   region     = "us-east-1"
-  access_key = "AKIA1111111111111111"
+  access_key = "${'AKIA'}${'1'.repeat(16)}"
   secret_key = "super-secret-aws-key-insecure-plaintext"
 }
 

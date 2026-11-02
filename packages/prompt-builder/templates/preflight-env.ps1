@@ -121,7 +121,7 @@ if ($pb -eq $settings.PREFLIGHT_PROMPT_BUILDER_VERSION) { Ok "vigilio-prompt $pb
 
 Section "Container runtime"
 if (IsRequired $settings.PREFLIGHT_REQUIRE_DOCKER $env:DOCKER_HOST) {
-  if ((Get-Command docker -ErrorAction SilentlyContinue) -and ((& docker info 2>$null) -ne $null)) { Ok "docker daemon ready" } else { Bad "docker daemon unavailable" }
+  if ((Get-Command docker -ErrorAction SilentlyContinue) -and ((& docker info 2>$null) -ne $null)) { Ok "docker daemon ready" } elseif ((Get-Command podman -ErrorAction SilentlyContinue) -and ((& podman info 2>$null) -ne $null)) { Ok "podman runtime ready" } else { Bad "docker daemon unavailable" }
 } else { Warn "docker not required by current policy" }
 
 Section "PostgreSQL"
