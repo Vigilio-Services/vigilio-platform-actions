@@ -7,6 +7,7 @@
 - Support zero-`contracts/` target profiles (`mode: openapi | none` or omitted `contract`) without requiring global `packages/contracts/package.json` manifests, and accept Rootless Podman (`podman info`) alongside Docker in generated container runtime preflight scripts.
 - Harden Senior Mode visual and recovery runtime handling for stalled or recovering sessions.
 - Bound Senior Mode disk usage by removing inactive attempt worktrees while preserving JSON history, compact failure patches and recoverable refs for commits that fail integration.
+- Add supervisor-owned Senior Mode audio: one notification per completed cohort, one final notification when the complete plan finishes, and a deduplicated blocked/failure alert.
 
 ## 0.12.0
 

@@ -14,6 +14,8 @@ from pathlib import Path
 from prompt_builder_compat import PromptBuilderCompatibilityError, load_execution_plan
 from senior_queue import MAX_RECOVERY_PATCH_BYTES, SeniorCoordinator
 from senior_agent_launcher import (
+    _blocked_fingerprint,
+    _supervisor_outcome,
     _visual_command,
     build_agent_prompt,
     launch_agent_session,
@@ -640,6 +642,61 @@ class SeniorWorkerTests(unittest.TestCase):
 
 
 class SeniorAgentLauncherTests(unittest.TestCase):
+    def test_supervisor_outcome_completes_only_when_every_job_is_terminal(self) -> None:
+        tick = {
+            "leased_requests": [],
+            "retried": [],
+            "integration": {"waiting": []},
+            "status": {
+                "ready": [],
+                "jobs": {
+                    "a:review": {"status": "done"},
+                    "b:review": {"status": "skipped"},
+                },
+            },
+        }
+
+        self.assertEqual(_supervisor_outcome(tick, active_sessions=0), "complete")
+        self.assertIsNone(_supervisor_outcome(tick, active_sessions=1))
+
+    def test_supervisor_blocked_outcome_waits_for_retries_and_deduplicates_jobs(self) -> None:
+        tick = {
+            "leased_requests": [],
+            "retried": [],
+            "integration": {"waiting": []},
+            "status": {
+                "ready": [],
+                "jobs": {
+                    "a:apply": {"status": "failed"},
+                    "a:review": {"status": "pending"},
+                    "b:apply": {"status": "blocked"},
+                },
+            },
+        }
+
+        self.assertEqual(_supervisor_outcome(tick, active_sessions=0), "blocked")
+        self.assertEqual(
+            _blocked_fingerprint(tick["status"]["jobs"]),
+            ("a:apply:failed", "b:apply:blocked"),
+        )
+        tick["retried"] = ["a:apply"]
+        self.assertIsNone(_supervisor_outcome(tick, active_sessions=0))
+
+    def test_launcher_audio_flags_are_available_in_parallel_mode(self) -> None:
+        args = parse_launcher_args(
+            [
+                "--prompts-dir", "generated/prompts/full-project",
+                "--workers", "4",
+                "--visual-tabs",
+                "--windows",
+                "--no-sound",
+                "--sound-min-interval-seconds", "5",
+            ]
+        )
+
+        self.assertTrue(args.no_sound)
+        self.assertEqual(args.sound_min_interval_seconds, 5)
+
     def test_audit_prompt_forbids_repository_edits_and_uses_base_sha(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

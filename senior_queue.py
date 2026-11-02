@@ -39,7 +39,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.5.0"
+SCRIPT_VERSION = "1.5.1"
 MAX_WORKERS = 64
 MAX_RECOVERY_PATCH_BYTES = 5 * 1024 * 1024
 WORKTREE_ACTIVE_STATUSES = frozenset(

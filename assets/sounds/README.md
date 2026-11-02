@@ -7,5 +7,7 @@ Downloaded from Mixkit's free sound-effects collection on 2026-10-11. Mixkit sta
 these effects are free to download and use under the Mixkit License:
 https://mixkit.co/free-sound-effects/game-show/
 
-The runner plays these asynchronously. `--no-sound` disables audio, while
+The sequential runner and the Senior Mode supervisor play these asynchronously.
+Senior Mode centralizes notifications in the supervisor so concurrent workers
+do not produce overlapping sounds. `--no-sound` disables audio, while
 `--ready-sound` and `--blocked-sound` allow consumer-owned replacements.

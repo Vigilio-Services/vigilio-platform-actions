@@ -349,6 +349,25 @@ next phase still waits for every job in the current phase. The compatibility
 `--visual` adapter may still use markers locally, but they never authorize a
 state transition by themselves.
 
+## Supervisor audio
+
+`senior_agent_launcher.py` owns notifications for parallel runs. Workers never
+play completion sounds independently, so four agents finishing together cannot
+produce four competing alerts:
+
+- a READY sound is emitted once when a cohort completes;
+- the same READY sound is emitted once when every plan job is `done` or
+  `skipped`, after which the launcher exits successfully;
+- a BLOCKED sound is emitted when the plan has no runnable or in-flight work
+  and at least one job is `blocked` or `failed`;
+- an unchanged blocked-job fingerprint is silent on later supervisor polls.
+
+Use `--no-sound` for silent automation. `--ready-sound`, `--blocked-sound` and
+`--sound-min-interval-seconds` select consumer-owned WAV files and rate limits.
+The structured JSON events `supervisor.cohort_completed`,
+`supervisor.complete` and `supervisor.blocked` remain authoritative when audio
+is disabled or unavailable.
+
 ## Safety rules
 
 - One coordinator is the only writer of `state.json` and `events.jsonl`.

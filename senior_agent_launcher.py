@@ -23,6 +23,7 @@ import uuid
 from typing import Any, Sequence
 
 from chatgpt_automation_lock import RunLock
+from notification_audio import NotificationAudio, add_audio_arguments
 from senior_queue import MAX_WORKERS, SeniorCoordinator
 from senior_state import SeniorStateError
 from senior_tab_controller import (
@@ -37,7 +38,7 @@ from senior_worker import (
 )
 
 
-SCRIPT_VERSION = "1.5.0"
+SCRIPT_VERSION = "1.5.1"
 PLACEHOLDERS = (
     "request",
     "prompt",
@@ -443,6 +444,63 @@ def _available_slot(sessions: dict[tuple[str, str], AgentSession], workers: int)
     raise SeniorLauncherError("coordinator leased more jobs than available worker slots")
 
 
+def _cohort_id(value: object) -> str | None:
+    if not isinstance(value, dict):
+        return None
+    cohort_id = value.get("cohort_id")
+    return cohort_id if isinstance(cohort_id, str) and cohort_id else None
+
+
+def _supervisor_outcome(tick: dict[str, Any], *, active_sessions: int) -> str | None:
+    """Return a stable plan-level outcome without trusting visual UI markers."""
+
+    status = tick.get("status")
+    if not isinstance(status, dict):
+        return None
+    jobs = status.get("jobs")
+    if not isinstance(jobs, dict) or not jobs:
+        return None
+    job_statuses = {
+        str(report.get("status", "unknown"))
+        for report in jobs.values()
+        if isinstance(report, dict)
+    }
+    if job_statuses and job_statuses <= {"done", "skipped"} and active_sessions == 0:
+        return "complete"
+    if active_sessions or tick.get("leased_requests") or tick.get("retried"):
+        return None
+    if status.get("ready"):
+        return None
+    integration = tick.get("integration")
+    if isinstance(integration, dict) and integration.get("waiting"):
+        return None
+    in_flight = {
+        "leased",
+        "running",
+        "produced",
+        "merge_pending",
+        "validated",
+        "stalled",
+    }
+    if job_statuses & in_flight:
+        return None
+    if job_statuses & {"blocked", "failed"}:
+        return "blocked"
+    return None
+
+
+def _blocked_fingerprint(job_report: object) -> tuple[str, ...]:
+    if not isinstance(job_report, dict):
+        return ()
+    return tuple(
+        sorted(
+            f"{job_id}:{report.get('status')}"
+            for job_id, report in job_report.items()
+            if isinstance(report, dict) and report.get("status") in {"blocked", "failed"}
+        )
+    )
+
+
 def _visual_command(args: argparse.Namespace, display: str | None) -> list[str]:
     command = [
         sys.executable,
@@ -571,6 +629,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--tab-page-load-seconds", type=float, default=5.0)
     parser.add_argument("--tab-switch-seconds", type=float, default=0.8)
+    add_audio_arguments(parser)
     parser.add_argument(
         "agent_command",
         nargs=argparse.REMAINDER,
@@ -634,6 +693,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    notification_audio = NotificationAudio.from_args(args)
     project_root = args.project_root.resolve()
     prompts_dir = args.prompts_dir
     if not prompts_dir.is_absolute():
@@ -647,6 +707,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     tab_sessions: dict[tuple[str, str], TabAgentSession] = {}
     tab_controller: SeniorTabController | None = None
     target_cohort_id: str | None = None
+    last_blocked_fingerprint: tuple[str, ...] = ()
     lifetime = ExitStack()
     run_lock = RunLock(lock_path)
     try:
@@ -688,6 +749,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         raise SeniorLauncherError(
                             f"preflight failed with code {preflight.get('returncode')}"
                         )
+                cohort_before = _cohort_id(coordinator.state.data.get("cohort"))
                 tick = coordinator.supervise_tick(
                     max_workers=args.workers,
                     ttl_seconds=args.ttl_seconds,
@@ -702,6 +764,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     keep_failed_worktrees=args.keep_failed_worktrees,
                 )
                 active_cohort = coordinator.state.data.get("cohort")
+                cohort_after = _cohort_id(active_cohort)
                 if target_cohort_id is None and isinstance(active_cohort, dict):
                     target_cohort_id = str(active_cohort.get("cohort_id"))
                 for key, session in list(tab_sessions.items()):
@@ -756,6 +819,52 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ),
                 flush=True,
             )
+            active_session_count = len(sessions) + len(tab_sessions)
+            outcome = _supervisor_outcome(tick, active_sessions=active_session_count)
+            completed_cohort = bool(cohort_before and cohort_before != cohort_after)
+            if outcome == "complete":
+                notification_audio.ready_signal()
+                print(
+                    json.dumps(
+                        {
+                            "event": "supervisor.complete",
+                            "workflow_id": tick.get("status", {}).get("workflow_id"),
+                            "completed_cohort": cohort_before if completed_cohort else None,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
+                return 0
+            if completed_cohort:
+                notification_audio.ready_signal()
+                print(
+                    json.dumps(
+                        {
+                            "event": "supervisor.cohort_completed",
+                            "cohort_id": cohort_before,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
+            fingerprint = _blocked_fingerprint(job_report) if outcome == "blocked" else ()
+            if fingerprint and fingerprint != last_blocked_fingerprint:
+                notification_audio.blocked_signal()
+                print(
+                    json.dumps(
+                        {
+                            "event": "supervisor.blocked",
+                            "jobs": list(fingerprint),
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                    flush=True,
+                )
+            last_blocked_fingerprint = fingerprint
             for key, session in list(sessions.items()):
                 if _session_cancel_requested(session):
                     _terminate_session(session)
@@ -904,6 +1013,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         SeniorLauncherError,
         SeniorTabControllerError,
     ) as exc:
+        notification_audio.blocked_signal()
         print(f"SENIOR_LAUNCHER_ERROR: {exc}", file=sys.stderr)
         return 2
     finally:
