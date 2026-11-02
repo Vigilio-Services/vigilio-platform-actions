@@ -42,7 +42,7 @@ Usar exactamente estos términos — no derivar a "componente", "servicio", "API
 
 Los proyectos Vigilio comparten:
 
-- **Stack**: NestJS 11, Zod (3.23.8+ baseline / 4.x candidate), Drizzle/PostgreSQL, Biome, Vitest, Cucumber, Playwright
+- **Stack**: NestJS 11, Zod 4, Drizzle/PostgreSQL, Biome, Vitest, Cucumber, Playwright
 - **Infra**: AWS CDK v2, stages dev/staging/prod, Lambda via `.artifacts/lambda/`
 - **Testing**: unit (Vitest), integration (Drizzle), BDD (Cucumber), E2E (Playwright)
 - **Documentación**: vigilio-docs + OpenSpec senior mode (`openspec/`)

@@ -29,7 +29,7 @@ Exploro solo las decisiones materiales que el repositorio y los estándares no r
 **Ejemplo legado, NO predeterminado para todos los proyectos.** Detectar runtime/stack/infra/versions de lockfiles, código y configuración real antes de preguntar. Solo aplicar los elementos siguientes si realmente están presentes en el consumidor:
 
 - **Runtime**: Node.js 24, TypeScript ESM, NestJS 11
-- **Stack**: Zod (3.23.8+ baseline / 4.x candidate), Drizzle/PostgreSQL, Biome, Vitest, Cucumber, Playwright
+- **Stack**: Zod 4, Drizzle/PostgreSQL, Biome, Vitest, Cucumber, Playwright
 - **Package manager**: pnpm 11.x
 - **Infra**: AWS CDK v2 con stages dev/staging/prod, `.artifacts/lambda/` para despliegue Lambda
 - **Testing**: unit (Vitest), integration (Vitest + Drizzle), BDD (Cucumber), E2E (Playwright)
