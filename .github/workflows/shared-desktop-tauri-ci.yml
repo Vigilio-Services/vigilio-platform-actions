@@ -41,10 +41,10 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@dc8a5002481245a1cfbfc55d9f95f1b0e8d5cd0a # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
@@ -73,14 +73,14 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
           toolchain: ${{ inputs.rust-version }}
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: Swatinem/rust-cache@c8037a86dde8214a8310e9f54a8fc61ab362aa31 # v2
         with:
           workspaces: ${{ inputs.working-directory }}/src-tauri -> target
       - name: Install Linux Tauri dependencies
@@ -101,19 +101,19 @@ jobs:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/setup-node-pnpm@dc8a5002481245a1cfbfc55d9f95f1b0e8d5cd0a # v1
         with:
           node-version: ${{ inputs.node-version }}
           pnpm-version: ${{ inputs.pnpm-version }}
           cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/install-playwright-chromium@dc8a5002481245a1cfbfc55d9f95f1b0e8d5cd0a # v1
         with:
           working-directory: ${{ inputs.working-directory }}
       - run: pnpm test:e2e
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: tauri-playwright-report

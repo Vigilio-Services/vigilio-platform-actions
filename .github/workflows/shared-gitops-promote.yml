@@ -52,7 +52,7 @@ jobs:
           }
           echo "owner=${BASH_REMATCH[1]}" >> "${GITHUB_OUTPUT}"
           echo "repository=${BASH_REMATCH[2]}" >> "${GITHUB_OUTPUT}"
-      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         id: app-token
         with:
           client-id: ${{ inputs.gitops-app-client-id }}
@@ -61,14 +61,14 @@ jobs:
           repositories: ${{ steps.target.outputs.repository }}
           permission-contents: write
           permission-pull-requests: write
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           repository: ${{ inputs.gitops-repository }}
           persist-credentials: false
           fetch-depth: 0
           ref: ${{ inputs.base-branch }}
           token: ${{ steps.app-token.outputs.token }}
-      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@7bafab2473ec0e61774abc1ee1b58af2c3a219d4 # v1
+      - uses: Vigilio-Services/vigilio-platform-actions/actions/validate-stage-source@dc8a5002481245a1cfbfc55d9f95f1b0e8d5cd0a # v1
         with:
           stage: ${{ inputs.stage }}
           ref-name: ${{ inputs.base-branch }}

@@ -55,10 +55,10 @@ jobs:
       TF_IN_AUTOMATION: 'true'
       TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: ${{ inputs.terraform-version }}
           terraform_wrapper: false
@@ -95,7 +95,7 @@ jobs:
         with:
           path: ${{ github.workspace }}/.terraform-plugin-cache
           key: terraform-shared-drift-v3-${{ runner.os }}-${{ inputs.terraform-version }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
-      - uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           aws-region: ${{ inputs.aws-region }}
           role-to-assume: ${{ inputs.aws-role-arn || secrets.AWS_ROLE_ARN }}
@@ -164,7 +164,7 @@ jobs:
               echo 'No drift detected.'
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: terraform-drift-${{ inputs.stage }}-${{ github.run_id }}
